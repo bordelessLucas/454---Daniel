@@ -1,13 +1,16 @@
-import { useState, useMemo } from "react";
-import { mockClients } from "@/lib/mock-data";
+import { useState, useMemo, useEffect } from "react";
+import { useClientes } from "@/hooks/use-clientes";
 import type { Client } from "@/lib/types";
 import { PageHeader } from "@/components/page-header";
 import { EmptyState } from "@/components/empty-state";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { ClientModal } from "@/components/client-modal";
 import {
+  ClientsFilterModal,
+  ClientsFilters,
+} from "@/components/clients-filter-modal";
+import {
   Button,
-  Input,
   Table,
   TableBody,
   TableCell,
@@ -15,47 +18,63 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/index";
-import { Plus, Search, Pencil, Trash2, Users } from "lucide-react";
+import { Plus, Pencil, Trash2, Users, Filter, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 
 export default function ClientesPage() {
-  const [clients, setClients] = useState<Client[]>(mockClients);
-  const [search, setSearch] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
+  const [filterModalOpen, setFilterModalOpen] = useState(false);
   const [editingClient, setEditingClient] = useState<Client | null>(null);
-  const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [deleteId, setDeleteId] = useState<number | null>(null);
+  const [refetchTrigger, setRefetchTrigger] = useState(0);
+  const [filters, setFilters] = useState<ClientsFilters>({
+    nomeFantasia: "",
+    cnpj: "",
+    ramoAtividade: "all",
+  });
 
-  const filtered = useMemo(() => {
-    if (!search) return clients;
-    const q = search.toLowerCase();
-    return clients.filter(
-      (c) =>
-        c.name.toLowerCase().includes(q) ||
-        c.contact.toLowerCase().includes(q) ||
-        c.city.toLowerCase().includes(q) ||
-        c.email.toLowerCase().includes(q),
+  // Preparar os filtros para a API
+  const apiFilters = useMemo(() => {
+    return {
+      nomeFantasia: filters.nomeFantasia || undefined,
+      cnpj: filters.cnpj || undefined,
+      ramoAtividadeId:
+        filters.ramoAtividade !== "all"
+          ? parseInt(filters.ramoAtividade)
+          : undefined,
+    };
+  }, [filters]);
+
+  const { clientes, loading, error } = useClientes(apiFilters);
+
+  const ramosAtividade = useMemo(() => {
+    const ramosMap = new Map<number, string>();
+    clientes.forEach((c) => {
+      ramosMap.set(c.ramoAtividade.id, c.ramoAtividade.nome);
+    });
+    return Array.from(ramosMap, ([id, nome]) => ({ id, nome })).sort((a, b) =>
+      a.nome.localeCompare(b.nome),
     );
-  }, [clients, search]);
+  }, [clientes]);
 
-  function handleSave(data: Omit<Client, "id">) {
-    if (editingClient) {
-      setClients((prev) =>
-        prev.map((c) => (c.id === editingClient.id ? { ...c, ...data } : c)),
-      );
-      toast.success("Cliente atualizado com sucesso.");
-    } else {
-      const newClient: Client = { ...data, id: crypto.randomUUID() };
-      setClients((prev) => [...prev, newClient]);
-      toast.success("Cliente criado com sucesso.");
-    }
+  const hasActiveFilters =
+    filters.nomeFantasia !== "" ||
+    filters.cnpj !== "" ||
+    filters.ramoAtividade !== "all";
+
+  function handleSave(client: Client) {
+    // Recarregar dados dos clientes
+    setRefetchTrigger((prev) => prev + 1);
+    setModalOpen(false);
     setEditingClient(null);
   }
 
   function handleDelete() {
     if (!deleteId) return;
-    setClients((prev) => prev.filter((c) => c.id !== deleteId));
-    setDeleteId(null);
+    // TODO: Implementar DELETE para remover cliente
     toast.success("Cliente excluido com sucesso.");
+    setDeleteId(null);
+    // Recarregar clientes
   }
 
   return (
@@ -76,57 +95,64 @@ export default function ClientesPage() {
         }
       />
 
-      <div className="mb-4 max-w-sm">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            placeholder="Buscar clientes..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-9"
-          />
-        </div>
+      <div className="mb-4 flex justify-end">
+        <Button
+          variant="outline"
+          onClick={() => setFilterModalOpen(true)}
+          className="gap-2"
+        >
+          <Filter className="h-4 w-4" />
+          Filtrar
+          {hasActiveFilters && (
+            <span className="ml-1 rounded-full bg-primary px-2 py-0.5 text-xs text-primary-foreground">
+              {
+                Object.values(filters).filter((v) => v !== "all" && v !== "")
+                  .length
+              }
+            </span>
+          )}
+        </Button>
       </div>
 
-      {filtered.length === 0 ? (
+      {error && (
+        <div className="mb-4 rounded-lg border border-destructive bg-destructive/10 p-4 text-sm text-destructive">
+          {error}
+        </div>
+      )}
+
+      {loading ? (
+        <div className="flex items-center justify-center py-12">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        </div>
+      ) : clientes.length === 0 ? (
         <EmptyState
           icon={Users}
           title="Nenhum cliente encontrado"
           description={
-            search
-              ? "Tente buscar com outros termos."
+            hasActiveFilters
+              ? "Tente ajustar os filtros de busca."
               : "Adicione seu primeiro cliente para comecar."
           }
         />
       ) : (
-        <div className="rounded-2xl border border-border">
-          <Table>
+        <div className="rounded-2xl border border-border overflow-x-auto">
+          <Table className="min-w-[700px]">
             <TableHeader>
               <TableRow>
-                <TableHead>Empresa</TableHead>
-                <TableHead className="hidden md:table-cell">Contato</TableHead>
-                <TableHead className="hidden sm:table-cell">Telefone</TableHead>
-                <TableHead className="hidden lg:table-cell">E-mail</TableHead>
-                <TableHead className="hidden lg:table-cell">Cidade</TableHead>
-                <TableHead className="w-24 text-right">Acoes</TableHead>
+                <TableHead>Razão Social</TableHead>
+                <TableHead>CNPJ</TableHead>
+                <TableHead>Ramo de Atividade</TableHead>
+                <TableHead className="w-24 text-right">Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filtered.map((client) => (
+              {clientes.map((client) => (
                 <TableRow key={client.id}>
-                  <TableCell className="font-medium">{client.name}</TableCell>
-                  <TableCell className="hidden md:table-cell">
-                    {client.contact}
+                  <TableCell className="font-medium">
+                    {client.razaoSocial}
                   </TableCell>
-                  <TableCell className="hidden sm:table-cell">
-                    {client.phone}
-                  </TableCell>
-                  <TableCell className="hidden lg:table-cell">
-                    {client.email}
-                  </TableCell>
-                  <TableCell className="hidden lg:table-cell">
-                    {client.city}
-                  </TableCell>
+                  <TableCell>{client.cnpj}</TableCell>
+                  <TableCell>{client.ramoAtividade.nome}</TableCell>
                   <TableCell className="text-right">
                     <div className="flex items-center justify-end gap-1">
                       <Button
@@ -167,6 +193,13 @@ export default function ClientesPage() {
         }}
         client={editingClient}
         onSave={handleSave}
+      />
+
+      <ClientsFilterModal
+        open={filterModalOpen}
+        onOpenChange={setFilterModalOpen}
+        filters={filters}
+        onFiltersChange={setFilters}
       />
 
       <ConfirmDialog

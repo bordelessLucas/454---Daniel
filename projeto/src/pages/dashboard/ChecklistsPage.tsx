@@ -1,6 +1,11 @@
 import { useState } from "react";
-import { mockChecklists } from "@/lib/mock-data";
-import type { Checklist, ChecklistItem } from "@/lib/types";
+import { useChecklists } from "@/hooks/use-checklists";
+import type { ApiChecklist } from "@/lib/types";
+import {
+  createChecklist,
+  updateChecklist,
+  deleteChecklist,
+} from "@/lib/checklist-service";
 import { PageHeader } from "@/components/page-header";
 import { EmptyState } from "@/components/empty-state";
 import { ConfirmDialog } from "@/components/confirm-dialog";
@@ -13,113 +18,74 @@ import {
   Input,
   Label,
   Modal,
+  Textarea,
 } from "@/components/index";
-import {
-  Plus,
-  Trash2,
-  Pencil,
-  ClipboardCheck,
-  GripVertical,
-  X,
-} from "lucide-react";
+import { Plus, Trash2, Pencil, ClipboardCheck } from "lucide-react";
 import { toast } from "sonner";
 
 export default function ChecklistsPage() {
-  const [checklists, setChecklists] = useState<Checklist[]>(mockChecklists);
+  const [refetchTrigger, setRefetchTrigger] = useState(0);
+  const { checklists, loading } = useChecklists(refetchTrigger);
   const [modalOpen, setModalOpen] = useState(false);
-  const [editing, setEditing] = useState<Checklist | null>(null);
-  const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [editing, setEditing] = useState<ApiChecklist | null>(null);
+  const [deleteId, setDeleteId] = useState<number | null>(null);
   const [formName, setFormName] = useState("");
-  const [formItems, setFormItems] = useState<ChecklistItem[]>([]);
-  const [newItemText, setNewItemText] = useState("");
-  const [dragIndex, setDragIndex] = useState<number | null>(null);
+  const [formDescricao, setFormDescricao] = useState("");
+  const [saving, setSaving] = useState(false);
 
   function openCreate() {
     setEditing(null);
     setFormName("");
-    setFormItems([]);
-    setNewItemText("");
+    setFormDescricao("");
     setModalOpen(true);
   }
 
-  function openEdit(checklist: Checklist) {
+  function openEdit(checklist: ApiChecklist) {
     setEditing(checklist);
-    setFormName(checklist.name);
-    setFormItems([...checklist.items]);
-    setNewItemText("");
+    setFormName(checklist.nome);
+    setFormDescricao(checklist.descricao ?? "");
     setModalOpen(true);
   }
 
-  function addItem() {
-    if (!newItemText.trim()) return;
-    const item: ChecklistItem = {
-      id: crypto.randomUUID(),
-      text: newItemText.trim(),
-      order: formItems.length,
-    };
-    setFormItems((prev) => [...prev, item]);
-    setNewItemText("");
-  }
-
-  function removeItem(id: string) {
-    setFormItems((prev) =>
-      prev.filter((i) => i.id !== id).map((i, idx) => ({ ...i, order: idx })),
-    );
-  }
-
-  function updateItem(id: string, text: string) {
-    setFormItems((prev) => prev.map((i) => (i.id === id ? { ...i, text } : i)));
-  }
-
-  function handleDragStart(index: number) {
-    setDragIndex(index);
-  }
-
-  function handleDragOver(e: React.DragEvent, index: number) {
-    e.preventDefault();
-    if (dragIndex === null || dragIndex === index) return;
-    const newItems = [...formItems];
-    const [moved] = newItems.splice(dragIndex, 1);
-    newItems.splice(index, 0, moved);
-    setFormItems(newItems.map((item, idx) => ({ ...item, order: idx })));
-    setDragIndex(index);
-  }
-
-  function handleDragEnd() {
-    setDragIndex(null);
-  }
-
-  function handleSave(e: React.FormEvent) {
+  async function handleSave(e: React.FormEvent) {
     e.preventDefault();
     if (!formName.trim()) return;
-
-    if (editing) {
-      setChecklists((prev) =>
-        prev.map((c) =>
-          c.id === editing.id
-            ? { ...c, name: formName.trim(), items: formItems }
-            : c,
-        ),
-      );
-      toast.success("Checklist atualizado com sucesso.");
-    } else {
-      const newChecklist: Checklist = {
-        id: crypto.randomUUID(),
-        name: formName.trim(),
-        items: formItems,
-      };
-      setChecklists((prev) => [...prev, newChecklist]);
-      toast.success("Checklist criado com sucesso.");
+    setSaving(true);
+    try {
+      if (editing) {
+        await updateChecklist(editing.id, {
+          nome: formName.trim(),
+          descricao: formDescricao.trim() || undefined,
+        });
+        toast.success("Checklist atualizado com sucesso.");
+      } else {
+        await createChecklist({
+          nome: formName.trim(),
+          descricao: formDescricao.trim() || undefined,
+        });
+        toast.success("Checklist criado com sucesso.");
+      }
+      setRefetchTrigger((p) => p + 1);
+      setModalOpen(false);
+      setEditing(null);
+    } catch {
+      toast.error("Erro ao salvar checklist.");
+    } finally {
+      setSaving(false);
     }
-    setModalOpen(false);
-    setEditing(null);
   }
 
-  function handleDelete() {
+  async function handleDelete() {
     if (!deleteId) return;
-    setChecklists((prev) => prev.filter((c) => c.id !== deleteId));
-    setDeleteId(null);
-    toast.success("Checklist excluido com sucesso.");
+    try {
+      await deleteChecklist(deleteId);
+      setRefetchTrigger((p) => p + 1);
+      toast.success("Checklist excluido com sucesso.");
+    } catch {
+      toast.error("Erro ao excluir checklist.");
+    } finally {
+      setDeleteId(null);
+    }
   }
 
   return (
@@ -135,7 +101,11 @@ export default function ChecklistsPage() {
         }
       />
 
-      {checklists.length === 0 ? (
+      {loading ? (
+        <p className="py-8 text-center text-sm text-muted-foreground">
+          Carregando...
+        </p>
+      ) : checklists.length === 0 ? (
         <EmptyState
           icon={ClipboardCheck}
           title="Nenhum checklist cadastrado"
@@ -147,7 +117,7 @@ export default function ChecklistsPage() {
             <Card key={checklist.id} className="border-border">
               <CardHeader className="flex flex-row items-start justify-between pb-3">
                 <CardTitle className="text-base font-medium">
-                  {checklist.name}
+                  {checklist.nome}
                 </CardTitle>
                 <div className="flex items-center gap-1">
                   <Button
@@ -170,21 +140,13 @@ export default function ChecklistsPage() {
                   </Button>
                 </div>
               </CardHeader>
-              <CardContent>
-                <ul className="flex flex-col gap-2">
-                  {checklist.items.map((item, idx) => (
-                    <li
-                      key={item.id}
-                      className="flex items-center gap-2 text-sm text-muted-foreground"
-                    >
-                      <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-md bg-muted text-xs font-medium text-muted-foreground">
-                        {idx + 1}
-                      </span>
-                      {item.text}
-                    </li>
-                  ))}
-                </ul>
-              </CardContent>
+              {checklist.descricao && (
+                <CardContent>
+                  <p className="text-sm text-muted-foreground">
+                    {checklist.descricao}
+                  </p>
+                </CardContent>
+              )}
             </Card>
           ))}
         </div>
@@ -197,11 +159,11 @@ export default function ChecklistsPage() {
           if (!open) setEditing(null);
         }}
         title={editing ? "Editar Checklist" : "Novo Checklist"}
-        className="max-h-[90svh] overflow-y-auto sm:max-w-lg"
+        className="sm:max-w-md"
       >
         <form onSubmit={handleSave} className="mt-4 flex flex-col gap-4">
           <div className="flex flex-col gap-2">
-            <Label htmlFor="checklist-name">Nome do Checklist</Label>
+            <Label htmlFor="checklist-name">Nome</Label>
             <Input
               id="checklist-name"
               value={formName}
@@ -209,52 +171,15 @@ export default function ChecklistsPage() {
               required
             />
           </div>
-
           <div className="flex flex-col gap-2">
-            <Label>Itens</Label>
-            {formItems.length > 0 && (
-              <div className="flex flex-col gap-1 rounded-xl border border-border p-2">
-                {formItems.map((item, idx) => (
-                  <div
-                    key={item.id}
-                    draggable
-                    onDragStart={() => handleDragStart(idx)}
-                    onDragOver={(e) => handleDragOver(e, idx)}
-                    onDragEnd={handleDragEnd}
-                    className="flex items-center gap-2 rounded-lg px-2 py-1 text-sm"
-                  >
-                    <GripVertical className="h-4 w-4 text-muted-foreground" />
-                    <Input
-                      value={item.text}
-                      onChange={(e) => updateItem(item.id, e.target.value)}
-                      className="h-8"
-                    />
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      className="h-8 w-8 text-muted-foreground"
-                      onClick={() => removeItem(item.id)}
-                      aria-label="Remover item"
-                    >
-                      <X className="h-4 w-4" />
-                    </Button>
-                  </div>
-                ))}
-              </div>
-            )}
-            <div className="flex items-center gap-2">
-              <Input
-                placeholder="Novo item"
-                value={newItemText}
-                onChange={(e) => setNewItemText(e.target.value)}
-              />
-              <Button type="button" variant="outline" onClick={addItem}>
-                Adicionar
-              </Button>
-            </div>
+            <Label htmlFor="checklist-desc">Descricao (opcional)</Label>
+            <Textarea
+              id="checklist-desc"
+              value={formDescricao}
+              onChange={(e) => setFormDescricao(e.target.value)}
+              rows={3}
+            />
           </div>
-
           <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
             <Button
               type="button"
@@ -263,7 +188,9 @@ export default function ChecklistsPage() {
             >
               Cancelar
             </Button>
-            <Button type="submit">Salvar</Button>
+            <Button type="submit" disabled={saving}>
+              {saving ? "Salvando..." : "Salvar"}
+            </Button>
           </div>
         </form>
       </Modal>

@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { useAuth } from "@/lib/auth-context";
-import { useSetores } from "@/hooks/use-setores";
-import type { Sector } from "@/lib/types";
+import { useRamosAtividade } from "@/hooks/use-ramos-atividade";
+import { RamoAtividade } from "@/lib/types";
 import { PageHeader } from "@/components/page-header";
 import { EmptyState } from "@/components/empty-state";
 import { ConfirmDialog } from "@/components/confirm-dialog";
@@ -16,48 +16,48 @@ import {
   TableHead,
   TableHeader,
   TableRow,
-  Textarea,
 } from "@/components/index";
-import { Plus, Search, Pencil, Trash2, Layers } from "lucide-react";
+import { Plus, Search, Pencil, Trash2, Briefcase } from "lucide-react";
 import { toast } from "sonner";
-import { createSetor, updateSetor, deleteSetor } from "@/lib/setores-service";
+import {
+  createRamoAtividade,
+  updateRamoAtividade,
+  deleteRamoAtividade,
+} from "@/lib/ramos-atividade-service";
 
-export default function SetoresPage() {
+export default function RamosAtividadePage() {
   const { user } = useAuth();
   const [refetch, setRefetch] = useState(0);
-  const { setores, loading, error } = useSetores(refetch);
+  const { ramos, loading, error } = useRamosAtividade(refetch);
   const [search, setSearch] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
-  const [editing, setEditing] = useState<Sector | null>(null);
+  const [editing, setEditing] = useState<RamoAtividade | null>(null);
   const [deleteId, setDeleteId] = useState<number | null>(null);
   const [formName, setFormName] = useState("");
-  const [formDescricao, setFormDescricao] = useState("");
   const [isSaving, setIsSaving] = useState(false);
 
   const filtered = useMemo(() => {
-    if (!search) return setores;
+    if (!search) return ramos;
     const q = search.toLowerCase();
-    return setores.filter((s) => s.nome.toLowerCase().includes(q));
-  }, [setores, search]);
+    return ramos.filter((r) => r.nome.toLowerCase().includes(q));
+  }, [ramos, search]);
 
   function openCreate() {
     setEditing(null);
     setFormName("");
-    setFormDescricao("");
     setModalOpen(true);
   }
 
-  function openEdit(setor: Sector) {
-    setEditing(setor);
-    setFormName(setor.nome);
-    setFormDescricao(setor.descricao || "");
+  function openEdit(ramo: RamoAtividade) {
+    setEditing(ramo);
+    setFormName(ramo.nome);
     setModalOpen(true);
   }
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
     if (!formName.trim()) {
-      toast.error("Por favor, preencha o nome do setor.");
+      toast.error("Por favor, preencha o nome do ramo de atividade.");
       return;
     }
 
@@ -65,15 +65,11 @@ export default function SetoresPage() {
       setIsSaving(true);
 
       if (editing) {
-        await updateSetor(
-          editing.id,
-          formName.trim(),
-          formDescricao.trim() || undefined,
-        );
-        toast.success("Setor atualizado com sucesso.");
+        await updateRamoAtividade(editing.id, formName.trim());
+        toast.success("Ramo de atividade atualizado com sucesso.");
       } else {
-        await createSetor(formName.trim(), formDescricao.trim() || undefined);
-        toast.success("Setor criado com sucesso.");
+        await createRamoAtividade(formName.trim());
+        toast.success("Ramo de atividade criado com sucesso.");
       }
 
       setModalOpen(false);
@@ -81,7 +77,7 @@ export default function SetoresPage() {
       setRefetch((prev) => prev + 1);
     } catch (err) {
       const message =
-        err instanceof Error ? err.message : "Erro ao salvar setor";
+        err instanceof Error ? err.message : "Erro ao salvar ramo de atividade";
       toast.error(message);
     } finally {
       setIsSaving(false);
@@ -93,13 +89,15 @@ export default function SetoresPage() {
 
     try {
       setIsSaving(true);
-      await deleteSetor(deleteId);
+      await deleteRamoAtividade(deleteId);
       setDeleteId(null);
-      toast.success("Setor excluído com sucesso.");
+      toast.success("Ramo de atividade excluído com sucesso.");
       setRefetch((prev) => prev + 1);
     } catch (err) {
       const message =
-        err instanceof Error ? err.message : "Erro ao excluir setor";
+        err instanceof Error
+          ? err.message
+          : "Erro ao excluir ramo de atividade";
       toast.error(message);
     } finally {
       setIsSaving(false);
@@ -119,7 +117,9 @@ export default function SetoresPage() {
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center py-16">
-        <p className="text-muted-foreground">Carregando setores...</p>
+        <p className="text-muted-foreground">
+          Carregando ramos de atividade...
+        </p>
       </div>
     );
   }
@@ -138,15 +138,16 @@ export default function SetoresPage() {
       </div>
     );
   }
+
   return (
     <>
       <PageHeader
-        title="Setores"
-        description="Gerencie os setores de serviço."
+        title="Ramos de Atividade"
+        description="Gerencie os ramos de atividade do sistema."
         action={
           <Button onClick={openCreate}>
             <Plus className="mr-2 h-4 w-4" />
-            Novo Setor
+            Novo Ramo de Atividade
           </Button>
         }
       />
@@ -155,7 +156,7 @@ export default function SetoresPage() {
         <div className="relative">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
           <Input
-            placeholder="Buscar setores..."
+            placeholder="Buscar ramos de atividade..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             className="pl-9"
@@ -165,38 +166,34 @@ export default function SetoresPage() {
 
       {filtered.length === 0 ? (
         <EmptyState
-          icon={Layers}
-          title="Nenhum setor encontrado"
+          icon={Briefcase}
+          title="Nenhum ramo de atividade encontrado"
           description={
             search
               ? "Tente buscar com outros termos."
-              : "Adicione seu primeiro setor."
+              : "Adicione seu primeiro ramo de atividade."
           }
         />
       ) : (
-        <div className="rounded-2xl border border-border overflow-x-auto">
+        <div className="rounded-2xl border border-border">
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>Nome do Setor</TableHead>
-                <TableHead>Descrição</TableHead>
+                <TableHead>Nome do Ramo de Atividade</TableHead>
                 <TableHead className="w-24 text-right">Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filtered.map((setor) => (
-                <TableRow key={setor.id}>
-                  <TableCell className="font-medium">{setor.nome}</TableCell>
-                  <TableCell className="text-sm text-muted-foreground">
-                    {setor.descricao || "-"}
-                  </TableCell>
+              {filtered.map((ramo) => (
+                <TableRow key={ramo.id}>
+                  <TableCell className="font-medium">{ramo.nome}</TableCell>
                   <TableCell className="text-right">
                     <div className="flex items-center justify-end gap-1">
                       <Button
                         variant="ghost"
                         size="icon"
                         className="h-8 w-8"
-                        onClick={() => openEdit(setor)}
+                        onClick={() => openEdit(ramo)}
                         aria-label="Editar"
                         disabled={isSaving}
                       >
@@ -206,7 +203,7 @@ export default function SetoresPage() {
                         variant="ghost"
                         size="icon"
                         className="h-8 w-8 text-destructive hover:text-destructive"
-                        onClick={() => setDeleteId(setor.id)}
+                        onClick={() => setDeleteId(ramo.id)}
                         aria-label="Excluir"
                         disabled={isSaving}
                       >
@@ -227,31 +224,19 @@ export default function SetoresPage() {
           setModalOpen(open);
           if (!open) setEditing(null);
         }}
-        title={editing ? "Editar Setor" : "Novo Setor"}
+        title={editing ? "Editar Ramo de Atividade" : "Novo Ramo de Atividade"}
         className="sm:max-w-md"
       >
         <form onSubmit={handleSave} className="mt-4 flex flex-col gap-4">
           <div className="flex flex-col gap-2">
-            <Label htmlFor="sector-name">Nome do Setor</Label>
+            <Label htmlFor="ramo-name">Nome do Ramo de Atividade</Label>
             <Input
-              id="sector-name"
-              placeholder="Ex: Limpeza, Manutenção, Segurança..."
+              id="ramo-name"
+              placeholder="Ex: Recreação, Saúde, Educação..."
               value={formName}
               onChange={(e) => setFormName(e.target.value)}
               disabled={isSaving}
               required
-            />
-          </div>
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="sector-descricao">Descrição (opcional)</Label>
-            <Textarea
-              id="sector-descricao"
-              placeholder="Descreva o setor..."
-              value={formDescricao}
-              onChange={(e) => setFormDescricao(e.target.value)}
-              disabled={isSaving}
-              className="resize-none"
-              rows={3}
             />
           </div>
           <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
@@ -273,8 +258,8 @@ export default function SetoresPage() {
       <ConfirmDialog
         open={!!deleteId}
         onOpenChange={(open) => !open && setDeleteId(null)}
-        title="Excluir setor"
-        description="Tem certeza que deseja excluir este setor? Esta ação não pode ser desfeita."
+        title="Excluir ramo de atividade"
+        description="Tem certeza que deseja excluir este ramo de atividade? Esta ação não pode ser desfeita."
         onConfirm={handleDelete}
       />
     </>

@@ -1,5 +1,8 @@
-import { useState } from "react";
-import { mockLoginSettings } from "@/lib/mock-data";
+import { useState, useEffect } from "react";
+import {
+  getConfiguracoes,
+  updateConfiguracoes,
+} from "@/lib/configuracoes-service";
 import { PageHeader } from "@/components/page-header";
 import {
   Button,
@@ -14,13 +17,54 @@ import { Clock, Save } from "lucide-react";
 import { toast } from "sonner";
 
 export default function ConfiguracoesPage() {
-  const [startTime, setStartTime] = useState(mockLoginSettings.startTime);
-  const [endTime, setEndTime] = useState(mockLoginSettings.endTime);
+  const [startTime, setStartTime] = useState("");
+  const [endTime, setEndTime] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
 
-  function handleSave() {
-    mockLoginSettings.startTime = startTime;
-    mockLoginSettings.endTime = endTime;
-    toast.success("Configuracoes salvas com sucesso.");
+  useEffect(() => {
+    async function load() {
+      try {
+        const data = await getConfiguracoes();
+        // API retorna ISO 8601, extrair apenas HH:mm
+        setStartTime(
+          new Date(data.dataInicio).toLocaleTimeString("pt-BR", {
+            hour: "2-digit",
+            minute: "2-digit",
+            hour12: false,
+          }),
+        );
+        setEndTime(
+          new Date(data.dataFim).toLocaleTimeString("pt-BR", {
+            hour: "2-digit",
+            minute: "2-digit",
+            hour12: false,
+          }),
+        );
+      } catch {
+        toast.error("Erro ao carregar configuracoes.");
+      } finally {
+        setLoading(false);
+      }
+    }
+    load();
+  }, []);
+
+  async function handleSave() {
+    setSaving(true);
+    try {
+      // Construir ISO 8601 com data atual e o horario
+      const hoje = new Date().toISOString().split("T")[0];
+      await updateConfiguracoes(
+        `${hoje}T${startTime}:00`,
+        `${hoje}T${endTime}:00`,
+      );
+      toast.success("Configuracoes salvas com sucesso.");
+    } catch {
+      toast.error("Erro ao salvar configuracoes.");
+    } finally {
+      setSaving(false);
+    }
   }
 
   function isCurrentlyOutside() {
@@ -83,9 +127,13 @@ export default function ConfiguracoesPage() {
               </div>
             )}
 
-            <Button onClick={handleSave} className="w-fit">
+            <Button
+              onClick={handleSave}
+              className="w-fit"
+              disabled={saving || loading}
+            >
               <Save className="mr-2 h-4 w-4" />
-              Salvar Configuracoes
+              {saving ? "Salvando..." : "Salvar Configuracoes"}
             </Button>
           </CardContent>
         </Card>

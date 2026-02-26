@@ -1,14 +1,17 @@
 import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { useReports } from "@/lib/reports-context";
+import { useRelatorios } from "@/hooks/use-relatorios";
+import { apiRequest } from "@/lib/api-client";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { PageHeader } from "@/components/page-header";
 import { EmptyState } from "@/components/empty-state";
 import {
-  Badge,
+  ReportsFilterModal,
+  ReportsFilters,
+} from "@/components/reports-filter-modal";
+import { Switch } from "@/components/Switch";
+import {
   Button,
-  Input,
-  Select,
   Table,
   TableBody,
   TableCell,
@@ -18,50 +21,112 @@ import {
 } from "@/components/index";
 import {
   Plus,
-  Search,
   Pencil,
   Trash2,
   Eye,
   FileDown,
   FileText,
+  Filter,
 } from "lucide-react";
 import { toast } from "sonner";
 
 export default function RelatoriosPage() {
-  const { reports, deleteReport } = useReports();
   const navigate = useNavigate();
-  const [search, setSearch] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
-  const [deleteId, setDeleteId] = useState<string | null>(null);
+  const [deleteId, setDeleteId] = useState<number | null>(null);
+  const [filterModalOpen, setFilterModalOpen] = useState(false);
+  const [filters, setFilters] = useState<ReportsFilters>({
+    clientId: "all",
+    dateStart: "",
+    dateEnd: "",
+    createdById: "all",
+    printed: "all",
+  });
 
-  const filtered = useMemo(() => {
-    let result = reports;
-    if (statusFilter !== "all") {
-      result = result.filter((r) => r.status === statusFilter);
-    }
-    if (search) {
-      const q = search.toLowerCase();
-      result = result.filter(
-        (r) =>
-          r.clientName.toLowerCase().includes(q) ||
-          r.contact.toLowerCase().includes(q) ||
-          r.technicianNames.some((t) => t.toLowerCase().includes(q)),
-      );
-    }
-    return result;
-  }, [reports, search, statusFilter]);
+  // Converter filtros do componente para API
+  const apiFilters = {
+    clienteId:
+      filters.clientId !== "all" ? Number(filters.clientId) : undefined,
+    criadoPorId:
+      filters.createdById !== "all" ? Number(filters.createdById) : undefined,
+    dataInicio: filters.dateStart || undefined,
+    dataFim: filters.dateEnd || undefined,
+    impresso: filters.printed !== "all" ? filters.printed === "yes" : undefined,
+  };
 
-  function handleDelete() {
+  const [refetchTrigger, setRefetchTrigger] = useState(0);
+  const { relatorios, loading, error } = useRelatorios({
+    ...apiFilters,
+    refetchTrigger,
+  });
+
+  // Extrair clientes únicos para filtro
+  const clientesUnicos = useMemo(() => {
+    return Array.from(
+      new Map(
+        relatorios.map((r) => [
+          r.clienteId,
+          { id: String(r.clienteId), name: r.cliente.nomeFantasia },
+        ]),
+      ).values(),
+    );
+  }, [relatorios]);
+
+  // Extrair criadores únicos para filtro
+  const criadoresUnicos = useMemo(() => {
+    return Array.from(
+      new Map(
+        relatorios.map((r) => [
+          r.criadoPorId,
+          { id: String(r.criadoPorId), name: r.criadoPor.nome },
+        ]),
+      ).values(),
+    );
+  }, [relatorios]);
+
+  async function handleDelete() {
     if (!deleteId) return;
-    deleteReport(deleteId);
-    setDeleteId(null);
-    toast.success("Relatorio excluido com sucesso.");
+    try {
+      await apiRequest(`/relatorios/${deleteId}`, { method: "DELETE" });
+      setRefetchTrigger((p) => p + 1);
+      toast.success("Relatorio excluido com sucesso.");
+    } catch {
+      toast.error("Erro ao excluir relatorio.");
+    } finally {
+      setDeleteId(null);
+    }
+  }
+
+  async function handleTogglePrinted(reportId: number, currentValue: boolean) {
+    try {
+      await apiRequest(`/relatorios/${reportId}`, {
+        method: "PUT",
+        body: JSON.stringify({ impresso: !currentValue }),
+      });
+      setRefetchTrigger((p) => p + 1);
+      toast.success(
+        !currentValue
+          ? "Relatorio marcado como impresso."
+          : "Relatorio desmarcado como impresso.",
+      );
+    } catch {
+      toast.error("Erro ao atualizar relatorio.");
+    }
   }
 
   function formatDate(dateStr: string) {
-    const [y, m, d] = dateStr.split("-");
-    return `${d}/${m}/${y}`;
+    try {
+      return new Date(dateStr).toLocaleDateString("pt-BR");
+    } catch {
+      return dateStr;
+    }
   }
+
+  const hasActiveFilters =
+    filters.clientId !== "all" ||
+    filters.dateStart !== "" ||
+    filters.dateEnd !== "" ||
+    filters.createdById !== "all" ||
+    filters.printed !== "all";
 
   return (
     <>
@@ -76,144 +141,152 @@ export default function RelatoriosPage() {
         }
       />
 
-      <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center">
-        <div className="relative max-w-sm flex-1">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            placeholder="Buscar relatorios..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-9"
-          />
-        </div>
-        <Select
-          value={statusFilter}
-          onChange={(event) => setStatusFilter(event.target.value)}
-          className="w-40"
+      <div className="mb-4 flex justify-end">
+        <Button
+          variant="outline"
+          onClick={() => setFilterModalOpen(true)}
+          className="gap-2"
         >
-          <option value="all">Todos</option>
-          <option value="rascunho">Rascunho</option>
-          <option value="finalizado">Finalizado</option>
-        </Select>
+          <Filter className="h-4 w-4" />
+          Filtrar
+          {hasActiveFilters && (
+            <span className="ml-1 rounded-full bg-primary px-2 py-0.5 text-xs text-primary-foreground">
+              {
+                Object.values(filters).filter((v) => v !== "all" && v !== "")
+                  .length
+              }
+            </span>
+          )}
+        </Button>
       </div>
 
-      {filtered.length === 0 ? (
+      {loading && (
+        <div className="text-center py-8">
+          <p className="text-muted-foreground">Carregando relatórios...</p>
+        </div>
+      )}
+
+      {error && (
+        <div className="text-center py-8 text-destructive">
+          <p>Erro ao carregar relatórios: {error}</p>
+        </div>
+      )}
+
+      {!loading && !error && relatorios.length === 0 ? (
         <EmptyState
           icon={FileText}
           title="Nenhum relatorio encontrado"
           description={
-            search || statusFilter !== "all"
+            hasActiveFilters
               ? "Tente ajustar os filtros de busca."
               : "Crie seu primeiro relatorio tecnico."
           }
         />
       ) : (
-        <div className="rounded-2xl border border-border overflow-x-auto">
-          <Table className="min-w-[900px]">
-            <TableHeader>
-              <TableRow>
-                <TableHead>Data</TableHead>
-                <TableHead>Cliente</TableHead>
-                <TableHead className="hidden md:table-cell">Contato</TableHead>
-                <TableHead className="hidden lg:table-cell">
-                  Modalidade
-                </TableHead>
-                <TableHead className="hidden md:table-cell">Tecnicos</TableHead>
-                <TableHead className="hidden xl:table-cell">Setores</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead className="w-32 text-right">Acoes</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {filtered.map((report) => (
-                <TableRow key={report.id}>
-                  <TableCell className="whitespace-nowrap">
-                    {formatDate(report.date)}
-                  </TableCell>
-                  <TableCell className="font-medium">
-                    {report.clientName}
-                  </TableCell>
-                  <TableCell className="hidden md:table-cell">
-                    {report.contact}
-                  </TableCell>
-                  <TableCell className="hidden lg:table-cell">
-                    <span className="text-sm">{report.modality}</span>
-                  </TableCell>
-                  <TableCell className="hidden md:table-cell">
-                    <span className="text-sm">
-                      {report.technicianNames.join(", ")}
-                    </span>
-                  </TableCell>
-                  <TableCell className="hidden xl:table-cell">
-                    <span className="text-sm">
-                      {report.sectorNames.join(", ")}
-                    </span>
-                  </TableCell>
-                  <TableCell>
-                    <Badge
-                      variant={
-                        report.status === "finalizado" ? "default" : "secondary"
-                      }
-                    >
-                      {report.status === "finalizado"
-                        ? "Finalizado"
-                        : "Rascunho"}
-                    </Badge>
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex items-center justify-end gap-1">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8"
-                        onClick={() =>
-                          navigate(`/dashboard/relatorios/${report.id}`)
-                        }
-                        aria-label="Visualizar"
-                      >
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8"
-                        onClick={() =>
-                          navigate(`/dashboard/relatorios/${report.id}/editar`)
-                        }
-                        aria-label="Editar"
-                      >
-                        <Pencil className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8"
-                        onClick={() =>
-                          toast.info(
-                            "A geracao de PDF sera implementada futuramente.",
-                          )
-                        }
-                        aria-label="Gerar PDF"
-                      >
-                        <FileDown className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 text-destructive hover:text-destructive"
-                        onClick={() => setDeleteId(report.id)}
-                        aria-label="Excluir"
-                      >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
-                  </TableCell>
+        !loading &&
+        !error && (
+          <div className="rounded-2xl border border-border overflow-x-auto">
+            <Table className="min-w-[900px]">
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-20">ID</TableHead>
+                  <TableHead>Data</TableHead>
+                  <TableHead>Cliente</TableHead>
+                  <TableHead>Criado por</TableHead>
+                  <TableHead>Contato</TableHead>
+                  <TableHead className="w-28">Impresso</TableHead>
+                  <TableHead className="w-32 text-right">Acoes</TableHead>
                 </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
+              </TableHeader>
+              <TableBody>
+                {relatorios.map((report) => (
+                  <TableRow key={report.id}>
+                    <TableCell className="font-mono text-sm">
+                      #{report.id}
+                    </TableCell>
+                    <TableCell className="whitespace-nowrap">
+                      {formatDate(report.dataVisita)}
+                    </TableCell>
+                    <TableCell className="font-medium">
+                      {report.cliente.nomeFantasia}
+                    </TableCell>
+                    <TableCell>{report.criadoPor.nome}</TableCell>
+                    <TableCell>{report.contato?.nome || "-"}</TableCell>
+                    <TableCell>
+                      <Switch
+                        checked={report.impresso}
+                        onCheckedChange={() =>
+                          handleTogglePrinted(report.id, report.impresso)
+                        }
+                        aria-label="Impresso"
+                      />
+                    </TableCell>
+                    <TableCell className="text-right">
+                      <div className="flex items-center justify-end gap-1">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={() =>
+                            navigate(`/dashboard/relatorios/${report.id}`)
+                          }
+                          aria-label="Visualizar"
+                        >
+                          <Eye className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={() =>
+                            navigate(
+                              `/dashboard/relatorios/${report.id}/editar`,
+                            )
+                          }
+                          aria-label="Editar"
+                        >
+                          <Pencil className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={() =>
+                            toast.info(
+                              "A geracao de PDF sera implementada futuramente.",
+                            )
+                          }
+                          aria-label="Gerar PDF"
+                        >
+                          <FileDown className="h-4 w-4" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-destructive hover:text-destructive"
+                          onClick={() => setDeleteId(report.id)}
+                          aria-label="Excluir"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </div>
+        )
       )}
+
+      <ReportsFilterModal
+        open={filterModalOpen}
+        onOpenChange={setFilterModalOpen}
+        filters={filters}
+        onFiltersChange={setFilters}
+        clients={clientesUnicos}
+        users={criadoresUnicos}
+      />
 
       <ConfirmDialog
         open={!!deleteId}

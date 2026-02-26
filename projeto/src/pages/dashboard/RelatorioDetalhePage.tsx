@@ -1,26 +1,37 @@
 import { useNavigate, useParams } from "react-router-dom";
-import { useReports } from "@/lib/reports-context";
-import { mockChecklists } from "@/lib/mock-data";
-import { Badge, Button, Checkbox, Separator } from "@/components/index";
+import { useRelatorio } from "@/hooks/use-relatorio";
+import { Badge, Button, Separator } from "@/components/index";
 import { ArrowLeft, Pencil, FileDown } from "lucide-react";
 import { toast } from "sonner";
-
-const SHIFT_LABELS = {
-  manha: "Manha",
-  tarde: "Tarde",
-  noite: "Noite",
-} as const;
 
 export default function RelatorioDetalhePage() {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { getReport } = useReports();
-  const report = id ? getReport(id) : undefined;
+  const { relatorio: report, loading, error } = useRelatorio(id);
 
-  if (!report) {
+  // Debug - verificar se modalidadeServico está vindo do backend
+  if (report) {
+    console.log("[Relatório Detalhe] Dados completos:", report);
+    console.log(
+      "[Relatório Detalhe] modalidadeServico:",
+      report.modalidadeServico,
+    );
+  }
+
+  if (loading) {
     return (
       <div className="flex flex-col items-center justify-center py-16">
-        <p className="text-muted-foreground">Relatorio nao encontrado.</p>
+        <p className="text-muted-foreground">Carregando relatório...</p>
+      </div>
+    );
+  }
+
+  if (error || !report) {
+    return (
+      <div className="flex flex-col items-center justify-center py-16">
+        <p className="text-muted-foreground">
+          {error ? `Erro: ${error}` : "Relatório não encontrado."}
+        </p>
         <Button
           variant="outline"
           className="mt-4 bg-transparent"
@@ -33,8 +44,29 @@ export default function RelatorioDetalhePage() {
   }
 
   function formatDate(dateStr: string) {
-    const [y, m, d] = dateStr.split("-");
-    return `${d}/${m}/${y}`;
+    try {
+      return new Date(dateStr).toLocaleDateString("pt-BR");
+    } catch {
+      return dateStr;
+    }
+  }
+
+  function formatTime(timeStr: string) {
+    try {
+      // Se for um timestamp ISO completo
+      if (timeStr.includes("T") || timeStr.includes("Z")) {
+        const date = new Date(timeStr);
+        return date.toLocaleTimeString("pt-BR", {
+          hour: "2-digit",
+          minute: "2-digit",
+          hour12: false,
+        });
+      }
+      // Se já for no formato HH:mm, retorna direto
+      return timeStr;
+    } catch {
+      return timeStr;
+    }
   }
 
   return (
@@ -50,12 +82,10 @@ export default function RelatorioDetalhePage() {
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <h1 className="text-2xl font-semibold tracking-tight text-foreground">
-            Relatorio
+            Relatório #{report.id}
           </h1>
-          <Badge
-            variant={report.status === "finalizado" ? "default" : "secondary"}
-          >
-            {report.status === "finalizado" ? "Finalizado" : "Rascunho"}
+          <Badge variant={report.impresso ? "default" : "secondary"}>
+            {report.impresso ? "Impresso" : "Não Impresso"}
           </Badge>
         </div>
         <div className="flex gap-2">
@@ -73,7 +103,7 @@ export default function RelatorioDetalhePage() {
             variant="outline"
             size="sm"
             onClick={() =>
-              toast.info("A geracao de PDF sera implementada futuramente.")
+              toast.info("A geração de PDF será implementada futuramente.")
             }
           >
             <FileDown className="mr-2 h-4 w-4" />
@@ -85,129 +115,169 @@ export default function RelatorioDetalhePage() {
       <div className="flex flex-col gap-6">
         <section className="rounded-2xl border border-border p-6">
           <h2 className="mb-4 text-lg font-medium text-foreground">
-            Informacoes Gerais
+            Informações Gerais
           </h2>
           <div className="grid gap-4 text-sm sm:grid-cols-2">
             <div>
-              <span className="text-muted-foreground">Data</span>
+              <span className="text-muted-foreground">Data da Visita</span>
               <p className="font-medium text-foreground">
-                {formatDate(report.date)}
+                {formatDate(report.dataVisita)}
               </p>
             </div>
-            <div>
-              <span className="text-muted-foreground">Modalidade</span>
-              <p className="font-medium text-foreground">{report.modality}</p>
-            </div>
+            {report.modalidadeServico && (
+              <div>
+                <span className="text-muted-foreground">
+                  Modalidade de Serviço
+                </span>
+                <p className="font-medium text-foreground">
+                  {report.modalidadeServico}
+                </p>
+              </div>
+            )}
             <div>
               <span className="text-muted-foreground">Cliente</span>
-              <p className="font-medium text-foreground">{report.clientName}</p>
+              <p className="font-medium text-foreground">
+                {report.cliente.nomeFantasia}
+              </p>
             </div>
-            <div>
-              <span className="text-muted-foreground">Contato</span>
-              <p className="font-medium text-foreground">{report.contact}</p>
-            </div>
-            <div>
-              <span className="text-muted-foreground">Tecnicos</span>
-              <div className="mt-1 flex flex-wrap gap-1">
-                {report.technicianNames.map((name) => (
-                  <Badge key={name} variant="secondary">
-                    {name}
-                  </Badge>
-                ))}
+            {report.contato && (
+              <div>
+                <span className="text-muted-foreground">Contato</span>
+                <p className="font-medium text-foreground">
+                  {report.contato.nome}
+                </p>
               </div>
-            </div>
+            )}
             <div>
-              <span className="text-muted-foreground">Setores</span>
-              <div className="mt-1 flex flex-wrap gap-1">
-                {report.sectorNames.map((name) => (
-                  <Badge key={name} variant="secondary">
-                    {name}
-                  </Badge>
-                ))}
-              </div>
+              <span className="text-muted-foreground">Criado por</span>
+              <p className="font-medium text-foreground">
+                {report.criadoPor.nome}
+              </p>
             </div>
+            {report.tecnicos.length > 0 && (
+              <div>
+                <span className="text-muted-foreground">Técnicos</span>
+                <div className="mt-1 flex flex-wrap gap-1">
+                  {report.tecnicos.map((tech) => (
+                    <Badge key={tech.id} variant="secondary">
+                      {tech.nome}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            )}
+            {report.setores.length > 0 && (
+              <div>
+                <span className="text-muted-foreground">Setores</span>
+                <div className="mt-1 flex flex-wrap gap-1">
+                  {report.setores.map((setor) => (
+                    <Badge key={setor.id} variant="secondary">
+                      {setor.setor.nome}
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </section>
 
-        <section className="rounded-2xl border border-border p-6">
-          <h2 className="mb-4 text-lg font-medium text-foreground">
-            Detalhes do Servico
-          </h2>
-          <div
-            className="prose prose-sm max-w-none text-foreground dark:prose-invert"
-            dangerouslySetInnerHTML={{
-              __html:
-                report.serviceDetails ||
-                "<p class='text-muted-foreground'>Sem detalhes.</p>",
-            }}
-          />
-        </section>
-
-        {report.checklistItems.length > 0 && (
+        {report.observacoes && (
           <section className="rounded-2xl border border-border p-6">
             <h2 className="mb-4 text-lg font-medium text-foreground">
-              Checklists
+              Observações
             </h2>
-            <div className="flex flex-col gap-4">
-              {mockChecklists.map((checklist) => {
-                const relevantItems = report.checklistItems.filter(
-                  (ci) => ci.checklistId === checklist.id,
-                );
-                if (relevantItems.length === 0) return null;
-                return (
-                  <div key={checklist.id}>
-                    <h3 className="mb-2 text-sm font-medium text-foreground">
-                      {checklist.name}
-                    </h3>
-                    <div className="flex flex-col gap-1">
-                      {checklist.items.map((item) => {
-                        const ci = relevantItems.find(
-                          (r) => r.itemId === item.id,
-                        );
-                        if (!ci) return null;
-                        return (
-                          <div
-                            key={item.id}
-                            className="flex items-center gap-3 rounded-lg px-3 py-2"
-                          >
-                            <Checkbox checked={ci.checked} disabled />
-                            <span
-                              className={`text-sm ${ci.checked ? "text-foreground" : "text-muted-foreground"}`}
-                            >
-                              {item.text}
-                            </span>
-                          </div>
-                        );
-                      })}
-                    </div>
-                    <Separator className="mt-3" />
-                  </div>
-                );
-              })}
+            <p className="text-sm text-foreground whitespace-pre-wrap">
+              {report.observacoes}
+            </p>
+          </section>
+        )}
+
+        {report.setores.length > 0 && (
+          <section className="rounded-2xl border border-border p-6">
+            <h2 className="mb-4 text-lg font-medium text-foreground">
+              Detalhes dos Setores
+            </h2>
+            <div className="flex flex-col gap-3">
+              {report.setores.map((setor) => (
+                <div
+                  key={setor.id}
+                  className="rounded-lg border border-border p-3"
+                >
+                  <span className="font-medium text-foreground">
+                    {setor.setor.nome}
+                  </span>
+                  {setor.setor.descricao && (
+                    <p className="mt-2 text-sm text-muted-foreground">
+                      {setor.setor.descricao}
+                    </p>
+                  )}
+                </div>
+              ))}
             </div>
           </section>
         )}
 
-        {report.shifts.length > 0 && (
+        {report.checklists.length > 0 && (
           <section className="rounded-2xl border border-border p-6">
             <h2 className="mb-4 text-lg font-medium text-foreground">
-              Horarios
+              Checklists
+            </h2>
+            <div className="flex flex-col gap-3">
+              {report.checklists.map((checklistItem) => (
+                <div
+                  key={checklistItem.id}
+                  className="rounded-lg border border-border p-3"
+                >
+                  <span className="font-medium text-foreground">
+                    {checklistItem.checklist.nome}
+                  </span>
+                  {checklistItem.checklist.descricao && (
+                    <p className="mt-2 text-sm text-muted-foreground">
+                      {checklistItem.checklist.descricao}
+                    </p>
+                  )}
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {report.horarios && report.horarios.length > 0 && (
+          <section className="rounded-2xl border border-border p-6">
+            <h2 className="mb-4 text-lg font-medium text-foreground">
+              Horários
             </h2>
             <div className="flex flex-col gap-2">
-              {report.shifts.map((shift) => (
+              {report.horarios.map((horario, index) => (
                 <div
-                  key={shift.id}
-                  className="flex items-center gap-4 rounded-xl bg-muted px-4 py-3 text-sm"
+                  key={horario.id || index}
+                  className="flex items-center gap-2 rounded-lg bg-muted px-4 py-3 text-sm"
                 >
-                  <Badge variant="outline">{SHIFT_LABELS[shift.shift]}</Badge>
-                  <span className="text-foreground">
-                    {shift.startTime} - {shift.endTime}
+                  <span className="font-medium text-foreground">
+                    {formatTime(horario.horaChegada)} -{" "}
+                    {formatTime(horario.horaSaida)}
                   </span>
                 </div>
               ))}
             </div>
           </section>
         )}
+
+        <section className="rounded-2xl border border-border p-6 bg-muted/30">
+          <h2 className="mb-4 text-sm font-medium text-muted-foreground">
+            Informações do Sistema
+          </h2>
+          <div className="grid gap-3 text-xs">
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Criado em:</span>
+              <span className="font-mono">{formatDate(report.createdAt)}</span>
+            </div>
+            <div className="flex justify-between">
+              <span className="text-muted-foreground">Atualizado em:</span>
+              <span className="font-mono">{formatDate(report.updatedAt)}</span>
+            </div>
+          </div>
+        </section>
       </div>
     </div>
   );

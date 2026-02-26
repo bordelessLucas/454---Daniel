@@ -1,51 +1,27 @@
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { useReports } from "@/lib/reports-context";
+import { useClientes } from "@/hooks/use-clientes";
+import { useSetores } from "@/hooks/use-setores";
+import { useTecnicos } from "@/hooks/use-tecnicos";
+import { useChecklists } from "@/hooks/use-checklists";
+import { useRelatorio } from "@/hooks/use-relatorio";
+import { apiRequest } from "@/lib/api-client";
 import {
-  mockClients,
-  mockTechnicians,
-  mockChecklists,
-  mockSectors,
-} from "@/lib/mock-data";
-import type {
-  Report,
-  ServiceModality,
-  ReportShift,
-  ReportChecklistItem,
-} from "@/lib/types";
-import {
-  Badge,
   Button,
   Checkbox,
   Input,
   Label,
-  Select,
-  Separator,
+  SelectionField,
   Textarea,
 } from "@/components/index";
-import {
-  Plus,
-  Trash2,
-  Save,
-  CheckCircle2,
-  FileDown,
-  ArrowLeft,
-  X,
-} from "lucide-react";
+import { CheckCircle2, ArrowLeft, X } from "lucide-react";
 import { toast } from "sonner";
 
-const SERVICE_MODALITIES: ServiceModality[] = [
-  "Sem contrato - Remoto",
-  "Sem contrato - Local",
-  "Contrato - Local",
-  "Contrato - Remoto",
-];
-
-const SHIFT_LABELS = {
-  manha: "Manhã",
-  tarde: "Tarde",
-  noite: "Noite",
-} as const;
+interface Horario {
+  id: string;
+  horaChegada: string;
+  horaSaida: string;
+}
 
 interface ReportFormProps {
   reportId?: string;
@@ -53,173 +29,166 @@ interface ReportFormProps {
 
 export function ReportForm({ reportId }: ReportFormProps) {
   const navigate = useNavigate();
-  const { addReport, updateReport, getReport } = useReports();
   const isEditing = !!reportId;
 
-  const [date, setDate] = useState("");
-  const [clientId, setClientId] = useState("");
-  const [contact, setContact] = useState("");
-  const [modality, setModality] = useState<ServiceModality>(
-    "Sem contrato - Remoto",
+  const { clientes, loading: loadingClientes } = useClientes();
+  const { setores, loading: loadingSetores } = useSetores();
+  const { tecnicos, loading: loadingTecnicos } = useTecnicos();
+  const { checklists, loading: loadingChecklists } = useChecklists();
+  const { relatorio, loading: loadingRelatorio } = useRelatorio(reportId);
+
+  const [dataVisita, setDataVisita] = useState("");
+  const [clienteId, setClienteId] = useState<number | null>(null);
+  const [contatoId, setContatoId] = useState<number | null>(null);
+  const [modalidadeServico, setModalidadeServico] = useState<string>(
+    "Sem contrato - remoto",
   );
-  const [selectedTechnicians, setSelectedTechnicians] = useState<string[]>([]);
-  const [selectedSectors, setSelectedSectors] = useState<string[]>([]);
-  const [serviceDetails, setServiceDetails] = useState("");
-  const [checklistItems, setChecklistItems] = useState<ReportChecklistItem[]>(
-    [],
-  );
-  const [shifts, setShifts] = useState<ReportShift[]>([]);
+  const [observacoes, setObservacoes] = useState("");
+  const [selectedTecnicos, setSelectedTecnicos] = useState<string[]>([]);
+  const [selectedChecklists, setSelectedChecklists] = useState<number[]>([]);
+  const [selectedSetores, setSelectedSetores] = useState<string[]>([]);
+  const [horarios, setHorarios] = useState<Horario[]>([]);
   const [clientSearch, setClientSearch] = useState("");
+  const [saving, setSaving] = useState(false);
 
+  // Preencher formulário ao editar
   useEffect(() => {
-    if (isEditing) {
-      const report = getReport(reportId);
-      if (report) {
-        setDate(report.date);
-        setClientId(report.clientId);
-        setContact(report.contact);
-        setModality(report.modality);
-        setSelectedTechnicians(report.technicianIds);
-        setSelectedSectors(report.sectorIds);
-        setServiceDetails(report.serviceDetails);
-        setChecklistItems(report.checklistItems);
-        setShifts(report.shifts);
+    if (isEditing && relatorio) {
+      setDataVisita(relatorio.dataVisita.split("T")[0]);
+      setClienteId(relatorio.clienteId);
+      setContatoId(relatorio.contatoId ?? null);
+      setModalidadeServico(
+        relatorio.modalidadeServico || "Sem contrato - remoto",
+      );
+      setObservacoes(relatorio.observacoes ?? "");
+      setSelectedTecnicos(relatorio.tecnicos.map((t) => String(t.id)));
+      setSelectedChecklists(relatorio.checklists.map((c) => c.checklistId));
+      setSelectedSetores(relatorio.setores.map((s) => String(s.setorId)));
+      if (relatorio.horarios && Array.isArray(relatorio.horarios)) {
+        const horariosEditando = relatorio.horarios.map((h: any) => ({
+          id: crypto.randomUUID(),
+          horaChegada: new Date(h.horaChegada).toLocaleTimeString("pt-BR", {
+            hour: "2-digit",
+            minute: "2-digit",
+            hour12: false,
+          }),
+          horaSaida: new Date(h.horaSaida).toLocaleTimeString("pt-BR", {
+            hour: "2-digit",
+            minute: "2-digit",
+            hour12: false,
+          }),
+        }));
+        setHorarios(horariosEditando);
       }
-    } else {
-      const today = new Date().toISOString().split("T")[0];
-      setDate(today);
-      const allItems: ReportChecklistItem[] = [];
-      for (const cl of mockChecklists) {
-        for (const item of cl.items) {
-          allItems.push({
-            checklistId: cl.id,
-            itemId: item.id,
-            checked: false,
-          });
-        }
-      }
-      setChecklistItems(allItems);
+    } else if (!isEditing) {
+      setDataVisita(new Date().toISOString().split("T")[0]);
     }
-  }, [isEditing, reportId, getReport]);
+  }, [isEditing, relatorio]);
 
+  // Limpar contato ao trocar cliente
   useEffect(() => {
-    if (clientId) {
-      const client = mockClients.find((c) => c.id === clientId);
-      if (client) {
-        setContact(client.contact);
-      }
+    if (!isEditing) {
+      setContatoId(null);
     }
-  }, [clientId]);
+  }, [clienteId]);
 
-  const filteredClients = clientSearch
-    ? mockClients.filter((c) =>
-        c.name.toLowerCase().includes(clientSearch.toLowerCase()),
+  const clienteSelecionado = clientes.find((c) => c.id === clienteId) ?? null;
+
+  const filteredClientes = clientSearch
+    ? clientes.filter(
+        (c) =>
+          c.nomeFantasia.toLowerCase().includes(clientSearch.toLowerCase()) ||
+          c.razaoSocial.toLowerCase().includes(clientSearch.toLowerCase()),
       )
-    : mockClients;
+    : clientes;
 
-  function toggleTechnician(techId: string) {
-    setSelectedTechnicians((prev) =>
-      prev.includes(techId)
-        ? prev.filter((id) => id !== techId)
-        : [...prev, techId],
-    );
-  }
-
-  function toggleSector(sectorId: string) {
-    setSelectedSectors((prev) =>
-      prev.includes(sectorId)
-        ? prev.filter((id) => id !== sectorId)
-        : [...prev, sectorId],
-    );
-  }
-
-  function toggleChecklistItem(checklistId: string, itemId: string) {
-    setChecklistItems((prev) =>
-      prev.map((ci) =>
-        ci.checklistId === checklistId && ci.itemId === itemId
-          ? { ...ci, checked: !ci.checked }
-          : ci,
-      ),
-    );
-  }
-
-  function addShift() {
-    const newShift: ReportShift = {
+  function addHorario() {
+    const novoHorario: Horario = {
       id: crypto.randomUUID(),
-      shift: "manha",
-      startTime: "08:00",
-      endTime: "12:00",
+      horaChegada: "08:00",
+      horaSaida: "12:00",
     };
-    setShifts((prev) => [...prev, newShift]);
+    setHorarios((prev) => [...prev, novoHorario]);
   }
 
-  function removeShift(id: string) {
-    setShifts((prev) => prev.filter((s) => s.id !== id));
+  function removeHorario(id: string) {
+    setHorarios((prev) => prev.filter((h) => h.id !== id));
   }
 
-  function updateShift(id: string, field: keyof ReportShift, value: string) {
-    setShifts((prev) =>
-      prev.map((s) => (s.id === id ? { ...s, [field]: value } : s)),
+  function updateHorario(id: string, field: keyof Horario, value: string) {
+    setHorarios((prev) =>
+      prev.map((h) => (h.id === id ? { ...h, [field]: value } : h)),
     );
   }
 
-  function buildReport(status: "rascunho" | "finalizado"): Report {
-    const client = mockClients.find((c) => c.id === clientId);
-    const techNames = selectedTechnicians
-      .map((id) => mockTechnicians.find((t) => t.id === id)?.name ?? "")
-      .filter(Boolean);
-    const sectorNames = selectedSectors
-      .map((id) => mockSectors.find((s) => s.id === id)?.name ?? "")
-      .filter(Boolean);
-
-    return {
-      id: isEditing ? reportId : crypto.randomUUID(),
-      date,
-      clientId,
-      clientName: client?.name ?? "",
-      contact,
-      modality,
-      technicianIds: selectedTechnicians,
-      technicianNames: techNames,
-      sectorIds: selectedSectors,
-      sectorNames: sectorNames,
-      serviceDetails,
-      checklistItems,
-      shifts,
-      status,
-      createdAt: isEditing
-        ? (getReport(reportId)?.createdAt ?? new Date().toISOString())
-        : new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
+  function toggleChecklist(id: number) {
+    setSelectedChecklists((prev) =>
+      prev.includes(id) ? prev.filter((c) => c !== id) : [...prev, id],
+    );
   }
 
-  function handleSaveDraft() {
-    const report = buildReport("rascunho");
-    if (isEditing) {
-      updateReport(report);
-      toast.success("Rascunho atualizado.");
-    } else {
-      addReport(report);
-      toast.success("Rascunho salvo.");
-    }
-    navigate("/dashboard/relatorios");
-  }
-
-  function handleFinalize() {
-    if (!clientId || !date) {
+  async function handleSubmit() {
+    if (!clienteId || !dataVisita) {
       toast.error("Preencha ao menos a data e o cliente.");
       return;
     }
-    const report = buildReport("finalizado");
-    if (isEditing) {
-      updateReport(report);
-      toast.success("Relatório finalizado.");
-    } else {
-      addReport(report);
-      toast.success("Relatório criado e finalizado.");
+
+    setSaving(true);
+
+    const payload = {
+      clienteId,
+      contatoId: contatoId ?? undefined,
+      dataVisita: new Date(dataVisita).toISOString(),
+      modalidadeServico,
+      observacoes: observacoes.trim() || undefined,
+      tecnicos: selectedTecnicos
+        .map((id) => {
+          const tecnico = tecnicos.find((t) => String(t.id) === id);
+          return tecnico?.nome ?? "";
+        })
+        .filter(Boolean),
+      setores: selectedSetores.map((id) => ({
+        setorId: Number(id),
+        observacao: undefined,
+      })),
+      horarios: horarios.map((h) => ({
+        horaChegada: h.horaChegada,
+        horaSaida: h.horaSaida,
+      })),
+      checklists: selectedChecklists.map((id) => ({ checklistId: id })),
+    };
+
+    console.log("[Report Form] Payload sendo enviado:", payload);
+    console.log("[Report Form] modalidadeServico:", modalidadeServico);
+
+    try {
+      if (isEditing) {
+        await apiRequest(`/relatorios/${reportId}`, {
+          method: "PUT",
+          body: JSON.stringify(payload),
+        });
+        toast.success("Relatório atualizado com sucesso.");
+      } else {
+        await apiRequest("/relatorios", {
+          method: "POST",
+          body: JSON.stringify(payload),
+        });
+        toast.success("Relatório criado com sucesso.");
+      }
+      navigate("/dashboard/relatorios");
+    } catch {
+      toast.error("Erro ao salvar relatório.");
+    } finally {
+      setSaving(false);
     }
-    navigate("/dashboard/relatorios");
+  }
+
+  if (isEditing && loadingRelatorio) {
+    return (
+      <div className="flex items-center justify-center py-16">
+        <p className="text-muted-foreground">Carregando relatório...</p>
+      </div>
+    );
   }
 
   return (
@@ -239,227 +208,229 @@ export function ReportForm({ reportId }: ReportFormProps) {
       </div>
 
       <div className="flex flex-col gap-8">
-        {/* Section 1 - General Info */}
+        {/* Seção 1 - Informações Gerais */}
         <section className="rounded-2xl border border-border p-6">
           <h2 className="mb-4 text-lg font-medium text-foreground">
             Informações Gerais
           </h2>
           <div className="grid gap-4 sm:grid-cols-2">
             <div className="flex flex-col gap-2">
-              <Label htmlFor="report-date">Data</Label>
+              <Label htmlFor="report-date">Data da Visita</Label>
               <Input
                 id="report-date"
                 type="date"
-                value={date}
-                onChange={(e) => setDate(e.target.value)}
+                value={dataVisita}
+                onChange={(e) => setDataVisita(e.target.value)}
               />
             </div>
+
             <div className="flex flex-col gap-2">
-              <Label htmlFor="report-modality">Modalidade do Serviço</Label>
-              <Select
-                id="report-modality"
-                value={modality}
-                onChange={(event) =>
-                  setModality(event.target.value as ServiceModality)
-                }
+              <Label htmlFor="modalidade-servico">Modalidade de Serviço</Label>
+              <select
+                id="modalidade-servico"
+                value={modalidadeServico}
+                onChange={(e) => setModalidadeServico(e.target.value)}
+                className="flex h-10 w-full rounded-md border border-border bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
               >
-                {SERVICE_MODALITIES.map((m) => (
-                  <option key={m} value={m}>
-                    {m}
-                  </option>
-                ))}
-              </Select>
+                <option value="Sem contrato - remoto">
+                  Sem contrato - remoto
+                </option>
+                <option value="Sem contrato - local">
+                  Sem contrato - local
+                </option>
+                <option value="Contrato - local">Contrato - local</option>
+                <option value="Contrato - remoto">Contrato - remoto</option>
+              </select>
             </div>
+
+            {/* Cliente */}
             <div className="flex flex-col gap-2 sm:col-span-2">
               <Label>Cliente</Label>
-              <Input
-                placeholder="Buscar cliente..."
-                value={clientSearch}
-                onChange={(e) => setClientSearch(e.target.value)}
-                className="mb-2"
-              />
-              <div className="flex max-h-32 flex-col gap-1 overflow-y-auto rounded-xl border border-border p-2">
-                {filteredClients.map((client) => (
-                  <button
-                    key={client.id}
+              {clienteSelecionado ? (
+                <div className="flex items-center justify-between rounded-xl border border-border bg-muted px-3 py-2">
+                  <span className="text-sm font-medium text-foreground">
+                    {clienteSelecionado.nomeFantasia}
+                  </span>
+                  <Button
                     type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="h-6 w-6 text-muted-foreground"
                     onClick={() => {
-                      setClientId(client.id);
-                      setClientSearch("");
+                      setClienteId(null);
+                      setContatoId(null);
                     }}
-                    className={`rounded-lg px-3 py-2 text-left text-sm transition-colors ${
-                      clientId === client.id
-                        ? "bg-primary text-primary-foreground"
-                        : "hover:bg-muted text-foreground"
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              ) : (
+                <>
+                  <Input
+                    placeholder="Buscar cliente..."
+                    value={clientSearch}
+                    onChange={(e) => setClientSearch(e.target.value)}
+                    disabled={loadingClientes}
+                  />
+                  {clientSearch && (
+                    <div className="flex max-h-40 flex-col gap-1 overflow-y-auto rounded-xl border border-border p-2">
+                      {filteredClientes.length === 0 ? (
+                        <p className="px-2 py-1 text-sm text-muted-foreground">
+                          Nenhum cliente encontrado.
+                        </p>
+                      ) : (
+                        filteredClientes.map((client) => (
+                          <button
+                            key={client.id}
+                            type="button"
+                            onClick={() => {
+                              setClienteId(client.id);
+                              setClientSearch("");
+                            }}
+                            className="rounded-lg px-3 py-2 text-left text-sm text-foreground transition-colors hover:bg-muted"
+                          >
+                            {client.nomeFantasia}
+                            <span className="ml-2 text-xs text-muted-foreground">
+                              {client.cidade}
+                            </span>
+                          </button>
+                        ))
+                      )}
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+
+            {/* Contato - só mostra se cliente selecionado tem contatos */}
+            {clienteSelecionado && clienteSelecionado.contatos.length > 0 && (
+              <div className="flex flex-col gap-2 sm:col-span-2">
+                <Label>Contato</Label>
+                <div className="flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setContatoId(null)}
+                    className={`rounded-lg border px-3 py-1.5 text-sm transition-colors ${
+                      contatoId === null
+                        ? "border-primary bg-primary text-primary-foreground"
+                        : "border-border text-foreground hover:bg-muted"
                     }`}
                   >
-                    {client.name}
-                    <span className="ml-2 text-xs opacity-70">
-                      {client.city}
-                    </span>
+                    Nenhum
                   </button>
-                ))}
-              </div>
-            </div>
-            <div className="flex flex-col gap-2">
-              <Label htmlFor="report-contact">Contato</Label>
-              <Input
-                id="report-contact"
-                value={contact}
-                onChange={(e) => setContact(e.target.value)}
-              />
-            </div>
-            <div className="flex flex-col gap-2">
-              <Label>Técnicos Envolvidos</Label>
-              <div className="flex flex-wrap gap-2">
-                {mockTechnicians
-                  .filter((t) => t.status === "ativo")
-                  .map((tech) => (
+                  {clienteSelecionado.contatos.map((contato) => (
                     <button
-                      key={tech.id}
+                      key={contato.id}
                       type="button"
-                      onClick={() => toggleTechnician(tech.id)}
-                      className="inline-block"
+                      onClick={() => setContatoId(contato.id)}
+                      className={`rounded-lg border px-3 py-1.5 text-sm transition-colors ${
+                        contatoId === contato.id
+                          ? "border-primary bg-primary text-primary-foreground"
+                          : "border-border text-foreground hover:bg-muted"
+                      }`}
                     >
-                      <Badge
-                        variant={
-                          selectedTechnicians.includes(tech.id)
-                            ? "default"
-                            : "outline"
-                        }
-                        className="cursor-pointer"
-                      >
-                        {tech.name}
-                      </Badge>
+                      {contato.nome}
+                      {contato.cargo && (
+                        <span className="ml-1 text-xs opacity-70">
+                          ({contato.cargo})
+                        </span>
+                      )}
                     </button>
                   ))}
+                </div>
               </div>
-            </div>
+            )}
+
+            {/* Técnicos */}
             <div className="flex flex-col gap-2 sm:col-span-2">
-              <Label>Setores</Label>
-              <div className="flex flex-wrap gap-2">
-                {mockSectors.map((sector) => (
-                  <button
-                    key={sector.id}
-                    type="button"
-                    onClick={() => toggleSector(sector.id)}
-                    className="inline-block"
-                  >
-                    <Badge
-                      variant={
-                        selectedSectors.includes(sector.id)
-                          ? "default"
-                          : "outline"
-                      }
-                      className="cursor-pointer"
-                    >
-                      {sector.name}
-                    </Badge>
-                  </button>
-                ))}
-              </div>
+              <SelectionField
+                label="Técnicos Envolvidos"
+                selectionMode="multiple"
+                value={selectedTecnicos}
+                onChange={(value) => setSelectedTecnicos(value as string[])}
+                options={tecnicos.map((t) => ({
+                  value: String(t.id),
+                  label: t.nome,
+                }))}
+                placeholder="Selecione os técnicos"
+                disabled={loadingTecnicos}
+              />
             </div>
           </div>
         </section>
 
-        {/* Section 2 - Service Details */}
+        {/* Seção 2 - Observações */}
         <section className="rounded-2xl border border-border p-6">
           <h2 className="mb-4 text-lg font-medium text-foreground">
-            Detalhes do Serviço
+            Observações
           </h2>
-          <div className="flex flex-col gap-2">
-            <div className="flex flex-wrap gap-2 rounded-t-xl border border-b-0 border-border bg-muted p-2">
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="h-7 text-xs"
-                onClick={() => setServiceDetails((prev) => `${prev}<b></b>`)}
-              >
-                <span className="font-bold">B</span>
-              </Button>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="h-7 text-xs"
-                onClick={() => setServiceDetails((prev) => `${prev}<i></i>`)}
-              >
-                <span className="italic">I</span>
-              </Button>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="h-7 text-xs"
-                onClick={() => setServiceDetails((prev) => `${prev}<h3></h3>`)}
-              >
-                H
-              </Button>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                className="h-7 text-xs"
-                onClick={() =>
-                  setServiceDetails((prev) => `${prev}<ul><li></li></ul>`)
-                }
-              >
-                Lista
-              </Button>
-            </div>
-            <Textarea
-              value={serviceDetails}
-              onChange={(e) => setServiceDetails(e.target.value)}
-              rows={8}
-              className="rounded-t-none"
-              placeholder="Descreva os detalhes do serviço realizado..."
-            />
-          </div>
+          <Textarea
+            value={observacoes}
+            onChange={(e) => setObservacoes(e.target.value)}
+            rows={6}
+            placeholder="Descreva as observações do serviço realizado..."
+          />
         </section>
 
-        {/* Section 3 - Checklists */}
+        {/* Seção 3 - Setores */}
+        <section className="rounded-2xl border border-border p-6">
+          <h2 className="mb-4 text-lg font-medium text-foreground">Setores</h2>
+          <SelectionField
+            label=""
+            selectionMode="multiple"
+            value={selectedSetores}
+            onChange={(value) => setSelectedSetores(value as string[])}
+            options={setores.map((s) => ({
+              value: String(s.id),
+              label: s.nome,
+            }))}
+            placeholder="Selecione os setores"
+            disabled={loadingSetores}
+          />
+        </section>
+
+        {/* Seção 4 - Checklists */}
         <section className="rounded-2xl border border-border p-6">
           <h2 className="mb-4 text-lg font-medium text-foreground">
             Checklists
           </h2>
-          <div className="flex flex-col gap-6">
-            {mockChecklists.map((checklist) => (
-              <div key={checklist.id}>
-                <h3 className="mb-3 text-sm font-medium text-foreground">
-                  {checklist.name}
-                </h3>
-                <div className="flex flex-col gap-2">
-                  {checklist.items.map((item) => {
-                    const ci = checklistItems.find(
-                      (c) =>
-                        c.checklistId === checklist.id && c.itemId === item.id,
-                    );
-                    return (
-                      <label
-                        key={item.id}
-                        className="flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2 transition-colors hover:bg-muted"
-                      >
-                        <Checkbox
-                          checked={ci?.checked ?? false}
-                          onCheckedChange={() =>
-                            toggleChecklistItem(checklist.id, item.id)
-                          }
-                        />
-                        <span className="text-sm text-foreground">
-                          {item.text}
-                        </span>
-                      </label>
-                    );
-                  })}
-                </div>
-                <Separator className="mt-4" />
-              </div>
-            ))}
-          </div>
+          {loadingChecklists ? (
+            <p className="text-sm text-muted-foreground">
+              Carregando checklists...
+            </p>
+          ) : checklists.length === 0 ? (
+            <p className="text-sm text-muted-foreground">
+              Nenhum checklist cadastrado.
+            </p>
+          ) : (
+            <div className="flex flex-col gap-2">
+              {checklists.map((checklist) => (
+                <label
+                  key={checklist.id}
+                  className="flex cursor-pointer items-start gap-3 rounded-xl border border-border p-3 transition-colors hover:bg-muted"
+                >
+                  <Checkbox
+                    checked={selectedChecklists.includes(checklist.id)}
+                    onCheckedChange={() => toggleChecklist(checklist.id)}
+                    className="mt-0.5"
+                  />
+                  <div>
+                    <p className="text-sm font-medium text-foreground">
+                      {checklist.nome}
+                    </p>
+                    {checklist.descricao && (
+                      <p className="text-xs text-muted-foreground">
+                        {checklist.descricao}
+                      </p>
+                    )}
+                  </div>
+                </label>
+              ))}
+            </div>
+          )}
         </section>
 
-        {/* Section 4 - Shifts */}
+        {/* Seção 5 - Horários */}
         <section className="rounded-2xl border border-border p-6">
           <div className="mb-4 flex items-center justify-between">
             <h2 className="text-lg font-medium text-foreground">Horários</h2>
@@ -467,149 +438,79 @@ export function ReportForm({ reportId }: ReportFormProps) {
               type="button"
               variant="outline"
               size="sm"
-              onClick={addShift}
+              onClick={addHorario}
             >
-              <Plus className="mr-2 h-4 w-4" />
-              Adicionar Turno
+              Adicionar Horário
             </Button>
           </div>
-          {shifts.length === 0 ? (
-            <p className="py-4 text-center text-sm text-muted-foreground">
-              Nenhum turno adicionado. Clique em "Adicionar Turno" para começar.
-            </p>
-          ) : (
-            <div className="flex flex-col gap-3">
-              {shifts.map((shift) => (
-                <div
-                  key={shift.id}
-                  className="flex flex-wrap items-end gap-3 rounded-xl bg-muted p-3"
-                >
-                  <div className="flex flex-col gap-1">
-                    <Label className="text-xs">Turno</Label>
-                    <Select
-                      value={shift.shift}
-                      onChange={(event) =>
-                        updateShift(shift.id, "shift", event.target.value)
-                      }
-                      className="w-28 bg-background"
-                    >
-                      <option value="manha">Manhã</option>
-                      <option value="tarde">Tarde</option>
-                      <option value="noite">Noite</option>
-                    </Select>
-                  </div>
-                  <div className="flex flex-col gap-1">
+          <div className="flex flex-col gap-3">
+            {horarios.map((horario) => (
+              <div
+                key={horario.id}
+                className="flex items-center gap-2 rounded-lg border border-border p-3"
+              >
+                <div className="flex flex-1 items-center gap-2">
+                  <div className="flex flex-col gap-1 flex-1">
                     <Label className="text-xs">Início</Label>
                     <Input
                       type="time"
-                      value={shift.startTime}
+                      value={horario.horaChegada}
                       onChange={(e) =>
-                        updateShift(shift.id, "startTime", e.target.value)
+                        updateHorario(horario.id, "horaChegada", e.target.value)
                       }
-                      className="w-28 bg-background"
                     />
                   </div>
-                  <div className="flex flex-col gap-1">
-                    <Label className="text-xs">Final</Label>
+                  <span className="text-muted-foreground mt-5">–</span>
+                  <div className="flex flex-col gap-1 flex-1">
+                    <Label className="text-xs">Fim</Label>
                     <Input
                       type="time"
-                      value={shift.endTime}
+                      value={horario.horaSaida}
                       onChange={(e) =>
-                        updateShift(shift.id, "endTime", e.target.value)
+                        updateHorario(horario.id, "horaSaida", e.target.value)
                       }
-                      className="w-28 bg-background"
                     />
                   </div>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="h-9 w-9 text-destructive hover:text-destructive"
-                    onClick={() => removeShift(shift.id)}
-                    aria-label="Remover turno"
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
                 </div>
-              ))}
-            </div>
-          )}
-        </section>
-
-        {/* Section 5 - Review / Actions */}
-        <section className="rounded-2xl border border-border p-6">
-          <h2 className="mb-4 text-lg font-medium text-foreground">Revisão</h2>
-          <div className="mb-4 grid gap-3 text-sm sm:grid-cols-2">
-            <div>
-              <span className="text-muted-foreground">Data:</span>{" "}
-              <span className="text-foreground">{date || "-"}</span>
-            </div>
-            <div>
-              <span className="text-muted-foreground">Cliente:</span>{" "}
-              <span className="text-foreground">
-                {mockClients.find((c) => c.id === clientId)?.name || "-"}
-              </span>
-            </div>
-            <div>
-              <span className="text-muted-foreground">Modalidade:</span>{" "}
-              <span className="text-foreground">{modality}</span>
-            </div>
-            <div>
-              <span className="text-muted-foreground">Técnicos:</span>{" "}
-              <span className="text-foreground">
-                {selectedTechnicians
-                  .map((id) => mockTechnicians.find((t) => t.id === id)?.name)
-                  .filter(Boolean)
-                  .join(", ") || "-"}
-              </span>
-            </div>
-            <div>
-              <span className="text-muted-foreground">Setores:</span>{" "}
-              <span className="text-foreground">
-                {selectedSectors
-                  .map((id) => mockSectors.find((s) => s.id === id)?.name)
-                  .filter(Boolean)
-                  .join(", ") || "-"}
-              </span>
-            </div>
-            <div>
-              <span className="text-muted-foreground">Turnos:</span>{" "}
-              <span className="text-foreground">
-                {shifts.length > 0
-                  ? shifts
-                      .map(
-                        (s) =>
-                          `${SHIFT_LABELS[s.shift]} ${s.startTime}-${s.endTime}`,
-                      )
-                      .join(", ")
-                  : "-"}
-              </span>
-            </div>
-          </div>
-
-          <Separator className="my-4" />
-
-          <div className="flex flex-wrap gap-3">
-            <Button type="button" variant="outline" onClick={handleSaveDraft}>
-              <Save className="mr-2 h-4 w-4" />
-              Salvar Rascunho
-            </Button>
-            <Button type="button" onClick={handleFinalize}>
-              <CheckCircle2 className="mr-2 h-4 w-4" />
-              Finalizar Relatório
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() =>
-                toast.info("A geração de PDF será implementada futuramente.")
-              }
-            >
-              <FileDown className="mr-2 h-4 w-4" />
-              Gerar PDF
-            </Button>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="icon"
+                  className="mt-5"
+                  onClick={() => removeHorario(horario.id)}
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              </div>
+            ))}
+            {horarios.length === 0 && (
+              <p className="text-sm text-muted-foreground">
+                Nenhum horário adicionado. Clique em "Adicionar Horário" para
+                começar.
+              </p>
+            )}
           </div>
         </section>
+
+        {/* Ações */}
+        <div className="flex flex-wrap gap-3 pb-8">
+          <Button type="button" onClick={handleSubmit} disabled={saving}>
+            <CheckCircle2 className="mr-2 h-4 w-4" />
+            {saving
+              ? "Salvando..."
+              : isEditing
+                ? "Salvar Alterações"
+                : "Criar Relatório"}
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => navigate(-1)}
+            disabled={saving}
+          >
+            Cancelar
+          </Button>
+        </div>
       </div>
     </div>
   );

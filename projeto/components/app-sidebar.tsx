@@ -5,6 +5,7 @@ import {
   Wrench,
   ClipboardCheck,
   Layers,
+  Briefcase,
   Settings,
   LogOut,
   User,
@@ -32,9 +33,14 @@ const mainNav = [
 ];
 
 const adminNav = [
-  { label: "Técnicos", href: "/dashboard/tecnicos", icon: Wrench },
+  { label: "Usuários", href: "/dashboard/usuarios", icon: User },
   { label: "Checklists", href: "/dashboard/checklists", icon: ClipboardCheck },
   { label: "Setores", href: "/dashboard/setores", icon: Layers },
+  {
+    label: "Ramos de Atividade",
+    href: "/dashboard/ramos-atividade",
+    icon: Briefcase,
+  },
   { label: "Configurações", href: "/dashboard/configuracoes", icon: Settings },
 ];
 
@@ -43,19 +49,24 @@ export function AppSidebar() {
   const pathname = location.pathname;
   const { user, logout } = useAuth();
   const { state } = useSidebar();
-  const isAdmin = true;
+  const isAdmin = user?.role === "admin";
+
   return (
     <Sidebar collapsible="icon">
       <SidebarHeader className="p-4">
         <Link to="/dashboard/relatorios" className="flex items-center gap-3">
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-foreground">
-            <span className="text-xs font-bold text-background">Lq</span>
+          <div>
+            <img
+              src="/LogoSideBar.png"
+              alt="Logo"
+              className={state === "collapsed" ? "h-7 w-auto" : "h-10 w-auto"}
+            />
           </div>
           <span
             className={
               state === "collapsed"
                 ? "sr-only"
-                : "truncate text-sm font-semibold text-foreground"
+                : "truncate text-lg font-semibold text-foreground"
             }
           >
             Linq
