@@ -183,8 +183,9 @@ export default function UsuariosPage() {
 
     setSaving(true);
     try {
+      const API_URL = import.meta.env.VITE_API_URL || "https://four54-backend.onrender.com";
       const response = await fetch(
-        `http://localhost:3000/users/${changingPasswordFor.id}/password`,
+        `${API_URL}/users/${changingPasswordFor.id}/password`,
         {
           method: "PUT",
           headers: {

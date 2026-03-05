@@ -8,6 +8,7 @@ import React, {
   useEffect,
 } from "react";
 import type { User } from "./types";
+import { API_URL } from "./api-client";
 
 interface AuthContextType {
   user: User | null;
@@ -21,8 +22,6 @@ interface AuthContextType {
 }
 
 const AuthContext = createContext<AuthContextType | null>(null);
-
-const API_URL = "http://localhost:3000";
 
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
