@@ -1,7 +1,9 @@
 import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useRelatorios } from "@/hooks/use-relatorios";
-import { apiRequest } from "@/lib/api-client";
+import { ApiError, apiRequest } from "@/lib/api-client";
+import { downloadRelatorioPdf } from "@/lib/relatorios-service";
+import { downloadBlobFile } from "@/lib/utils";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { PageHeader } from "@/components/page-header";
 import { EmptyState } from "@/components/empty-state";
@@ -27,12 +29,14 @@ import {
   FileDown,
   FileText,
   Filter,
+  Loader2,
 } from "lucide-react";
 import { toast } from "sonner";
 
 export default function RelatoriosPage() {
   const navigate = useNavigate();
   const [deleteId, setDeleteId] = useState<number | null>(null);
+  const [downloadingIds, setDownloadingIds] = useState<Set<number>>(new Set());
   const [filterModalOpen, setFilterModalOpen] = useState(false);
   const [filters, setFilters] = useState<ReportsFilters>({
     clientId: "all",
@@ -110,6 +114,42 @@ export default function RelatoriosPage() {
       );
     } catch {
       toast.error("Erro ao atualizar relatorio.");
+    }
+  }
+
+  function getPdfErrorMessage(error: unknown) {
+    if (error instanceof ApiError) {
+      if (error.status === 400) return "ID do relatorio invalido.";
+      if (error.status === 401 || error.status === 403)
+        return "Sem permissao para baixar o PDF.";
+      if (error.status === 404) return "Relatorio nao encontrado.";
+      if (error.status === 500)
+        return "Falha ao gerar PDF no servidor. Tente novamente.";
+    }
+
+    return "Erro ao baixar PDF.";
+  }
+
+  async function handleDownloadPdf(reportId: number) {
+    if (downloadingIds.has(reportId)) {
+      return;
+    }
+
+    setDownloadingIds((prev) => new Set(prev).add(reportId));
+
+    try {
+      const { blob, filename } = await downloadRelatorioPdf(reportId);
+      downloadBlobFile(blob, filename || `relatorio-${reportId}.pdf`);
+      setRefetchTrigger((p) => p + 1);
+      toast.success("PDF baixado com sucesso.");
+    } catch (error) {
+      toast.error(getPdfErrorMessage(error));
+    } finally {
+      setDownloadingIds((prev) => {
+        const next = new Set(prev);
+        next.delete(reportId);
+        return next;
+      });
     }
   }
 
@@ -251,14 +291,15 @@ export default function RelatoriosPage() {
                           variant="ghost"
                           size="icon"
                           className="h-8 w-8"
-                          onClick={() =>
-                            toast.info(
-                              "A geracao de PDF sera implementada futuramente.",
-                            )
-                          }
+                          onClick={() => handleDownloadPdf(report.id)}
+                          disabled={downloadingIds.has(report.id)}
                           aria-label="Gerar PDF"
                         >
-                          <FileDown className="h-4 w-4" />
+                          {downloadingIds.has(report.id) ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <FileDown className="h-4 w-4" />
+                          )}
                         </Button>
                         <Button
                           variant="ghost"

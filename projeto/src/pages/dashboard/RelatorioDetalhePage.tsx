@@ -1,13 +1,55 @@
+import { useEffect, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useRelatorio } from "@/hooks/use-relatorio";
-import { Badge, Button, Separator } from "@/components/index";
-import { ArrowLeft, Pencil, FileDown } from "lucide-react";
+import { Badge, Button } from "@/components/index";
+import { ArrowLeft, Pencil, FileDown, Loader2 } from "lucide-react";
+import { ApiError } from "@/lib/api-client";
+import { downloadRelatorioPdf } from "@/lib/relatorios-service";
+import { downloadBlobFile } from "@/lib/utils";
 import { toast } from "sonner";
 
 export default function RelatorioDetalhePage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { relatorio: report, loading, error } = useRelatorio(id);
+  const [downloadingPdf, setDownloadingPdf] = useState(false);
+  const [isPrinted, setIsPrinted] = useState(false);
+
+  useEffect(() => {
+    setIsPrinted(!!report?.impresso);
+  }, [report?.impresso]);
+
+  function getPdfErrorMessage(downloadError: unknown) {
+    if (downloadError instanceof ApiError) {
+      if (downloadError.status === 400) return "ID do relatorio invalido.";
+      if (downloadError.status === 401 || downloadError.status === 403)
+        return "Sem permissao para baixar o PDF.";
+      if (downloadError.status === 404) return "Relatorio nao encontrado.";
+      if (downloadError.status === 500)
+        return "Falha ao gerar PDF no servidor. Tente novamente.";
+    }
+
+    return "Erro ao baixar PDF.";
+  }
+
+  async function handleDownloadPdf() {
+    if (!report || downloadingPdf) {
+      return;
+    }
+
+    setDownloadingPdf(true);
+
+    try {
+      const { blob, filename } = await downloadRelatorioPdf(report.id);
+      downloadBlobFile(blob, filename || `relatorio-${report.id}.pdf`);
+      setIsPrinted(true);
+      toast.success("PDF baixado com sucesso.");
+    } catch (downloadError) {
+      toast.error(getPdfErrorMessage(downloadError));
+    } finally {
+      setDownloadingPdf(false);
+    }
+  }
 
   // Debug - verificar se modalidadeServico está vindo do backend
   if (report) {
@@ -84,8 +126,8 @@ export default function RelatorioDetalhePage() {
           <h1 className="text-2xl font-semibold tracking-tight text-foreground">
             Relatório #{report.id}
           </h1>
-          <Badge variant={report.impresso ? "default" : "secondary"}>
-            {report.impresso ? "Impresso" : "Não Impresso"}
+          <Badge variant={isPrinted ? "default" : "secondary"}>
+            {isPrinted ? "Impresso" : "Não Impresso"}
           </Badge>
         </div>
         <div className="flex gap-2">
@@ -102,12 +144,15 @@ export default function RelatorioDetalhePage() {
           <Button
             variant="outline"
             size="sm"
-            onClick={() =>
-              toast.info("A geração de PDF será implementada futuramente.")
-            }
+            onClick={handleDownloadPdf}
+            disabled={downloadingPdf}
           >
-            <FileDown className="mr-2 h-4 w-4" />
-            Gerar PDF
+            {downloadingPdf ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <FileDown className="mr-2 h-4 w-4" />
+            )}
+            {downloadingPdf ? "Baixando..." : "Gerar PDF"}
           </Button>
         </div>
       </div>

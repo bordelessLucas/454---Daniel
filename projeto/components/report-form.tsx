@@ -6,14 +6,8 @@ import { useTecnicos } from "@/hooks/use-tecnicos";
 import { useChecklists } from "@/hooks/use-checklists";
 import { useRelatorio } from "@/hooks/use-relatorio";
 import { apiRequest } from "@/lib/api-client";
-import {
-  Button,
-  Checkbox,
-  Input,
-  Label,
-  SelectionField,
-  Textarea,
-} from "@/components/index";
+import { Button, Input, Label, SelectionField } from "@/components/index";
+import { RichTextEditor } from "@/components/RichTextEditor";
 import { CheckCircle2, ArrowLeft, X } from "lucide-react";
 import { toast } from "sonner";
 
@@ -118,12 +112,6 @@ export function ReportForm({ reportId }: ReportFormProps) {
   function updateHorario(id: string, field: keyof Horario, value: string) {
     setHorarios((prev) =>
       prev.map((h) => (h.id === id ? { ...h, [field]: value } : h)),
-    );
-  }
-
-  function toggleChecklist(id: number) {
-    setSelectedChecklists((prev) =>
-      prev.includes(id) ? prev.filter((c) => c !== id) : [...prev, id],
     );
   }
 
@@ -364,10 +352,9 @@ export function ReportForm({ reportId }: ReportFormProps) {
           <h2 className="mb-4 text-lg font-medium text-foreground">
             Observações
           </h2>
-          <Textarea
+          <RichTextEditor
             value={observacoes}
-            onChange={(e) => setObservacoes(e.target.value)}
-            rows={6}
+            onChange={setObservacoes}
             placeholder="Descreva as observações do serviço realizado..."
           />
         </section>
@@ -386,6 +373,7 @@ export function ReportForm({ reportId }: ReportFormProps) {
             }))}
             placeholder="Selecione os setores"
             disabled={loadingSetores}
+            className="[&_[role='listbox']]:grid [&_[role='listbox']]:grid-cols-3 [&_[role='listbox']]:gap-1"
           />
         </section>
 
@@ -394,40 +382,26 @@ export function ReportForm({ reportId }: ReportFormProps) {
           <h2 className="mb-4 text-lg font-medium text-foreground">
             Checklists
           </h2>
-          {loadingChecklists ? (
-            <p className="text-sm text-muted-foreground">
-              Carregando checklists...
-            </p>
-          ) : checklists.length === 0 ? (
-            <p className="text-sm text-muted-foreground">
+          <SelectionField
+            label=""
+            selectionMode="multiple"
+            value={selectedChecklists.map(String)}
+            onChange={(value) =>
+              setSelectedChecklists((value as string[]).map((id) => Number(id)))
+            }
+            options={checklists.map((checklist) => ({
+              value: String(checklist.id),
+              label: checklist.nome,
+            }))}
+            placeholder="Selecione os checklists"
+            disabled={loadingChecklists || checklists.length === 0}
+            className="[&_[role='listbox']]:grid [&_[role='listbox']]:grid-cols-3 [&_[role='listbox']]:gap-1"
+          />
+          {!loadingChecklists && checklists.length === 0 ? (
+            <p className="mt-2 text-sm text-muted-foreground">
               Nenhum checklist cadastrado.
             </p>
-          ) : (
-            <div className="flex flex-col gap-2">
-              {checklists.map((checklist) => (
-                <label
-                  key={checklist.id}
-                  className="flex cursor-pointer items-start gap-3 rounded-xl border border-border p-3 transition-colors hover:bg-muted"
-                >
-                  <Checkbox
-                    checked={selectedChecklists.includes(checklist.id)}
-                    onCheckedChange={() => toggleChecklist(checklist.id)}
-                    className="mt-0.5"
-                  />
-                  <div>
-                    <p className="text-sm font-medium text-foreground">
-                      {checklist.nome}
-                    </p>
-                    {checklist.descricao && (
-                      <p className="text-xs text-muted-foreground">
-                        {checklist.descricao}
-                      </p>
-                    )}
-                  </div>
-                </label>
-              ))}
-            </div>
-          )}
+          ) : null}
         </section>
 
         {/* Seção 5 - Horários */}
