@@ -1,5 +1,8 @@
-export const API_URL =
-  import.meta.env.VITE_API_URL || "https://four54-backend.onrender.com";
+const defaultApiUrl = import.meta.env.DEV
+  ? "http://localhost:3000"
+  : "https://four54-backend.onrender.com";
+
+export const API_URL = import.meta.env.VITE_API_URL || defaultApiUrl;
 
 export class ApiError extends Error {
   status: number;
