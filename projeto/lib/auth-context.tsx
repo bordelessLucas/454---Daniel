@@ -7,11 +7,11 @@ import React, {
   useCallback,
   useEffect,
 } from "react";
-import type { User } from "./types";
+import type { AuthUser, LoginResponse } from "./types";
 import { API_URL } from "./api-client";
 
 interface AuthContextType {
-  user: User | null;
+  user: AuthUser | null;
   login: (
     username: string,
     password: string,
@@ -23,8 +23,49 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
+function getErrorMessageFromResponse(
+  payload: unknown,
+  status: number,
+  statusText: string,
+): string {
+  if (payload && typeof payload === "object") {
+    const candidate = payload as { error?: unknown; message?: unknown };
+    if (typeof candidate.error === "string" && candidate.error.trim()) {
+      return candidate.error;
+    }
+    if (typeof candidate.message === "string" && candidate.message.trim()) {
+      return candidate.message;
+    }
+  }
+  return `Erro ${status}: ${statusText}`;
+}
+
+function parseStoredUser(value: string): AuthUser | null {
+  try {
+    const parsed = JSON.parse(value) as Partial<AuthUser>;
+    if (
+      typeof parsed.id === "number" &&
+      typeof parsed.username === "string" &&
+      typeof parsed.nome === "string" &&
+      (parsed.role === "ADMIN" || parsed.role === "TECNICO")
+    ) {
+      return {
+        id: parsed.id,
+        username: parsed.username,
+        nome: parsed.nome,
+        role: parsed.role,
+        clienteId: parsed.clienteId ?? null,
+        unidadeId: parsed.unidadeId ?? null,
+      };
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<AuthUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   // Recuperar token do localStorage na inicialização
@@ -33,9 +74,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     const storedUser = localStorage.getItem("user");
 
     if (token && storedUser) {
-      try {
-        setUser(JSON.parse(storedUser));
-      } catch {
+      const normalizedUser = parseStoredUser(storedUser);
+      if (normalizedUser) {
+        setUser(normalizedUser);
+      } else {
         localStorage.removeItem("authToken");
         localStorage.removeItem("user");
       }
@@ -45,10 +87,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = useCallback(async (username: string, password: string) => {
     try {
-      console.log(`[AUTH] Tentando fazer login em: ${API_URL}/auth/login`);
-      console.log("[AUTH] Payload:", { username, password });
-      console.log("[AUTH] Headers:", { "Content-Type": "application/json" });
-
       const response = await fetch(`${API_URL}/auth/login`, {
         method: "POST",
         headers: {
@@ -58,82 +96,59 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         body: JSON.stringify({ username, password }),
       });
 
-      console.log("[AUTH] Status da resposta:", response.status);
-      console.log("[AUTH] Status text:", response.statusText);
-      console.log(
-        "[AUTH] Headers da resposta:",
-        Object.fromEntries(response.headers.entries()),
-      );
+      const responseText = await response.text();
+      let parsedPayload: unknown = {};
+      if (responseText) {
+        try {
+          parsedPayload = JSON.parse(responseText);
+        } catch {
+          parsedPayload = { error: responseText };
+        }
+      }
 
       if (!response.ok) {
-        const responseText = await response.text();
-        console.log("[AUTH] Resposta completa (texto):", responseText);
-
-        let data;
-        try {
-          data = JSON.parse(responseText);
-          console.log("[AUTH] Resposta parseada (JSON):", data);
-        } catch {
-          console.log("[AUTH] Não foi possível parsear como JSON");
-          data = {};
-        }
-
         return {
           success: false,
-          error:
-            data.message ||
-            data.error ||
-            `Erro ${response.status}: ${response.statusText}`,
+          error: getErrorMessageFromResponse(
+            parsedPayload,
+            response.status,
+            response.statusText,
+          ),
         };
       }
 
-      const responseText = await response.text();
-      console.log("[AUTH] Resposta de sucesso (texto):", responseText);
-
-      const data = JSON.parse(responseText);
-      console.log("[AUTH] Dados parseados:", data);
-
+      const data = parsedPayload as Partial<LoginResponse>;
       const token = data.token;
-      console.log("[AUTH] Token recebido:", token ? "Sim" : "Não");
+      const apiUser = data.user;
 
-      if (!token) {
-        console.log("[AUTH] ERRO: Token não encontrado na resposta");
+      if (!token || !apiUser) {
         return {
           success: false,
-          error: "Token não recebido do servidor.",
+          error: "Resposta de autenticação inválida.",
         };
       }
 
       // Armazenar token
       localStorage.setItem("authToken", token);
-      console.log("[AUTH] Token armazenado no localStorage");
 
-      // Transformar os dados do usuário para o formato esperado
-      if (data.user) {
-        console.log("[AUTH] Dados do usuário recebidos:", data.user);
-        const userFormatted = {
-          id: String(data.user.id),
-          email: data.user.username,
-          name: data.user.nome,
-          role: data.user.role.toLowerCase() as "admin" | "tecnico",
-          status: "ativo" as const,
-        };
-        console.log("[AUTH] Usuário formatado:", userFormatted);
-        setUser(userFormatted);
-        localStorage.setItem("user", JSON.stringify(userFormatted));
-      }
+      const sessionUser: AuthUser = {
+        id: apiUser.id,
+        username: apiUser.username,
+        nome: apiUser.nome,
+        role: apiUser.role,
+        clienteId: apiUser.clienteId,
+        unidadeId: apiUser.unidadeId,
+      };
 
-      console.log("[AUTH] Login bem-sucedido!");
+      setUser(sessionUser);
+      localStorage.setItem("user", JSON.stringify(sessionUser));
       return { success: true };
     } catch (error) {
       const errorMessage =
         error instanceof Error ? error.message : String(error);
-      console.error("Erro ao fazer login:", error);
-      console.error("Mensagem:", errorMessage);
-
       return {
         success: false,
-        error: `Erro de conexão: ${errorMessage}. Verifique se a API está rodando em ${API_URL}`,
+        error: `Erro de conexão: ${errorMessage}`,
       };
     }
   }, []);
@@ -144,7 +159,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     localStorage.removeItem("user");
   }, []);
 
-  const isAdmin = user?.role === "admin";
+  const isAdmin = user?.role === "ADMIN";
 
   return (
     <AuthContext.Provider value={{ user, login, logout, isAdmin, isLoading }}>

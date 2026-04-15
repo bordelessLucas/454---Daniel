@@ -35,39 +35,23 @@ export default function LoginPage() {
     e.preventDefault();
     setError("");
 
-    console.log("[LOGIN] Iniciando processo de login");
-    console.log("[LOGIN] Username:", username);
-    console.log("[LOGIN] Password length:", password.length);
-    console.log(
-      "[LOGIN] Password (primeiros 3 chars):",
-      password.substring(0, 3) + "***",
-    );
-
     if (!username || !password) {
-      console.log("[LOGIN] ERRO: Campos vazios");
       setError("Preencha todos os campos.");
       return;
     }
 
     setIsLoading(true);
-    console.log("[LOGIN] Chamando função login do auth-context...");
     try {
       const result = await login(username, password);
-      console.log("[LOGIN] Resultado do login:", result);
       if (result.success) {
-        console.log("[LOGIN] Login bem-sucedido, navegando para dashboard...");
         navigate("/dashboard/relatorios", { replace: true });
       } else {
-        console.log("[LOGIN] Login falhou:", result.error);
-        setError(result.error ?? "Erro ao fazer login.");
+        setError(result.error ?? "Usuário ou senha inválidos.");
       }
-    } catch (err) {
-      console.error("[LOGIN] EXCEÇÃO capturada:", err);
+    } catch {
       setError("Erro inesperado ao fazer login.");
-      console.error(err);
     } finally {
       setIsLoading(false);
-      console.log("[LOGIN] Processo finalizado");
     }
   }
 

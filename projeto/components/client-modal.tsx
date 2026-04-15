@@ -69,6 +69,18 @@ export function ClientModal({
   // Buscar ramos de atividade da API
   const { ramos: ramosAtividade, loading: loadingRamos } = useRamosAtividade();
 
+  const formatContractDateForApi = (value: string): string => {
+    if (!value) return value;
+
+    const dateOnly = value.includes("T") ? value.split("T")[0] : value;
+    if (/^\d{4}-\d{2}-\d{2}$/.test(dateOnly)) {
+      return `${dateOnly}T00:00:00.000Z`;
+    }
+
+    const parsed = new Date(value);
+    return Number.isNaN(parsed.getTime()) ? value : parsed.toISOString();
+  };
+
   useEffect(() => {
     if (client) {
       setForm({
@@ -126,24 +138,24 @@ export function ClientModal({
       let result: Client;
 
       if (client) {
-        // Atualizar cliente
+        // Atualizar cliente usando mesmo formato de contato/contrato do create
         result = await updateClient(client.id, {
           ...payload,
-          contatos: contatos.map((c) => ({
-            nome: c.nome,
-            cargo: c.cargo || undefined,
-            telefone: c.telefone || undefined,
-            email: c.email || undefined,
-            principal: c.principal,
-          })),
-          contratos: contratos.map((c) => ({
-            numeroContrato: c.numeroContrato,
-            dataInicio: c.dataInicio,
-            dataFim: c.dataFim,
-            valorMensal: c.valorMensal,
-            descricaoServicos: c.descricaoServicos,
-            condicoes: c.condicoes || undefined,
-          })),
+          contato: {
+            nome: contatos[0].nome,
+            cargo: contatos[0].cargo || undefined,
+            telefone: contatos[0].telefone || undefined,
+            email: contatos[0].email || undefined,
+            principal: contatos[0].principal,
+          },
+          contrato: {
+            numeroContrato: contratos[0].numeroContrato,
+            dataInicio: formatContractDateForApi(contratos[0].dataInicio),
+            dataFim: formatContractDateForApi(contratos[0].dataFim),
+            valorMensal: contratos[0].valorMensal,
+            descricaoServicos: contratos[0].descricaoServicos,
+            condicoes: contratos[0].condicoes || undefined,
+          },
         });
         toast.success("Cliente atualizado com sucesso");
       } else {
@@ -159,17 +171,13 @@ export function ClientModal({
           },
           contrato: {
             numeroContrato: contratos[0].numeroContrato,
-            dataInicio: contratos[0].dataInicio,
-            dataFim: contratos[0].dataFim,
+            dataInicio: formatContractDateForApi(contratos[0].dataInicio),
+            dataFim: formatContractDateForApi(contratos[0].dataFim),
             valorMensal: contratos[0].valorMensal,
             descricaoServicos: contratos[0].descricaoServicos,
             condicoes: contratos[0].condicoes || undefined,
           },
         };
-        console.log(
-          "POST /clientes - Payload enviado:",
-          JSON.stringify(createPayload, null, 2),
-        );
         result = await createClient(createPayload);
         toast.success("Cliente criado com sucesso");
       }

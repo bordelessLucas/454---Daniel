@@ -8,7 +8,7 @@ interface ClientesFilters {
   ramoAtividadeId?: number;
 }
 
-export function useClientes(filters?: ClientesFilters) {
+export function useClientes(filters?: ClientesFilters, refetchTrigger = 0) {
   const [clientes, setClientes] = useState<Client[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -46,7 +46,7 @@ export function useClientes(filters?: ClientesFilters) {
     }
 
     fetchClientes();
-  }, [filters?.nomeFantasia, filters?.cnpj, filters?.ramoAtividadeId]);
+  }, [filters?.nomeFantasia, filters?.cnpj, filters?.ramoAtividadeId, refetchTrigger]);
 
   return { clientes, loading, error };
 }

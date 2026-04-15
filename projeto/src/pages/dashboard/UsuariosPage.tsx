@@ -6,6 +6,7 @@ import {
   createUsuario,
   updateUsuario,
   deleteUsuario,
+  changePassword,
 } from "@/lib/usuarios-service";
 import type { ApiUser } from "@/lib/types";
 import { PageHeader } from "@/components/page-header";
@@ -30,15 +31,9 @@ import { Plus, Search, Pencil, Trash2, User, Key } from "lucide-react";
 import { toast } from "sonner";
 
 export default function UsuariosPage() {
-  console.log("[UsuariosPage] Componente renderizado");
   const { user } = useAuth();
   const [refetchTrigger, setRefetchTrigger] = useState(0);
   const { usuarios, loading, error } = useUsuarios(refetchTrigger);
-  console.log("[UsuariosPage] Estado do hook:", {
-    usuarios: usuarios.length,
-    loading,
-    error,
-  });
   const { clientes } = useClientes();
 
   const [search, setSearch] = useState("");
@@ -73,7 +68,7 @@ export default function UsuariosPage() {
   }, [usuarios, search]);
 
   // Verificar se é admin
-  const isAdmin = user?.role === "admin";
+  const isAdmin = user?.role === "ADMIN";
 
   if (!isAdmin) {
     return (
@@ -138,7 +133,9 @@ export default function UsuariosPage() {
           nome: form.nome,
           email: form.email,
           role: form.role,
-          clienteId: form.clienteId,
+          ...(typeof form.clienteId === "number"
+            ? { clienteId: form.clienteId }
+            : {}),
         });
         toast.success("Usuário criado com sucesso.");
       }
@@ -183,24 +180,9 @@ export default function UsuariosPage() {
 
     setSaving(true);
     try {
-      const API_URL =
-        import.meta.env.VITE_API_URL || "https://four54-backend.onrender.com";
-      const response = await fetch(
-        `${API_URL}/users/${changingPasswordFor.id}/password`,
-        {
-          method: "PUT",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${localStorage.getItem("authToken")}`,
-          },
-          body: JSON.stringify({ newPassword }),
-        },
-      );
-
-      if (!response.ok) {
-        const errorText = await response.text();
-        throw new Error(errorText || "Erro ao alterar senha");
-      }
+      await changePassword(changingPasswordFor.id, {
+        newPassword,
+      });
 
       toast.success("Senha alterada com sucesso.");
       setPasswordModalOpen(false);

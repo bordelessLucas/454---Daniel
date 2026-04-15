@@ -49,7 +49,7 @@ export function AppSidebar() {
   const pathname = location.pathname;
   const { user, logout } = useAuth();
   const { state } = useSidebar();
-  const isAdmin = user?.role === "admin";
+  const isAdmin = user?.role === "ADMIN";
 
   return (
     <Sidebar collapsible="icon">
@@ -154,12 +154,12 @@ export function AppSidebar() {
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton
-              tooltip={user?.name ?? "Perfil"}
+              tooltip={user?.nome ?? "Perfil"}
               className={state === "collapsed" ? "justify-center" : undefined}
             >
               <User className="h-4 w-4 shrink-0" />
               <span className={state === "collapsed" ? "sr-only" : "truncate"}>
-                {user?.name}
+                {user?.nome}
               </span>
             </SidebarMenuButton>
           </SidebarMenuItem>

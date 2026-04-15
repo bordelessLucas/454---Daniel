@@ -97,18 +97,16 @@ const Sidebar = React.forwardRef<
 
   if (collapsible === "none") {
     return (
-      <div className="dark">
-        <aside
-          ref={ref}
-          className={cn(
-            "flex h-svh w-64 flex-col border-r bg-background text-foreground",
-            className,
-          )}
-          {...props}
-        >
-          {children}
-        </aside>
-      </div>
+      <aside
+        ref={ref}
+        className={cn(
+          "flex h-svh w-64 flex-col border-r bg-background text-foreground",
+          className,
+        )}
+        {...props}
+      >
+        {children}
+      </aside>
     );
   }
 
@@ -121,39 +119,35 @@ const Sidebar = React.forwardRef<
             onClick={() => setOpenMobile(false)}
           />
         )}
-        <div className="dark">
-          <aside
-            ref={ref}
-            className={cn(
-              "fixed inset-y-0 left-0 z-50 w-72 translate-x-[-100%] border-r bg-background text-foreground transition-transform",
-              openMobile && "translate-x-0",
-              className,
-            )}
-            {...props}
-          >
-            {children}
-          </aside>
-        </div>
+        <aside
+          ref={ref}
+          className={cn(
+            "fixed inset-y-0 left-0 z-50 w-72 translate-x-[-100%] border-r bg-background text-foreground transition-transform",
+            openMobile && "translate-x-0",
+            className,
+          )}
+          {...props}
+        >
+          {children}
+        </aside>
       </>
     );
   }
 
   return (
-    <div className="dark">
-      <aside
-        ref={ref}
-        data-state={state}
-        data-collapsible={state === "collapsed" ? collapsible : ""}
-        className={cn(
-          "sticky top-0 h-svh self-start border-r bg-background text-foreground transition-[width] duration-200",
-          state === "collapsed" && collapsible === "icon" ? "w-16" : "w-72",
-          className,
-        )}
-        {...props}
-      >
-        {children}
-      </aside>
-    </div>
+    <aside
+      ref={ref}
+      data-state={state}
+      data-collapsible={state === "collapsed" ? collapsible : ""}
+      className={cn(
+        "sticky top-0 h-svh self-start border-r bg-background text-foreground transition-[width] duration-200",
+        state === "collapsed" && collapsible === "icon" ? "w-16" : "w-72",
+        className,
+      )}
+      {...props}
+    >
+      {children}
+    </aside>
   );
 });
 Sidebar.displayName = "Sidebar";

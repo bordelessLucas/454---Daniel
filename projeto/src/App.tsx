@@ -63,7 +63,7 @@ export default function App() {
         <Route
           path="usuarios"
           element={
-            <ProtectedRoute requiredRole="admin">
+            <ProtectedRoute requiredRole="ADMIN">
               <UsuariosPage />
             </ProtectedRoute>
           }
@@ -71,7 +71,7 @@ export default function App() {
         <Route
           path="checklists"
           element={
-            <ProtectedRoute requiredRole="admin">
+            <ProtectedRoute requiredRole="ADMIN">
               <ChecklistsPage />
             </ProtectedRoute>
           }
@@ -79,7 +79,7 @@ export default function App() {
         <Route
           path="setores"
           element={
-            <ProtectedRoute requiredRole="admin">
+            <ProtectedRoute requiredRole="ADMIN">
               <SetoresPage />
             </ProtectedRoute>
           }
@@ -87,7 +87,7 @@ export default function App() {
         <Route
           path="ramos-atividade"
           element={
-            <ProtectedRoute requiredRole="admin">
+            <ProtectedRoute requiredRole="ADMIN">
               <RamosAtividadePage />
             </ProtectedRoute>
           }
@@ -95,7 +95,7 @@ export default function App() {
         <Route
           path="configuracoes"
           element={
-            <ProtectedRoute requiredRole="admin">
+            <ProtectedRoute requiredRole="ADMIN">
               <ConfiguracoesPage />
             </ProtectedRoute>
           }

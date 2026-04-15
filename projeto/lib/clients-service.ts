@@ -1,4 +1,4 @@
-import type { Client, Contact, Contract } from "./types";
+import type { Client } from "./types";
 import { apiRequest } from "./api-client";
 
 export interface CreateClientPayload {
@@ -34,12 +34,21 @@ export interface UpdateClientPayload extends Omit<
   CreateClientPayload,
   "contato" | "contrato"
 > {
-  contatos?: Array<
-    Omit<Contact, "id" | "clienteId" | "createdAt" | "updatedAt">
-  >;
-  contratos?: Array<
-    Omit<Contract, "id" | "clienteId" | "createdAt" | "updatedAt">
-  >;
+  contato?: {
+    nome: string;
+    cargo?: string;
+    telefone?: string;
+    email?: string;
+    principal?: boolean;
+  };
+  contrato?: {
+    numeroContrato: string;
+    dataInicio: string;
+    dataFim: string;
+    valorMensal: number;
+    descricaoServicos: string;
+    condicoes?: string;
+  };
 }
 
 export async function createClient(data: CreateClientPayload): Promise<Client> {

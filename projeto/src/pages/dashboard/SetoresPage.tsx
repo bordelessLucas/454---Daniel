@@ -106,7 +106,7 @@ export default function SetoresPage() {
     }
   }
 
-  if (user?.role !== "admin") {
+  if (user?.role !== "ADMIN") {
     return (
       <div className="flex flex-col items-center justify-center py-16">
         <p className="text-muted-foreground">

@@ -10,8 +10,8 @@ export function Topbar() {
   const { user } = useAuth();
   const { theme, setTheme } = useTheme();
 
-  const initials = user?.name
-    ? user.name
+  const initials = user?.nome
+    ? user.nome
         .split(" ")
         .map((n) => n[0])
         .join("")
@@ -42,9 +42,9 @@ export function Topbar() {
           </Avatar>
           <div className="hidden flex-col sm:flex">
             <span className="text-sm font-medium leading-tight text-foreground">
-              {user?.name}
+              {user?.nome}
             </span>
-            <span className="text-xs text-muted-foreground capitalize">
+            <span className="text-xs text-muted-foreground">
               {user?.role}
             </span>
           </div>

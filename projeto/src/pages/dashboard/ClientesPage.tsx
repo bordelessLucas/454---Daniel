@@ -1,10 +1,20 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo } from "react";
 import { useClientes } from "@/hooks/use-clientes";
 import type { Client } from "@/lib/types";
+import { deleteClient } from "@/lib/clients-service";
 import { PageHeader } from "@/components/page-header";
 import { EmptyState } from "@/components/empty-state";
-import { ConfirmDialog } from "@/components/confirm-dialog";
 import { ClientModal } from "@/components/client-modal";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import {
   ClientsFilterModal,
   ClientsFilters,
@@ -26,6 +36,7 @@ export default function ClientesPage() {
   const [filterModalOpen, setFilterModalOpen] = useState(false);
   const [editingClient, setEditingClient] = useState<Client | null>(null);
   const [deleteId, setDeleteId] = useState<number | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [refetchTrigger, setRefetchTrigger] = useState(0);
   const [filters, setFilters] = useState<ClientsFilters>({
     nomeFantasia: "",
@@ -45,7 +56,7 @@ export default function ClientesPage() {
     };
   }, [filters]);
 
-  const { clientes, loading, error } = useClientes(apiFilters);
+  const { clientes, loading, error } = useClientes(apiFilters, refetchTrigger);
 
   const ramosAtividade = useMemo(() => {
     const ramosMap = new Map<number, string>();
@@ -62,19 +73,29 @@ export default function ClientesPage() {
     filters.cnpj !== "" ||
     filters.ramoAtividade !== "all";
 
-  function handleSave(client: Client) {
+  function handleSave() {
     // Recarregar dados dos clientes
     setRefetchTrigger((prev) => prev + 1);
     setModalOpen(false);
     setEditingClient(null);
   }
 
-  function handleDelete() {
+  async function handleDelete() {
     if (!deleteId) return;
-    // TODO: Implementar DELETE para remover cliente
-    toast.success("Cliente excluido com sucesso.");
-    setDeleteId(null);
-    // Recarregar clientes
+
+    try {
+      setIsDeleting(true);
+      await deleteClient(deleteId);
+      toast.success("Cliente excluído com sucesso.");
+      setDeleteId(null);
+      setRefetchTrigger((prev) => prev + 1);
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : "Erro ao excluir cliente.",
+      );
+    } finally {
+      setIsDeleting(false);
+    }
   }
 
   return (
@@ -202,13 +223,34 @@ export default function ClientesPage() {
         onFiltersChange={setFilters}
       />
 
-      <ConfirmDialog
+      <AlertDialog
         open={!!deleteId}
-        onOpenChange={(open) => !open && setDeleteId(null)}
-        title="Excluir cliente"
-        description="Tem certeza que deseja excluir este cliente? Esta acao nao pode ser desfeita."
-        onConfirm={handleDelete}
-      />
+        onOpenChange={(open) => {
+          if (!open && !isDeleting) {
+            setDeleteId(null);
+          }
+        }}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir cliente</AlertDialogTitle>
+            <AlertDialogDescription>
+              Tem certeza que deseja excluir este cliente? Esta ação não pode
+              ser desfeita.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isDeleting}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={handleDelete}
+              disabled={isDeleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {isDeleting ? "Excluindo..." : "Excluir"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }

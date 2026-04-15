@@ -1,13 +1,29 @@
-export type UserRole = "admin" | "tecnico";
+export type UserRole = "ADMIN" | "TECNICO";
 
-export interface User {
-  id: string;
-  name: string;
+export interface AuthUser {
+  id: number;
+  username: string;
+  nome: string;
+  role: UserRole;
+  clienteId: number | null;
+  unidadeId: number | null;
+}
+
+export interface LoginResponse {
+  token: string;
+  user: AuthUser;
+}
+
+export interface CreateUserPayload {
+  username: string;
+  password: string;
+  nome: string;
   email: string;
   role: UserRole;
-  status: "ativo" | "inativo";
-  avatar?: string;
+  clienteId?: number;
 }
+
+export type User = AuthUser;
 
 export interface RamoAtividade {
   id: number;

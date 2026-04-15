@@ -1,8 +1,31 @@
-const defaultApiUrl = import.meta.env.DEV
-  ? "http://localhost:3000"
-  : "https://four54-backend.onrender.com";
+const defaultApiUrl = "http://localhost:3000";
 
 export const API_URL = import.meta.env.VITE_API_URL || defaultApiUrl;
+
+function extractApiErrorMessage(
+  responseText: string,
+  status: number,
+  statusText: string,
+): string {
+  if (responseText) {
+    try {
+      const parsed = JSON.parse(responseText) as {
+        error?: unknown;
+        message?: unknown;
+      };
+      if (typeof parsed.error === "string" && parsed.error.trim()) {
+        return parsed.error;
+      }
+      if (typeof parsed.message === "string" && parsed.message.trim()) {
+        return parsed.message;
+      }
+    } catch {
+      return responseText;
+    }
+  }
+
+  return `Erro ${status}: ${statusText}`;
+}
 
 export class ApiError extends Error {
   status: number;
@@ -10,7 +33,7 @@ export class ApiError extends Error {
   responseText: string;
 
   constructor(status: number, statusText: string, responseText = "") {
-    super(`API Error ${status}: ${statusText}`);
+    super(extractApiErrorMessage(responseText, status, statusText));
     this.name = "ApiError";
     this.status = status;
     this.statusText = statusText;
@@ -34,13 +57,9 @@ function getAuthHeaders(options: RequestInit): Record<string, string> {
   }
 
   const token = localStorage.getItem("authToken");
-  console.log(
-    `[API-CLIENT] Token encontrado: ${token ? "Sim (length: " + token.length + ")" : "Não"}`,
-  );
 
   if (token) {
     headers.Authorization = `Bearer ${token}`;
-    console.log(`[API-CLIENT] Header Authorization adicionado`);
   }
 
   return headers;
@@ -50,36 +69,20 @@ async function performRequest(
   endpoint: string,
   options: RequestInit = {},
 ): Promise<Response> {
-  console.log(`[API-CLIENT] Requisição para: ${endpoint}`);
-  console.log(`[API-CLIENT] Método: ${options.method || "GET"}`);
-
   const headers = getAuthHeaders(options);
-
-  console.log(`[API-CLIENT] URL completa: ${API_URL}${endpoint}`);
-  console.log(`[API-CLIENT] Headers:`, headers);
-
-  if (options.body) {
-    console.log(`[API-CLIENT] Body:`, options.body);
-  }
 
   const response = await fetch(`${API_URL}${endpoint}`, {
     ...options,
     headers,
   });
 
-  console.log(
-    `[API-CLIENT] Status da resposta: ${response.status} ${response.statusText}`,
-  );
-
   if (!response.ok) {
     const responseText = await response.text();
-    console.log(`[API-CLIENT] Resposta de erro:`, responseText);
 
     if (response.status === 401) {
-      console.log(`[API-CLIENT] Status 401 - Limpando auth e redirecionando`);
       localStorage.removeItem("authToken");
       localStorage.removeItem("user");
-      window.location.href = "/login";
+      window.location.href = "/";
     }
 
     throw new ApiError(response.status, response.statusText, responseText);
@@ -121,13 +124,10 @@ export async function apiRequest<T>(
 
   // 204 No Content - não tem body para parsear
   if (response.status === 204) {
-    console.log(`[API-CLIENT] Status 204 - No Content`);
     return null as T;
   }
 
-  const data = await response.json();
-  console.log(`[API-CLIENT] Resposta de sucesso:`, data);
-  return data;
+  return response.json();
 }
 
 export async function apiRequestBlob(
