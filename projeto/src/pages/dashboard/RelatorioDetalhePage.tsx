@@ -1,19 +1,26 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
 import { useRelatorio } from "@/hooks/use-relatorio";
+import { useChecklists } from "@/hooks/use-checklists";
 import { Badge, Button } from "@/components/index";
 import { ArrowLeft, Pencil, FileDown, Loader2 } from "lucide-react";
 import { ApiError } from "@/lib/api-client";
 import { downloadRelatorioPdf } from "@/lib/relatorios-service";
-import { downloadBlobFile } from "@/lib/utils";
+import { buildRelatorioPdfFilename, downloadBlobFile } from "@/lib/utils";
 import { toast } from "sonner";
 
 export default function RelatorioDetalhePage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { relatorio: report, loading, error } = useRelatorio(id);
+  const { checklists } = useChecklists();
   const [downloadingPdf, setDownloadingPdf] = useState(false);
   const [isPrinted, setIsPrinted] = useState(false);
+
+  const checklistsById = useMemo(
+    () => new Map(checklists.map((item) => [item.id, item])),
+    [checklists],
+  );
 
   useEffect(() => {
     setIsPrinted(!!report?.impresso);
@@ -40,8 +47,16 @@ export default function RelatorioDetalhePage() {
     setDownloadingPdf(true);
 
     try {
-      const { blob, filename } = await downloadRelatorioPdf(report.id);
-      downloadBlobFile(blob, filename || `relatorio-${report.id}.pdf`);
+      const { blob } = await downloadRelatorioPdf(report.id);
+      const reportDate = new Date(report.dataVisita);
+      const datePart = Number.isNaN(reportDate.getTime())
+        ? "Data"
+        : reportDate.toISOString().split("T")[0];
+      const filename = buildRelatorioPdfFilename(
+        report.cliente.nomeFantasia,
+        datePart,
+      );
+      downloadBlobFile(blob, filename);
       setIsPrinted(true);
       toast.success("PDF baixado com sucesso.");
     } catch (downloadError) {
@@ -49,15 +64,6 @@ export default function RelatorioDetalhePage() {
     } finally {
       setDownloadingPdf(false);
     }
-  }
-
-  // Debug - verificar se modalidadeServico está vindo do backend
-  if (report) {
-    console.log("[Relatório Detalhe] Dados completos:", report);
-    console.log(
-      "[Relatório Detalhe] modalidadeServico:",
-      report.modalidadeServico,
-    );
   }
 
   if (loading) {
@@ -268,21 +274,58 @@ export default function RelatorioDetalhePage() {
               Checklists
             </h2>
             <div className="flex flex-col gap-3">
-              {report.checklists.map((checklistItem) => (
-                <div
-                  key={checklistItem.id}
-                  className="rounded-lg border border-border p-3"
-                >
-                  <span className="font-medium text-foreground">
-                    {checklistItem.checklist.nome}
-                  </span>
-                  {checklistItem.checklist.descricao && (
+              {report.checklists.map((checklistItem) => {
+                const checklistCompleto = checklistsById.get(
+                  checklistItem.checklistId,
+                );
+                const checklistNome =
+                  checklistCompleto?.nome || checklistItem.checklist.nome;
+                const checklistDescricao =
+                  checklistCompleto?.descricao ??
+                  checklistItem.checklist.descricao ??
+                  null;
+                const checklistItens =
+                  checklistCompleto?.itens ?? checklistItem.checklist.itens ?? [];
+
+                return (
+                  <div
+                    key={checklistItem.id}
+                    className="rounded-lg border border-border p-3"
+                  >
+                    <span className="font-medium text-foreground">
+                      {checklistNome}
+                    </span>
                     <p className="mt-2 text-sm text-muted-foreground">
-                      {checklistItem.checklist.descricao}
+                      {checklistDescricao || "Sem descricao informada."}
                     </p>
-                  )}
-                </div>
-              ))}
+                    <div className="mt-3">
+                      <p className="mb-1 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                        Itens do checklist
+                      </p>
+                      {checklistItens.length > 0 ? (
+                        <ul className="space-y-1 text-sm text-foreground">
+                          {[...checklistItens]
+                            .sort((a, b) => a.ordem - b.ordem)
+                            .map((item) => (
+                              <li
+                                key={
+                                  item.id ??
+                                  `${checklistItem.checklistId}-${item.ordem}`
+                                }
+                              >
+                                {item.ordem}. {item.texto}
+                              </li>
+                            ))}
+                        </ul>
+                      ) : (
+                        <p className="text-sm text-muted-foreground">
+                          Nenhum item cadastrado.
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
           </section>
         )}

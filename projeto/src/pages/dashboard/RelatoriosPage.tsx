@@ -1,9 +1,10 @@
 import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useRelatorios } from "@/hooks/use-relatorios";
+import type { ApiReport } from "@/lib/types";
 import { ApiError, apiRequest } from "@/lib/api-client";
 import { downloadRelatorioPdf } from "@/lib/relatorios-service";
-import { downloadBlobFile } from "@/lib/utils";
+import { buildRelatorioPdfFilename, downloadBlobFile } from "@/lib/utils";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { PageHeader } from "@/components/page-header";
 import { EmptyState } from "@/components/empty-state";
@@ -14,6 +15,8 @@ import {
 import { Switch } from "@/components/Switch";
 import {
   Button,
+  Input,
+  Select,
   Table,
   TableBody,
   TableCell,
@@ -30,6 +33,7 @@ import {
   FileText,
   Filter,
   Loader2,
+  Search,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -45,6 +49,11 @@ export default function RelatoriosPage() {
     createdById: "all",
     printed: "all",
   });
+  const [searchCliente, setSearchCliente] = useState("");
+  const [searchData, setSearchData] = useState("");
+  const [searchStatus, setSearchStatus] = useState<
+    "all" | "printed" | "not_printed"
+  >("all");
 
   // Converter filtros do componente para API
   const apiFilters = {
@@ -86,6 +95,42 @@ export default function RelatoriosPage() {
       ).values(),
     );
   }, [relatorios]);
+
+  function formatDateForFilename(dateStr: string) {
+    const date = new Date(dateStr);
+    if (Number.isNaN(date.getTime())) return "Data";
+    return date.toISOString().split("T")[0];
+  }
+
+  function getPdfFilename(report: ApiReport) {
+    return buildRelatorioPdfFilename(
+      report.cliente.nomeFantasia,
+      formatDateForFilename(report.dataVisita),
+    );
+  }
+
+  const filteredRelatorios = useMemo(() => {
+    return relatorios.filter((report) => {
+      const clienteMatch =
+        searchCliente.trim() === "" ||
+        report.cliente.nomeFantasia
+          .toLowerCase()
+          .includes(searchCliente.trim().toLowerCase());
+
+      const parsedDate = new Date(report.dataVisita);
+      const reportDate = Number.isNaN(parsedDate.getTime())
+        ? ""
+        : parsedDate.toISOString().split("T")[0];
+      const dataMatch = searchData === "" || reportDate === searchData;
+
+      const statusMatch =
+        searchStatus === "all" ||
+        (searchStatus === "printed" && report.impresso) ||
+        (searchStatus === "not_printed" && !report.impresso);
+
+      return clienteMatch && dataMatch && statusMatch;
+    });
+  }, [relatorios, searchCliente, searchData, searchStatus]);
 
   async function handleDelete() {
     if (!deleteId) return;
@@ -130,7 +175,8 @@ export default function RelatoriosPage() {
     return "Erro ao baixar PDF.";
   }
 
-  async function handleDownloadPdf(reportId: number) {
+  async function handleDownloadPdf(report: ApiReport) {
+    const reportId = report.id;
     if (downloadingIds.has(reportId)) {
       return;
     }
@@ -138,8 +184,8 @@ export default function RelatoriosPage() {
     setDownloadingIds((prev) => new Set(prev).add(reportId));
 
     try {
-      const { blob, filename } = await downloadRelatorioPdf(reportId);
-      downloadBlobFile(blob, filename || `relatorio-${reportId}.pdf`);
+      const { blob } = await downloadRelatorioPdf(reportId);
+      downloadBlobFile(blob, getPdfFilename(report));
       setRefetchTrigger((p) => p + 1);
       toast.success("PDF baixado com sucesso.");
     } catch (error) {
@@ -167,6 +213,9 @@ export default function RelatoriosPage() {
     filters.dateEnd !== "" ||
     filters.createdById !== "all" ||
     filters.printed !== "all";
+
+  const hasSearchFilters =
+    searchCliente.trim() !== "" || searchData !== "" || searchStatus !== "all";
 
   return (
     <>
@@ -200,6 +249,35 @@ export default function RelatoriosPage() {
         </Button>
       </div>
 
+      <div className="mb-4 grid gap-3 rounded-2xl border border-border p-4 md:grid-cols-3">
+        <div className="relative">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+          <Input
+            value={searchCliente}
+            onChange={(e) => setSearchCliente(e.target.value)}
+            placeholder="Buscar por cliente"
+            className="pl-9"
+          />
+        </div>
+        <Input
+          type="date"
+          value={searchData}
+          onChange={(e) => setSearchData(e.target.value)}
+        />
+        <Select
+          value={searchStatus}
+          onChange={(e) =>
+            setSearchStatus(
+              e.target.value as "all" | "printed" | "not_printed",
+            )
+          }
+        >
+          <option value="all">Todos os status</option>
+          <option value="printed">Impresso</option>
+          <option value="not_printed">Nao impresso</option>
+        </Select>
+      </div>
+
       {loading && (
         <div className="text-center py-8">
           <p className="text-muted-foreground">Carregando relatórios...</p>
@@ -212,12 +290,12 @@ export default function RelatoriosPage() {
         </div>
       )}
 
-      {!loading && !error && relatorios.length === 0 ? (
+      {!loading && !error && filteredRelatorios.length === 0 ? (
         <EmptyState
           icon={FileText}
           title="Nenhum relatorio encontrado"
           description={
-            hasActiveFilters
+            hasActiveFilters || hasSearchFilters
               ? "Tente ajustar os filtros de busca."
               : "Crie seu primeiro relatorio tecnico."
           }
@@ -239,7 +317,7 @@ export default function RelatoriosPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {relatorios.map((report) => (
+                {filteredRelatorios.map((report) => (
                   <TableRow key={report.id}>
                     <TableCell className="font-mono text-sm">
                       #{report.id}
@@ -291,7 +369,7 @@ export default function RelatoriosPage() {
                           variant="ghost"
                           size="icon"
                           className="h-8 w-8"
-                          onClick={() => handleDownloadPdf(report.id)}
+                          onClick={() => handleDownloadPdf(report)}
                           disabled={downloadingIds.has(report.id)}
                           aria-label="Gerar PDF"
                         >

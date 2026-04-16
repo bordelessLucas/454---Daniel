@@ -94,14 +94,27 @@ export interface ApiUser {
 }
 
 // Checklist API
-export interface ApiChecklist {
+export type ChecklistItem = {
+  id: number;
+  checklistId: number;
+  texto: string;
+  ordem: number;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type Checklist = {
   id: number;
   nome: string;
   descricao: string | null;
+  indice: number;
   ativo: boolean;
   createdAt: string;
   updatedAt: string;
-}
+  itens: ChecklistItem[];
+};
+
+export type ApiChecklist = Checklist;
 
 export interface Sector {
   id: number;
@@ -160,6 +173,7 @@ export interface ReportChecklist {
     id: number;
     nome: string;
     descricao?: string | null;
+    itens?: ChecklistItem[];
   };
 }
 

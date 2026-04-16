@@ -21,6 +21,12 @@ interface ReportFormProps {
   reportId?: string;
 }
 
+const MODALIDADES_COM_CONTRATO = ["Contrato - local", "Contrato - remoto"];
+const MODALIDADES_SEM_CONTRATO = [
+  "Sem contrato - local",
+  "Sem contrato - remoto",
+];
+
 export function ReportForm({ reportId }: ReportFormProps) {
   const navigate = useNavigate();
   const isEditing = !!reportId;
@@ -88,6 +94,55 @@ export function ReportForm({ reportId }: ReportFormProps) {
 
   const clienteSelecionado = clientes.find((c) => c.id === clienteId) ?? null;
 
+  function hasActiveContractForDate() {
+    if (!clienteSelecionado || !dataVisita) return false;
+
+    const visitDate = new Date(dataVisita);
+    if (Number.isNaN(visitDate.getTime())) return false;
+
+    return clienteSelecionado.contratos.some((contrato) => {
+      if (!contrato.ativo) return false;
+
+      const contractStart = new Date(contrato.dataInicio);
+      const contractEnd = new Date(contrato.dataFim);
+
+      if (
+        Number.isNaN(contractStart.getTime()) ||
+        Number.isNaN(contractEnd.getTime())
+      ) {
+        return false;
+      }
+
+      return visitDate >= contractStart && visitDate <= contractEnd;
+    });
+  }
+
+  const clienteTemContratoVigente = hasActiveContractForDate();
+  const modalidadeEhContrato = MODALIDADES_COM_CONTRATO.includes(modalidadeServico);
+  const modalidadeEhSemContrato =
+    MODALIDADES_SEM_CONTRATO.includes(modalidadeServico);
+
+  const modalidadeValidaParaCliente =
+    !clienteSelecionado ||
+    (clienteTemContratoVigente && modalidadeEhContrato) ||
+    (!clienteTemContratoVigente && modalidadeEhSemContrato);
+
+  const modalidadesPermitidas = clienteTemContratoVigente
+    ? MODALIDADES_COM_CONTRATO
+    : MODALIDADES_SEM_CONTRATO;
+
+  useEffect(() => {
+    if (!clienteSelecionado) return;
+
+    const allowed = clienteTemContratoVigente
+      ? MODALIDADES_COM_CONTRATO
+      : MODALIDADES_SEM_CONTRATO;
+
+    if (!allowed.includes(modalidadeServico)) {
+      setModalidadeServico(allowed[0]);
+    }
+  }, [clienteSelecionado, clienteTemContratoVigente, modalidadeServico]);
+
   const filteredClientes = clientSearch
     ? clientes.filter(
         (c) =>
@@ -121,6 +176,15 @@ export function ReportForm({ reportId }: ReportFormProps) {
       return;
     }
 
+    if (!modalidadeValidaParaCliente) {
+      toast.error(
+        clienteTemContratoVigente
+          ? "Este cliente possui contrato vigente. Selecione uma modalidade de contrato."
+          : "Este cliente nao possui contrato vigente. Selecione uma modalidade sem contrato.",
+      );
+      return;
+    }
+
     setSaving(true);
 
     const payload = {
@@ -145,9 +209,6 @@ export function ReportForm({ reportId }: ReportFormProps) {
       })),
       checklists: selectedChecklists.map((id) => ({ checklistId: id })),
     };
-
-    console.log("[Report Form] Payload sendo enviado:", payload);
-    console.log("[Report Form] modalidadeServico:", modalidadeServico);
 
     try {
       if (isEditing) {
@@ -218,17 +279,62 @@ export function ReportForm({ reportId }: ReportFormProps) {
                 id="modalidade-servico"
                 value={modalidadeServico}
                 onChange={(e) => setModalidadeServico(e.target.value)}
-                className="flex h-10 w-full rounded-md border border-border bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                className={`flex h-10 w-full rounded-md border bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50 ${
+                  modalidadeValidaParaCliente
+                    ? "border-border focus-visible:ring-ring"
+                    : "border-destructive focus-visible:ring-destructive"
+                }`}
               >
-                <option value="Sem contrato - remoto">
+                <option
+                  value="Sem contrato - remoto"
+                  disabled={
+                    !!clienteSelecionado &&
+                    !modalidadesPermitidas.includes("Sem contrato - remoto")
+                  }
+                >
                   Sem contrato - remoto
                 </option>
-                <option value="Sem contrato - local">
+                <option
+                  value="Sem contrato - local"
+                  disabled={
+                    !!clienteSelecionado &&
+                    !modalidadesPermitidas.includes("Sem contrato - local")
+                  }
+                >
                   Sem contrato - local
                 </option>
-                <option value="Contrato - local">Contrato - local</option>
-                <option value="Contrato - remoto">Contrato - remoto</option>
+                <option
+                  value="Contrato - local"
+                  disabled={
+                    !!clienteSelecionado &&
+                    !modalidadesPermitidas.includes("Contrato - local")
+                  }
+                >
+                  Contrato - local
+                </option>
+                <option
+                  value="Contrato - remoto"
+                  disabled={
+                    !!clienteSelecionado &&
+                    !modalidadesPermitidas.includes("Contrato - remoto")
+                  }
+                >
+                  Contrato - remoto
+                </option>
               </select>
+              {clienteSelecionado && (
+                <p
+                  className={`text-xs ${
+                    modalidadeValidaParaCliente
+                      ? "text-muted-foreground"
+                      : "text-destructive"
+                  }`}
+                >
+                  {clienteTemContratoVigente
+                    ? "Cliente com contrato vigente na data da visita: use modalidades de contrato."
+                    : "Cliente sem contrato vigente na data da visita: use modalidades sem contrato."}
+                </p>
+              )}
             </div>
 
             {/* Cliente */}

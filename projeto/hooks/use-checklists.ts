@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { apiRequest } from "@/lib/api-client";
+import { getChecklists } from "@/lib/checklist-service";
 import type { ApiChecklist } from "@/lib/types";
 
 export function useChecklists(refetchTrigger = 0) {
@@ -12,7 +12,7 @@ export function useChecklists(refetchTrigger = 0) {
       try {
         setLoading(true);
         setError(null);
-        const data = await apiRequest<ApiChecklist[]>("/checklists");
+        const data = await getChecklists();
         setChecklists(data);
       } catch (err) {
         setError(
