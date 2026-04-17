@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useClientes } from "@/hooks/use-clientes";
 import { useSetores } from "@/hooks/use-setores";
@@ -13,6 +13,7 @@ import { toast } from "sonner";
 
 interface Horario {
   id: string;
+  periodo: "Manhã" | "Tarde" | "Noite";
   horaChegada: string;
   horaSaida: string;
 }
@@ -27,6 +28,29 @@ const MODALIDADES_SEM_CONTRATO = [
   "Sem contrato - remoto",
 ];
 
+function computeTotalHoras(start: string, end: string) {
+  if (!start || !end) return "00:00";
+  const [startHour, startMinute] = start.split(":").map(Number);
+  const [endHour, endMinute] = end.split(":").map(Number);
+
+  if (
+    Number.isNaN(startHour) ||
+    Number.isNaN(startMinute) ||
+    Number.isNaN(endHour) ||
+    Number.isNaN(endMinute)
+  ) {
+    return "00:00";
+  }
+
+  const startInMinutes = startHour * 60 + startMinute;
+  const endInMinutes = endHour * 60 + endMinute;
+  const totalInMinutes = Math.max(0, endInMinutes - startInMinutes);
+
+  const totalHours = String(Math.floor(totalInMinutes / 60)).padStart(2, "0");
+  const totalMinutes = String(totalInMinutes % 60).padStart(2, "0");
+  return `${totalHours}:${totalMinutes}`;
+}
+
 export function ReportForm({ reportId }: ReportFormProps) {
   const navigate = useNavigate();
   const isEditing = !!reportId;
@@ -40,9 +64,13 @@ export function ReportForm({ reportId }: ReportFormProps) {
   const [dataVisita, setDataVisita] = useState("");
   const [clienteId, setClienteId] = useState<number | null>(null);
   const [contatoId, setContatoId] = useState<number | null>(null);
+  const [contatoCargo, setContatoCargo] = useState("");
   const [modalidadeServico, setModalidadeServico] = useState<string>(
     "Sem contrato - remoto",
   );
+  const [numeroContrato, setNumeroContrato] = useState("");
+  const [localizacaoCidade, setLocalizacaoCidade] = useState("");
+  const [localizacaoEstado, setLocalizacaoEstado] = useState("");
   const [observacoes, setObservacoes] = useState("");
   const [selectedTecnicos, setSelectedTecnicos] = useState<string[]>([]);
   const [selectedChecklists, setSelectedChecklists] = useState<number[]>([]);
@@ -57,9 +85,13 @@ export function ReportForm({ reportId }: ReportFormProps) {
       setDataVisita(relatorio.dataVisita.split("T")[0]);
       setClienteId(relatorio.clienteId);
       setContatoId(relatorio.contatoId ?? null);
+      setContatoCargo(relatorio.contatoCargo ?? relatorio.contato?.cargo ?? "");
       setModalidadeServico(
         relatorio.modalidadeServico || "Sem contrato - remoto",
       );
+      setNumeroContrato(relatorio.numeroContrato ?? "");
+      setLocalizacaoCidade(relatorio.localizacaoCidade ?? "");
+      setLocalizacaoEstado(relatorio.localizacaoEstado ?? "");
       setObservacoes(relatorio.observacoes ?? "");
       setSelectedTecnicos(relatorio.tecnicos.map((t) => String(t.id)));
       setSelectedChecklists(relatorio.checklists.map((c) => c.checklistId));
@@ -67,6 +99,7 @@ export function ReportForm({ reportId }: ReportFormProps) {
       if (relatorio.horarios && Array.isArray(relatorio.horarios)) {
         const horariosEditando = relatorio.horarios.map((h: any) => ({
           id: crypto.randomUUID(),
+          periodo: (h.periodo as "Manhã" | "Tarde" | "Noite") || "Manhã",
           horaChegada: new Date(h.horaChegada).toLocaleTimeString("pt-BR", {
             hour: "2-digit",
             minute: "2-digit",
@@ -89,10 +122,34 @@ export function ReportForm({ reportId }: ReportFormProps) {
   useEffect(() => {
     if (!isEditing) {
       setContatoId(null);
+      setContatoCargo("");
     }
   }, [clienteId]);
 
   const clienteSelecionado = clientes.find((c) => c.id === clienteId) ?? null;
+  const contatoSelecionado =
+    clienteSelecionado?.contatos.find((contato) => contato.id === contatoId) ??
+    null;
+
+  const contratosVigentes = useMemo(() => {
+    if (!clienteSelecionado || !dataVisita) return [];
+
+    const visitDate = new Date(dataVisita);
+    if (Number.isNaN(visitDate.getTime())) return [];
+
+    return clienteSelecionado.contratos.filter((contrato) => {
+      if (!contrato.ativo) return false;
+      const contractStart = new Date(contrato.dataInicio);
+      const contractEnd = new Date(contrato.dataFim);
+      if (
+        Number.isNaN(contractStart.getTime()) ||
+        Number.isNaN(contractEnd.getTime())
+      ) {
+        return false;
+      }
+      return visitDate >= contractStart && visitDate <= contractEnd;
+    });
+  }, [clienteSelecionado, dataVisita]);
 
   function hasActiveContractForDate() {
     if (!clienteSelecionado || !dataVisita) return false;
@@ -131,6 +188,29 @@ export function ReportForm({ reportId }: ReportFormProps) {
     ? MODALIDADES_COM_CONTRATO
     : MODALIDADES_SEM_CONTRATO;
 
+  const exibirContrato = modalidadeEhContrato && contratosVigentes.length > 0;
+
+  const totalHorasGerais = useMemo(() => {
+    const totalMinutos = horarios.reduce((acc, horario) => {
+      const [iniH, iniM] = horario.horaChegada.split(":").map(Number);
+      const [fimH, fimM] = horario.horaSaida.split(":").map(Number);
+      if (
+        Number.isNaN(iniH) ||
+        Number.isNaN(iniM) ||
+        Number.isNaN(fimH) ||
+        Number.isNaN(fimM)
+      ) {
+        return acc;
+      }
+      const delta = Math.max(0, fimH * 60 + fimM - (iniH * 60 + iniM));
+      return acc + delta;
+    }, 0);
+
+    const horas = String(Math.floor(totalMinutos / 60)).padStart(2, "0");
+    const minutos = String(totalMinutos % 60).padStart(2, "0");
+    return `${horas}:${minutos}`;
+  }, [horarios]);
+
   useEffect(() => {
     if (!clienteSelecionado) return;
 
@@ -143,6 +223,43 @@ export function ReportForm({ reportId }: ReportFormProps) {
     }
   }, [clienteSelecionado, clienteTemContratoVigente, modalidadeServico]);
 
+  useEffect(() => {
+    if (!contatoSelecionado) {
+      if (!contatoId) {
+        setContatoCargo("");
+      }
+      return;
+    }
+
+    setContatoCargo(contatoSelecionado.cargo ?? "");
+  }, [contatoSelecionado, contatoId]);
+
+  useEffect(() => {
+    if (!clienteSelecionado) {
+      setNumeroContrato("");
+      setLocalizacaoCidade("");
+      setLocalizacaoEstado("");
+      return;
+    }
+
+    setLocalizacaoCidade(clienteSelecionado.cidade ?? "");
+    setLocalizacaoEstado(clienteSelecionado.estado ?? "");
+  }, [clienteSelecionado]);
+
+  useEffect(() => {
+    if (!exibirContrato) {
+      setNumeroContrato("");
+      return;
+    }
+
+    if (
+      !numeroContrato ||
+      !contratosVigentes.some((c) => c.numeroContrato === numeroContrato)
+    ) {
+      setNumeroContrato(contratosVigentes[0]?.numeroContrato ?? "");
+    }
+  }, [exibirContrato, contratosVigentes, numeroContrato]);
+
   const filteredClientes = clientSearch
     ? clientes.filter(
         (c) =>
@@ -151,9 +268,38 @@ export function ReportForm({ reportId }: ReportFormProps) {
       )
     : clientes;
 
+  const tecnicosSelecionadosNomes = selectedTecnicos
+    .map((id) => tecnicos.find((t) => String(t.id) === id)?.nome)
+    .filter((nome): nome is string => Boolean(nome));
+
+  const checklistsSelecionadosNomes = selectedChecklists
+    .map((id) => checklists.find((checklist) => checklist.id === id)?.nome)
+    .filter((nome): nome is string => Boolean(nome));
+
+  const setoresSelecionadosNomes = selectedSetores
+    .map((id) => setores.find((setor) => String(setor.id) === id)?.nome)
+    .filter((nome): nome is string => Boolean(nome));
+
+  const observacoesPreview = useMemo(() => {
+    if (!observacoes) return "";
+    return observacoes
+      .replace(/<[^>]*>/g, " ")
+      .replace(/&nbsp;/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+  }, [observacoes]);
+
+  const dataVisitaPreview = useMemo(() => {
+    if (!dataVisita) return "-";
+    const parsed = new Date(dataVisita);
+    if (Number.isNaN(parsed.getTime())) return dataVisita;
+    return parsed.toLocaleDateString("pt-BR");
+  }, [dataVisita]);
+
   function addHorario() {
     const novoHorario: Horario = {
       id: crypto.randomUUID(),
+      periodo: "Manhã",
       horaChegada: "08:00",
       horaSaida: "12:00",
     };
@@ -185,13 +331,22 @@ export function ReportForm({ reportId }: ReportFormProps) {
       return;
     }
 
+    if (exibirContrato && !numeroContrato) {
+      toast.error("Selecione o número do contrato para atendimento em contrato.");
+      return;
+    }
+
     setSaving(true);
 
     const payload = {
       clienteId,
       contatoId: contatoId ?? undefined,
+      contatoCargo: contatoCargo.trim() || undefined,
       dataVisita: new Date(dataVisita).toISOString(),
       modalidadeServico,
+      numeroContrato: exibirContrato ? numeroContrato || undefined : undefined,
+      localizacaoCidade: localizacaoCidade.trim() || undefined,
+      localizacaoEstado: localizacaoEstado.trim() || undefined,
       observacoes: observacoes.trim() || undefined,
       tecnicos: selectedTecnicos
         .map((id) => {
@@ -204,8 +359,10 @@ export function ReportForm({ reportId }: ReportFormProps) {
         observacao: undefined,
       })),
       horarios: horarios.map((h) => ({
+        periodo: h.periodo,
         horaChegada: h.horaChegada,
         horaSaida: h.horaSaida,
+        totalHoras: computeTotalHoras(h.horaChegada, h.horaSaida),
       })),
       checklists: selectedChecklists.map((id) => ({ checklistId: id })),
     };
@@ -337,6 +494,24 @@ export function ReportForm({ reportId }: ReportFormProps) {
               )}
             </div>
 
+            {exibirContrato && (
+              <div className="flex flex-col gap-2">
+                <Label htmlFor="numero-contrato">Número do Contrato</Label>
+                <select
+                  id="numero-contrato"
+                  value={numeroContrato}
+                  onChange={(e) => setNumeroContrato(e.target.value)}
+                  className="flex h-10 w-full rounded-md border border-border bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                >
+                  {contratosVigentes.map((contrato) => (
+                    <option key={contrato.id} value={contrato.numeroContrato}>
+                      {contrato.numeroContrato}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
             {/* Cliente */}
             <div className="flex flex-col gap-2 sm:col-span-2">
               <Label>Cliente</Label>
@@ -396,6 +571,25 @@ export function ReportForm({ reportId }: ReportFormProps) {
               )}
             </div>
 
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="localizacao-cidade">Cidade</Label>
+              <Input
+                id="localizacao-cidade"
+                value={localizacaoCidade}
+                onChange={(e) => setLocalizacaoCidade(e.target.value)}
+                placeholder="Cidade do atendimento"
+              />
+            </div>
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="localizacao-estado">Estado</Label>
+              <Input
+                id="localizacao-estado"
+                value={localizacaoEstado}
+                onChange={(e) => setLocalizacaoEstado(e.target.value)}
+                placeholder="UF"
+              />
+            </div>
+
             {/* Contato - só mostra se cliente selecionado tem contatos */}
             {clienteSelecionado && clienteSelecionado.contatos.length > 0 && (
               <div className="flex flex-col gap-2 sm:col-span-2">
@@ -432,6 +626,27 @@ export function ReportForm({ reportId }: ReportFormProps) {
                     </button>
                   ))}
                 </div>
+                <div className="mt-2 flex flex-col gap-2">
+                  <Label htmlFor="contato-cargo">Função/Cargo</Label>
+                  <Input
+                    id="contato-cargo"
+                    value={contatoCargo}
+                    onChange={(e) => setContatoCargo(e.target.value)}
+                    placeholder="Informe o cargo do contato"
+                  />
+                </div>
+              </div>
+            )}
+
+            {clienteSelecionado && clienteSelecionado.contatos.length === 0 && (
+              <div className="flex flex-col gap-2 sm:col-span-2">
+                <Label htmlFor="contato-cargo">Função/Cargo</Label>
+                <Input
+                  id="contato-cargo"
+                  value={contatoCargo}
+                  onChange={(e) => setContatoCargo(e.target.value)}
+                  placeholder="Informe o cargo do contato"
+                />
               </div>
             )}
 
@@ -529,9 +744,27 @@ export function ReportForm({ reportId }: ReportFormProps) {
                 key={horario.id}
                 className="flex items-center gap-2 rounded-lg border border-border p-3"
               >
-                <div className="flex flex-1 items-center gap-2">
-                  <div className="flex flex-col gap-1 flex-1">
-                    <Label className="text-xs">Início</Label>
+                <div className="grid flex-1 gap-2 sm:grid-cols-4">
+                  <div className="flex flex-col gap-1">
+                    <Label className="text-xs">Período</Label>
+                    <select
+                      value={horario.periodo}
+                      onChange={(e) =>
+                        updateHorario(
+                          horario.id,
+                          "periodo",
+                          e.target.value as "Manhã" | "Tarde" | "Noite",
+                        )
+                      }
+                      className="flex h-10 w-full rounded-md border border-border bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                    >
+                      <option value="Manhã">Manhã</option>
+                      <option value="Tarde">Tarde</option>
+                      <option value="Noite">Noite</option>
+                    </select>
+                  </div>
+                  <div className="flex flex-col gap-1">
+                    <Label className="text-xs">Hora Inicial</Label>
                     <Input
                       type="time"
                       value={horario.horaChegada}
@@ -540,9 +773,8 @@ export function ReportForm({ reportId }: ReportFormProps) {
                       }
                     />
                   </div>
-                  <span className="text-muted-foreground mt-5">–</span>
-                  <div className="flex flex-col gap-1 flex-1">
-                    <Label className="text-xs">Fim</Label>
+                  <div className="flex flex-col gap-1">
+                    <Label className="text-xs">Hora Final</Label>
                     <Input
                       type="time"
                       value={horario.horaSaida}
@@ -551,12 +783,22 @@ export function ReportForm({ reportId }: ReportFormProps) {
                       }
                     />
                   </div>
+                  <div className="flex flex-col gap-1">
+                    <Label className="text-xs">Total de Horas</Label>
+                    <Input
+                      value={computeTotalHoras(
+                        horario.horaChegada,
+                        horario.horaSaida,
+                      )}
+                      readOnly
+                    />
+                  </div>
                 </div>
                 <Button
                   type="button"
                   variant="ghost"
                   size="icon"
-                  className="mt-5"
+                  className="self-end"
                   onClick={() => removeHorario(horario.id)}
                 >
                   <X className="h-4 w-4" />
@@ -569,6 +811,133 @@ export function ReportForm({ reportId }: ReportFormProps) {
                 começar.
               </p>
             )}
+          </div>
+        </section>
+
+        {/* Seção 6 - Resumo de Revisão (Preview PDF) */}
+        <section className="rounded-2xl border border-border p-6">
+          <h2 className="mb-2 text-lg font-medium text-foreground">
+            Resumo de Revisão
+          </h2>
+          <p className="mb-4 text-sm text-muted-foreground">
+            Pré-visualização dos dados no formato do relatório final.
+          </p>
+
+          <div className="space-y-4 rounded-xl border border-border bg-background p-4">
+            <div className="text-center">
+              <p className="text-sm font-semibold">RELATÓRIO DE ATENDIMENTO TÉCNICO</p>
+              <p className="text-xs text-muted-foreground">
+                Relatório Nº {isEditing ? reportId : "Novo"} | Data:{" "}
+                {dataVisitaPreview}
+              </p>
+            </div>
+
+            <div className="rounded-lg border border-border p-3">
+              <p className="mb-2 text-xs uppercase tracking-wide text-muted-foreground">
+                Informações do Cliente
+              </p>
+              <p className="text-sm">
+                <span className="font-medium">Cliente:</span>{" "}
+                {clienteSelecionado?.nomeFantasia || "-"}
+              </p>
+              <p className="text-sm">
+                <span className="font-medium">Contato:</span>{" "}
+                {contatoSelecionado?.nome || "-"}{" "}
+                <span className="font-medium">Função/Cargo:</span>{" "}
+                {contatoCargo || "-"}{" "}
+                <span className="font-medium">Cidade:</span>{" "}
+                {[localizacaoCidade, localizacaoEstado]
+                  .filter(Boolean)
+                  .join("/") || "-"}
+              </p>
+              <p className="text-sm">
+                <span className="font-medium">Modalidade de atendimento:</span>{" "}
+                {modalidadeServico}
+                {exibirContrato && numeroContrato
+                  ? ` | Nº contrato: ${numeroContrato}`
+                  : ""}
+              </p>
+              <p className="text-sm">
+                <span className="font-medium">Técnico designado:</span>{" "}
+                {tecnicosSelecionadosNomes.join(", ") || "-"}
+              </p>
+            </div>
+
+            <div className="rounded-lg border border-border p-3">
+              <p className="mb-2 text-xs uppercase tracking-wide text-muted-foreground">
+                Detalhamento dos Serviços
+              </p>
+              <p className="text-sm">
+                <span className="font-medium">Setores:</span>{" "}
+                {setoresSelecionadosNomes.join(", ") || "-"}
+              </p>
+              <p className="text-sm">
+                <span className="font-medium">Checklists:</span>{" "}
+                {checklistsSelecionadosNomes.join(", ") || "-"}
+              </p>
+              <p className="text-sm">
+                {observacoesPreview || "Sem observações preenchidas."}
+              </p>
+            </div>
+
+            <div className="rounded-lg border border-border p-3">
+              <p className="mb-2 text-xs uppercase tracking-wide text-muted-foreground">
+                Detalhamento de Horários
+              </p>
+              {horarios.length === 0 ? (
+                <p className="text-sm text-muted-foreground">
+                  Nenhum horário informado.
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  {horarios.map((horario, index) => (
+                    <div
+                      key={horario.id}
+                      className="rounded-lg border border-border bg-background p-3 text-sm"
+                    >
+                      <p>
+                        <span className="font-medium">Linha {index + 1}:</span>{" "}
+                        {horario.periodo}
+                      </p>
+                      <p>
+                        Hora Inicial: {horario.horaChegada} | Hora Final:{" "}
+                        {horario.horaSaida}
+                      </p>
+                      <p>
+                        Total de Horas:{" "}
+                        {computeTotalHoras(horario.horaChegada, horario.horaSaida)}
+                      </p>
+                    </div>
+                  ))}
+                  <p className="text-sm font-medium">
+                    Total Geral de Horas: {totalHorasGerais}
+                  </p>
+                </div>
+              )}
+            </div>
+
+            <div className="rounded-lg border border-border p-3">
+              <p className="mb-3 text-xs uppercase tracking-wide text-muted-foreground">
+                Assinatura dos Responsáveis
+              </p>
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="rounded-md border border-dashed border-border p-3 text-sm">
+                  <p className="font-medium">
+                    {tecnicosSelecionadosNomes[0] || "Técnico Responsável"}
+                  </p>
+                  <p className="text-xs text-muted-foreground">LINQ INFORMÁTICA</p>
+                </div>
+                <div className="rounded-md border border-dashed border-border p-3 text-sm">
+                  <p className="font-medium">{contatoSelecionado?.nome || "Contato"}</p>
+                  <p className="text-xs text-muted-foreground">
+                    {clienteSelecionado?.nomeFantasia || "Cliente"}
+                  </p>
+                </div>
+              </div>
+              <p className="mt-3 text-xs text-muted-foreground">
+                LINQ INFORMÁTICA - Rua Geraldo Pereira, 338 - Sala 704 - Estrela/RS
+              </p>
+            </div>
           </div>
         </section>
 

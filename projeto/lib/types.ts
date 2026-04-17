@@ -142,6 +142,7 @@ export interface ReportTecnico {
 export interface ReportContato {
   id: number;
   nome: string;
+  cargo?: string | null;
 }
 
 export interface ReportCliente {
@@ -179,17 +180,23 @@ export interface ReportChecklist {
 
 export interface ReportHorario {
   id: number;
+  periodo?: "Manhã" | "Tarde" | "Noite";
   horaChegada: string;
   horaSaida: string;
+  totalHoras?: string;
 }
 
 export interface ApiReport {
   id: number;
   clienteId: number;
   contatoId: number | null;
+  contatoCargo?: string | null;
   criadoPorId: number;
   dataVisita: string;
   modalidadeServico?: string;
+  numeroContrato?: string | null;
+  localizacaoCidade?: string | null;
+  localizacaoEstado?: string | null;
   observacoes: string | null;
   impresso: boolean;
   createdAt: string;
