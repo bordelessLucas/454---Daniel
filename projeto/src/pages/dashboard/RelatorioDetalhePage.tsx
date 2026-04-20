@@ -5,7 +5,8 @@ import { useChecklists } from "@/hooks/use-checklists";
 import { Badge, Button } from "@/components/index";
 import { ArrowLeft, Pencil, FileDown, Loader2 } from "lucide-react";
 import { ApiError } from "@/lib/api-client";
-import { downloadRelatorioPdf } from "@/lib/relatorios-service";
+import { fetchRelatorioParaPdf } from "@/lib/relatorios-service";
+import { buildRelatorioPdfBlob } from "@/components/RelatorioPDF";
 import { buildRelatorioPdfFilename, downloadBlobFile } from "@/lib/utils";
 import { toast } from "sonner";
 
@@ -47,7 +48,8 @@ export default function RelatorioDetalhePage() {
     setDownloadingPdf(true);
 
     try {
-      const { blob } = await downloadRelatorioPdf(report.id);
+      const relatorioPdf = await fetchRelatorioParaPdf(report.id);
+      const blob = await buildRelatorioPdfBlob(relatorioPdf);
       const reportDate = new Date(report.dataVisita);
       const datePart = Number.isNaN(reportDate.getTime())
         ? "Data"

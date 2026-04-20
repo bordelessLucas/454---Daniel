@@ -3,7 +3,8 @@ import { useNavigate } from "react-router-dom";
 import { useRelatorios } from "@/hooks/use-relatorios";
 import type { ApiReport } from "@/lib/types";
 import { ApiError, apiRequest } from "@/lib/api-client";
-import { downloadRelatorioPdf } from "@/lib/relatorios-service";
+import { fetchRelatorioParaPdf } from "@/lib/relatorios-service";
+import { buildRelatorioPdfBlob } from "@/components/RelatorioPDF";
 import { buildRelatorioPdfFilename, downloadBlobFile } from "@/lib/utils";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { PageHeader } from "@/components/page-header";
@@ -184,7 +185,8 @@ export default function RelatoriosPage() {
     setDownloadingIds((prev) => new Set(prev).add(reportId));
 
     try {
-      const { blob } = await downloadRelatorioPdf(reportId);
+      const relatorioPdf = await fetchRelatorioParaPdf(reportId);
+      const blob = await buildRelatorioPdfBlob(relatorioPdf);
       downloadBlobFile(blob, getPdfFilename(report));
       setRefetchTrigger((p) => p + 1);
       toast.success("PDF baixado com sucesso.");

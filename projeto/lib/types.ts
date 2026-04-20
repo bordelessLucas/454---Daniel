@@ -149,6 +149,9 @@ export interface ReportCliente {
   id: number;
   razaoSocial: string;
   nomeFantasia: string;
+  /** Presentes na API quando o backend envia o cliente completo (ex.: PDF). */
+  cidade?: string;
+  estado?: string;
 }
 
 export interface ReportCriadoPor {
