@@ -1,5 +1,6 @@
 import {
   Document,
+  Font,
   Image,
   Page,
   StyleSheet,
@@ -10,12 +11,29 @@ import {
 import type { ApiReport } from "@/lib/types";
 import { tipTapHtmlToPdfParagraphs } from "@/lib/tiptap-html-to-pdf";
 
+Font.register({
+  family: "Inter",
+  fonts: [
+    {
+      src: `${typeof window !== "undefined" ? window.location.origin : ""}/fonts/Inter-Regular.woff`,
+      fontWeight: 400,
+    },
+    {
+      src: `${typeof window !== "undefined" ? window.location.origin : ""}/fonts/Inter-SemiBold.woff`,
+      fontWeight: 600,
+    },
+    {
+      src: `${typeof window !== "undefined" ? window.location.origin : ""}/fonts/Inter-Bold.woff`,
+      fontWeight: 700,
+    },
+  ],
+});
+
 const LINQ_ADDRESS = [
   "LINQ INFORMÁTICA",
   "Rua Geraldo Pereira, 338 - Sala 704",
   "Alto da Bronze, Estrela/RS - CEP: 95.880-000",
   "Suporte: 51 3720-4462",
-  "www.linq.com.br",
 ] as const;
 
 const LEGAL =
@@ -26,171 +44,227 @@ const LEGAL =
 const styles = StyleSheet.create({
   page: {
     fontFamily: "Helvetica",
-    fontSize: 10,
-    color: "#111827",
-    paddingTop: 28,
-    paddingBottom: 36,
-    paddingHorizontal: 28,
+    fontSize: 9,
+    color: "#111111",
+    paddingTop: 16,
+    paddingBottom: 16,
+    paddingHorizontal: 16,
   },
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
-    alignItems: "flex-start",
-    marginBottom: 14,
+    alignItems: "center",
+    marginBottom: 8,
+    borderBottomWidth: 2,
+    borderBottomColor: "#111111",
+    paddingBottom: 8,
   },
   logoBox: {
-    width: 160,
-    minHeight: 48,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    width: 130,
+  },
+  logoText: {
+    fontFamily: "Inter",
+    fontWeight: 600,
+    fontSize: 17,
+    color: "#111111",
+  },
+  titleBox: {
+    flex: 1,
+    alignItems: "center",
     justifyContent: "center",
+    paddingHorizontal: 10,
+  },
+  pageTitle: {
+    fontFamily: "Inter",
+    fontWeight: 700,
+    fontSize: 13,
+    textTransform: "uppercase",
+    textAlign: "center",
+  },
+  headerMeta: {
+    width: 110,
+    alignItems: "flex-end",
   },
   logoFallback: {
-    fontSize: 20,
-    fontWeight: "bold",
-    color: "#b91c1c",
+    fontFamily: "Inter",
+    fontWeight: 600,
+    fontSize: 17,
+    color: "#111111",
   },
-  company: {
-    alignItems: "flex-end",
-    maxWidth: 220,
-  },
-  companyLine: {
+  metaLine: {
+    fontFamily: "Inter",
+    fontWeight: 400,
     fontSize: 9,
-    lineHeight: 1.4,
     textAlign: "right",
-  },
-  companyStrong: {
-    fontFamily: "Helvetica-Bold",
-    fontSize: 9,
     marginBottom: 2,
-    textAlign: "right",
   },
-  title: {
-    fontSize: 16,
-    fontFamily: "Helvetica-Bold",
-    textTransform: "uppercase",
-    marginBottom: 4,
-  },
-  subtitle: {
-    fontSize: 10,
-    color: "#4b5563",
-    marginBottom: 10,
-  },
-  section: {
-    borderTopWidth: 1,
-    borderTopColor: "#d1d5db",
-    paddingTop: 10,
-    marginTop: 10,
+  sectionTitleWrap: {
+    backgroundColor: "#111111",
+    borderWidth: 1,
+    borderColor: "#111111",
+    paddingVertical: 4,
+    paddingHorizontal: 8,
   },
   sectionTitle: {
-    fontSize: 11,
+    color: "#ffffff",
+    fontSize: 10,
     fontFamily: "Helvetica-Bold",
     textTransform: "uppercase",
-    marginBottom: 8,
   },
-  infoGrid: {
+  sectionBody: {
+    borderWidth: 1,
+    borderTopWidth: 0,
+    borderColor: "#111111",
+    padding: 8,
+    marginBottom: 10,
+  },
+  infoRow: {
     flexDirection: "row",
     flexWrap: "wrap",
-    marginTop: 4,
+    marginBottom: 3,
   },
-  infoItem: {
-    width: "50%",
-    borderBottomWidth: 1,
-    borderBottomColor: "#e5e7eb",
-    paddingBottom: 5,
-    paddingRight: 8,
-    marginBottom: 6,
+  infoLine: {
+    marginRight: 14,
+    marginBottom: 2,
+  },
+  infoLineFull: {
+    width: "100%",
+    marginBottom: 2,
   },
   label: {
     fontFamily: "Helvetica-Bold",
-    color: "#374151",
   },
-  servicoParagraph: {
-    lineHeight: 1.5,
-    marginBottom: 6,
+  servicesBody: {
+    borderWidth: 1,
+    borderTopWidth: 0,
+    borderColor: "#111111",
+    paddingTop: 8,
+    paddingBottom: 8,
+    paddingHorizontal: 8,
+    minHeight: 250,
+    marginBottom: 10,
   },
-  servicoLine: {
-    lineHeight: 1.45,
+  setorTitle: {
+    fontFamily: "Helvetica-Bold",
+    textTransform: "uppercase",
     marginBottom: 2,
   },
-  table: {
+  bulletLine: {
+    marginLeft: 10,
+    marginBottom: 3,
+  },
+  paragraphBlock: {
+    marginBottom: 7,
+  },
+  servicoLine: {
+    lineHeight: 1.4,
+    marginBottom: 2,
+  },
+  emptyLine: {
+    color: "#4b5563",
+  },
+  bottomGrid: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 10,
+  },
+  bottomColSm: {
+    width: "36%",
+  },
+  bottomColLg: {
+    width: "62%",
+  },
+  highlightTitleWrap: {
+    backgroundColor: "#eab308",
     borderWidth: 1,
-    borderColor: "#d1d5db",
-    marginTop: 4,
+    borderColor: "#111111",
+    paddingVertical: 3,
+    paddingHorizontal: 8,
   },
-  tableRow: {
-    flexDirection: "row",
-    borderBottomWidth: 1,
-    borderBottomColor: "#d1d5db",
-  },
-  tableRowLast: {
-    flexDirection: "row",
-    borderBottomWidth: 0,
-  },
-  th: {
-    flex: 1,
-    backgroundColor: "#f9fafb",
-    padding: 6,
+  highlightTitle: {
     fontFamily: "Helvetica-Bold",
-    fontSize: 9,
-    borderRightWidth: 1,
-    borderRightColor: "#d1d5db",
+    fontSize: 9.5,
+    textTransform: "uppercase",
   },
-  thLast: {
-    flex: 1,
-    backgroundColor: "#f9fafb",
-    padding: 6,
+  highlightBody: {
+    borderWidth: 1,
+    borderTopWidth: 0,
+    borderColor: "#111111",
+    padding: 8,
+    minHeight: 120,
+  },
+  horarioLine: {
+    marginBottom: 4,
+  },
+  totalHoras: {
+    marginTop: 2,
     fontFamily: "Helvetica-Bold",
-    fontSize: 9,
   },
-  td: {
-    flex: 1,
-    padding: 6,
-    fontSize: 9,
-    borderRightWidth: 1,
-    borderRightColor: "#d1d5db",
-  },
-  tdLast: {
-    flex: 1,
-    padding: 6,
-    fontSize: 9,
-  },
-  tableFooter: {
-    marginTop: 6,
-    textAlign: "right",
-    fontFamily: "Helvetica-Bold",
-    fontSize: 9,
-  },
-  legal: {
-    marginTop: 12,
-    fontSize: 9,
-    color: "#374151",
-    lineHeight: 1.45,
+  legalText: {
+    fontSize: 7.5,
+    lineHeight: 1.25,
+    marginBottom: 10,
   },
   signatures: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginTop: 28,
-    paddingTop: 8,
+    marginTop: 20,
   },
   signCol: {
-    width: "42%",
+    width: "46%",
     alignItems: "center",
   },
   signLine: {
-    borderTopWidth: 1,
-    borderTopColor: "#111827",
     width: "100%",
-    marginBottom: 6,
-    marginTop: 22,
+    borderTopWidth: 1,
+    borderTopColor: "#111111",
+    marginBottom: 5,
   },
   signName: {
     fontFamily: "Helvetica-Bold",
-    fontSize: 10,
     textAlign: "center",
   },
   signHint: {
-    fontSize: 9,
+    fontSize: 8,
     textAlign: "center",
-    color: "#4b5563",
+  },
+  footer: {
+    borderTopWidth: 1,
+    borderTopColor: "#111111",
+    paddingTop: 8,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-end",
+  },
+  footerLeftLine: {
+    fontSize: 8,
+    lineHeight: 1.35,
+  },
+  footerCenter: {
+    alignItems: "center",
+  },
+  footerWeb1: {
+    fontSize: 15,
+    fontFamily: "Helvetica-Bold",
+  },
+  footerWeb2: {
+    fontSize: 12,
+    fontFamily: "Helvetica-Bold",
+  },
+  qrPlaceholder: {
+    width: 46,
+    height: 46,
+    borderWidth: 1,
+    borderColor: "#111111",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  qrText: {
+    fontSize: 8,
+    fontFamily: "Helvetica-Bold",
   },
 });
 
@@ -206,19 +280,19 @@ function parseDate(iso: string): Date | null {
   return Number.isNaN(d.getTime()) ? null : d;
 }
 
-function formatDatePdf(d: Date): string {
-  return d.toLocaleDateString("pt-BR", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-  });
-}
-
 function formatTimePdf(d: Date): string {
   return d.toLocaleTimeString("pt-BR", {
     hour: "2-digit",
     minute: "2-digit",
     hour12: false,
+  });
+}
+
+function formatDatePdf(d: Date): string {
+  return d.toLocaleDateString("pt-BR", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "numeric",
   });
 }
 
@@ -267,11 +341,8 @@ export type RelatorioPDFProps = {
 };
 
 export function RelatorioPDF({ relatorio, logoUrl }: RelatorioPDFProps) {
-  const envLogo =
-    logoUrl?.trim() ||
-    (typeof import.meta.env.VITE_RELATORIO_LOGO_URL === "string"
-      ? import.meta.env.VITE_RELATORIO_LOGO_URL.trim()
-      : "");
+  const origin = typeof window !== "undefined" ? window.location.origin : "";
+  const iconUrl = logoUrl?.trim() || `${origin}/LogoIcon.png`;
 
   const tecnicosList = relatorio.tecnicos ?? [];
   const horariosList = [...(relatorio.horarios ?? [])].sort((a, b) => {
@@ -279,16 +350,20 @@ export function RelatorioPDF({ relatorio, logoUrl }: RelatorioPDFProps) {
     const db = parseDate(b.horaChegada)?.getTime() ?? 0;
     return da - db;
   });
+  const setoresList = relatorio.setores ?? [];
 
   const tecnicoNome = fieldOrNA(
     tecnicosList[0]?.nome ?? relatorio.criadoPor?.nome,
   );
   const contatoNome = fieldOrNA(relatorio.contato?.nome);
+  const contatoCargo = fieldOrNA(relatorio.contatoCargo ?? relatorio.contato?.cargo);
   const clienteNome = fieldOrNA(relatorio.cliente?.nomeFantasia);
   const dataVisita = parseDate(relatorio.dataVisita);
 
   const servicoParagraphs = tipTapHtmlToPdfParagraphs(relatorio.observacoes);
   const showServicoPlaceholder = servicoParagraphs.length === 0;
+  const responsavelCliente =
+    contatoNome !== "N/A" ? contatoNome : "Responsável pelo Cliente";
 
   let totalMs = 0;
   for (const h of horariosList) {
@@ -303,99 +378,91 @@ export function RelatorioPDF({ relatorio, logoUrl }: RelatorioPDFProps) {
       ? formatDuration(new Date(0), new Date(totalMs))
       : "00:00";
 
-  const setoresList = relatorio.setores ?? [];
-  const checklistsList = relatorio.checklists ?? [];
-
-  const responsavelCliente =
-    contatoNome !== "N/A" ? contatoNome : "Responsável do Cliente";
-
   return (
     <Document>
       <Page size="A4" style={styles.page} wrap>
         <View style={styles.header}>
           <View style={styles.logoBox}>
-            {envLogo ? (
-              <Image src={envLogo} style={{ width: 140, height: 48 }} />
-            ) : (
-              <Text style={styles.logoFallback}>LINQ</Text>
-            )}
+            <Image src={iconUrl} style={{ width: 32, height: 41 }} />
+            <Text style={styles.logoText}>Linq</Text>
           </View>
-          <View style={styles.company}>
-            <Text style={styles.companyStrong}>{LINQ_ADDRESS[0]}</Text>
-            <Text style={styles.companyLine}>{LINQ_ADDRESS[1]}</Text>
-            <Text style={styles.companyLine}>{LINQ_ADDRESS[2]}</Text>
-            <Text style={styles.companyLine}>{LINQ_ADDRESS[3]}</Text>
-            <Text style={styles.companyLine}>{LINQ_ADDRESS[4]}</Text>
+          <View style={styles.titleBox}>
+            <Text style={styles.pageTitle}>Relatório de Atendimento Técnico</Text>
+          </View>
+          <View style={styles.headerMeta}>
+            <Text style={styles.metaLine}>Relatório Nº {relatorio.id ?? "N/A"}</Text>
+            <Text style={styles.metaLine}>
+              Data: {dataVisita ? formatDatePdf(dataVisita) : "N/A"}
+            </Text>
           </View>
         </View>
 
-        <Text style={styles.title}>Relatório de Atendimento Técnico</Text>
-        <Text style={styles.subtitle}>
-          Relatório Nº {relatorio.id ?? "N/A"} • Data:{" "}
-          {dataVisita ? formatDatePdf(dataVisita) : "N/A"}
-        </Text>
-
-        <View style={styles.section}>
+        <View style={styles.sectionTitleWrap}>
           <Text style={styles.sectionTitle}>Informações do Cliente</Text>
-          <View style={styles.infoGrid}>
-            <View style={styles.infoItem}>
-              <Text>
-                <Text style={styles.label}>Cliente: </Text>
-                {clienteNome}
-              </Text>
-            </View>
-            <View style={styles.infoItem}>
-              <Text>
-                <Text style={styles.label}>Relatório N°: </Text>
-                {relatorio.id ?? "N/A"}
-              </Text>
-            </View>
-            <View style={styles.infoItem}>
-              <Text>
-                <Text style={styles.label}>Data: </Text>
-                {dataVisita ? formatDatePdf(dataVisita) : "N/A"}
-              </Text>
-            </View>
-            <View style={styles.infoItem}>
-              <Text>
-                <Text style={styles.label}>Contato: </Text>
-                {contatoNome}
-              </Text>
-            </View>
-            <View style={styles.infoItem}>
-              <Text>
-                <Text style={styles.label}>Cidade: </Text>
-                {buildCidadeCliente(relatorio)}
-              </Text>
-            </View>
-            <View style={styles.infoItem}>
-              <Text>
-                <Text style={styles.label}>Modalidade: </Text>
-                {fieldOrNA(relatorio.modalidadeServico)}
-              </Text>
-            </View>
-            <View style={styles.infoItem}>
-              <Text>
-                <Text style={styles.label}>Técnico Designado: </Text>
-                {tecnicoNome}
-              </Text>
-            </View>
-            <View style={styles.infoItem}>
-              <Text>
-                <Text style={styles.label}>Emitido em: </Text>
-                {formatDateTimePdf(new Date())}
-              </Text>
-            </View>
+        </View>
+        <View style={styles.sectionBody}>
+          <View style={styles.infoRow}>
+            <Text style={styles.infoLineFull}>
+              <Text style={styles.label}>Cliente: </Text>
+              {clienteNome}
+            </Text>
+          </View>
+          <View style={styles.infoRow}>
+            <Text style={styles.infoLine}>
+              <Text style={styles.label}>Contato: </Text>
+              {contatoNome}
+            </Text>
+            <Text style={styles.infoLine}>
+              <Text style={styles.label}>Função/Cargo Responsável de TI: </Text>
+              {contatoCargo}
+            </Text>
+            <Text style={styles.infoLine}>
+              <Text style={styles.label}>Cidade: </Text>
+              {buildCidadeCliente(relatorio)}
+            </Text>
+          </View>
+          <View style={styles.infoRow}>
+            <Text style={styles.infoLine}>
+              <Text style={styles.label}>Modalidade de atendimento: </Text>
+              {fieldOrNA(relatorio.modalidadeServico)}
+            </Text>
+            <Text style={styles.infoLine}>
+              <Text style={styles.label}>N° contrato: </Text>
+              {fieldOrNA(relatorio.numeroContrato)}
+            </Text>
+          </View>
+          <View style={styles.infoRow}>
+            <Text style={styles.infoLine}>
+              <Text style={styles.label}>Técnico designado: </Text>
+              {tecnicoNome}
+            </Text>
+            <Text style={styles.infoLine}>
+              <Text style={styles.label}>Data da visita: </Text>
+              {dataVisita ? formatDatePdf(dataVisita) : "N/A"}
+            </Text>
           </View>
         </View>
 
-        <View style={styles.section}>
+        <View style={styles.sectionTitleWrap}>
           <Text style={styles.sectionTitle}>Detalhamento dos Serviços</Text>
+        </View>
+        <View style={styles.servicesBody}>
+          {setoresList.length > 0 &&
+            setoresList.map((setor, idx) => (
+              <View key={setor.id ?? idx} style={styles.paragraphBlock}>
+                <Text style={styles.setorTitle}>
+                  {fieldOrNA(setor.setor?.nome)}
+                </Text>
+                {setor.observacao ? (
+                  <Text style={styles.bulletLine}>• {setor.observacao}</Text>
+                ) : null}
+              </View>
+            ))}
           {showServicoPlaceholder ? (
-            <Text style={styles.servicoParagraph}>-</Text>
+            <Text style={styles.emptyLine}>Sem detalhamento informado.</Text>
           ) : (
             servicoParagraphs.map((block, idx) => (
-              <View key={`srv-${idx}`} style={{ marginBottom: 8 }}>
+              <View key={`srv-${idx}`} style={styles.paragraphBlock}>
                 {block.split("\n").map((line, li) => (
                   <Text key={`srv-${idx}-l-${li}`} style={styles.servicoLine}>
                     {line}
@@ -406,129 +473,79 @@ export function RelatorioPDF({ relatorio, logoUrl }: RelatorioPDFProps) {
           )}
         </View>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Detalhamento de Horários</Text>
-          <View style={styles.table}>
-            <View style={styles.tableRow}>
-              <Text style={styles.th}>Período</Text>
-              <Text style={styles.th}>Início</Text>
-              <Text style={styles.th}>Fim</Text>
-              <Text style={styles.thLast}>Total</Text>
+        <View style={styles.bottomGrid}>
+          <View style={styles.bottomColSm}>
+            <View style={styles.highlightTitleWrap}>
+              <Text style={styles.highlightTitle}>Detalhamento de Horários</Text>
             </View>
-            {horariosList.length === 0 ? (
-              <View style={styles.tableRowLast}>
-                <Text style={[styles.tdLast, { flex: 4 }]}>
-                  Sem horários informados
-                </Text>
-              </View>
-            ) : (
-              horariosList.map((h, idx) => {
-                const chegada = parseDate(h.horaChegada);
-                const saida = parseDate(h.horaSaida);
-                const isLast = idx === horariosList.length - 1;
-                const Row = isLast ? styles.tableRowLast : styles.tableRow;
-                return (
-                  <View key={h.id ?? idx} style={Row}>
-                    <Text style={styles.td}>
-                      {chegada ? getPeriodo(chegada) : "N/A"}
-                    </Text>
-                    <Text style={styles.td}>
-                      {chegada ? formatTimePdf(chegada) : "N/A"}
-                    </Text>
-                    <Text style={styles.td}>
-                      {saida ? formatTimePdf(saida) : "N/A"}
-                    </Text>
-                    <Text style={styles.tdLast}>
-                      {chegada && saida
-                        ? formatDuration(chegada, saida)
-                        : "N/A"}
-                    </Text>
-                  </View>
-                );
-              })
-            )}
-          </View>
-          <Text style={styles.tableFooter}>
-            Total de horas: {totalHorasFmt}
-          </Text>
-        </View>
-
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Setores visitados</Text>
-          <View style={styles.table}>
-            <View style={styles.tableRow}>
-              <Text style={styles.th}>Setor</Text>
-              <Text style={styles.thLast}>Observação</Text>
+            <View style={styles.highlightBody}>
+              {horariosList.length === 0 ? (
+                <Text style={styles.emptyLine}>Sem horários informados.</Text>
+              ) : (
+                horariosList.map((h, idx) => {
+                  const chegada = parseDate(h.horaChegada);
+                  const saida = parseDate(h.horaSaida);
+                  return (
+                    <View key={h.id ?? idx} style={{ marginBottom: 6 }}>
+                      <Text style={styles.horarioLine}>
+                        {chegada ? getPeriodo(chegada) : "Período N/A"}
+                      </Text>
+                      <Text style={styles.horarioLine}>
+                        Hora Inicial: {chegada ? formatTimePdf(chegada) : "N/A"}{" "}
+                        Hora Final: {saida ? formatTimePdf(saida) : "N/A"}
+                      </Text>
+                      <Text style={styles.horarioLine}>
+                        Total de Horas:{" "}
+                        {chegada && saida ? formatDuration(chegada, saida) : "N/A"}
+                      </Text>
+                    </View>
+                  );
+                })
+              )}
+              <Text style={styles.totalHoras}>Total de Horas: {totalHorasFmt}</Text>
             </View>
-            {setoresList.length === 0 ? (
-              <View style={styles.tableRowLast}>
-                <Text style={[styles.tdLast, { flex: 2 }]}>
-                  Nenhum setor informado
-                </Text>
-              </View>
-            ) : (
-              setoresList.map((rs, idx) => {
-                const isLast = idx === setoresList.length - 1;
-                const Row = isLast ? styles.tableRowLast : styles.tableRow;
-                return (
-                  <View key={rs.id ?? idx} style={Row}>
-                    <Text style={styles.td}>
-                      {fieldOrNA(rs.setor?.nome)}
-                    </Text>
-                    <Text style={styles.tdLast}>
-                      {fieldOrNA(rs.observacao)}
-                    </Text>
-                  </View>
-                );
-              })
-            )}
           </View>
-        </View>
 
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Checklists</Text>
-          <View style={styles.table}>
-            <View style={styles.tableRow}>
-              <Text style={styles.thLast}>Nome</Text>
+          <View style={styles.bottomColLg}>
+            <View style={styles.highlightTitleWrap}>
+              <Text style={styles.highlightTitle}>Assinatura dos Responsáveis</Text>
             </View>
-            {checklistsList.length === 0 ? (
-              <View style={styles.tableRowLast}>
-                <Text style={styles.tdLast}>
-                  Nenhum checklist vinculado
-                </Text>
+            <View style={styles.highlightBody}>
+              <Text style={styles.legalText}>{LEGAL}</Text>
+              <View style={styles.signatures}>
+                <View style={styles.signCol}>
+                  <View style={styles.signLine} />
+                  <Text style={styles.signName}>{tecnicoNome}</Text>
+                  <Text style={styles.signHint}>LINQ INFORMÁTICA</Text>
+                </View>
+                <View style={styles.signCol}>
+                  <View style={styles.signLine} />
+                  <Text style={styles.signName}>{responsavelCliente}</Text>
+                  <Text style={styles.signHint}>{clienteNome}</Text>
+                </View>
               </View>
-            ) : (
-              checklistsList.map((rc, idx) => {
-                const isLast = idx === checklistsList.length - 1;
-                const Row = isLast ? styles.tableRowLast : styles.tableRow;
-                return (
-                  <View key={rc.id ?? idx} style={Row}>
-                    <Text style={styles.tdLast}>
-                      {fieldOrNA(rc.checklist?.nome)}
-                    </Text>
-                  </View>
-                );
-              })
-            )}
+            </View>
           </View>
         </View>
 
-        <Text style={styles.legal}>{LEGAL}</Text>
-
-        <View style={styles.signatures} wrap={false}>
-          <View style={styles.signCol}>
-            <View style={styles.signLine} />
-            <Text style={styles.signName}>{tecnicoNome}</Text>
-            <Text style={styles.signHint}>Técnico Responsável</Text>
-            <Text style={styles.signHint}>LINQ INFORMÁTICA</Text>
+        <View style={styles.footer}>
+          <View>
+            <Text style={styles.footerLeftLine}>{LINQ_ADDRESS[0]}</Text>
+            <Text style={styles.footerLeftLine}>{LINQ_ADDRESS[1]}</Text>
+            <Text style={styles.footerLeftLine}>{LINQ_ADDRESS[2]}</Text>
+            <Text style={styles.footerLeftLine}>{LINQ_ADDRESS[3]}</Text>
           </View>
-          <View style={styles.signCol}>
-            <View style={styles.signLine} />
-            <Text style={styles.signName}>{responsavelCliente}</Text>
-            <Text style={styles.signHint}>Responsável pelo Cliente</Text>
-            <Text style={styles.signHint}>{clienteNome}</Text>
+          <View style={styles.footerCenter}>
+            <Text style={styles.footerWeb1}>linqbr</Text>
+            <Text style={styles.footerWeb2}>www.linq.com.br</Text>
+          </View>
+          <View style={styles.qrPlaceholder}>
+            <Text style={styles.qrText}>QR</Text>
           </View>
         </View>
+        <Text style={{ fontSize: 8, color: "#4b5563", marginTop: 4 }}>
+          Emitido em {formatDateTimePdf(new Date())}
+        </Text>
       </Page>
     </Document>
   );
