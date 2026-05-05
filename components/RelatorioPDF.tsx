@@ -342,7 +342,7 @@ export type RelatorioPDFProps = {
 
 export function RelatorioPDF({ relatorio, logoUrl }: RelatorioPDFProps) {
   const origin = typeof window !== "undefined" ? window.location.origin : "";
-  const iconUrl = logoUrl?.trim() || `${origin}/LogoIcon.png`;
+  const iconUrl = logoUrl?.trim() || `${origin}/placeholder-logo.svg`;
 
   const tecnicosList = relatorio.tecnicos ?? [];
   const horariosList = [...(relatorio.horarios ?? [])].sort((a, b) => {

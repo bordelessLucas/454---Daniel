@@ -57,7 +57,7 @@ export function AppSidebar() {
         <Link to="/dashboard/relatorios" className="flex items-center gap-3">
           <div>
             <img
-              src="/LogoSideBar.png"
+              src="/placeholder-logo.svg"
               alt="Logo"
               className={state === "collapsed" ? "h-7 w-auto" : "h-10 w-auto"}
             />
