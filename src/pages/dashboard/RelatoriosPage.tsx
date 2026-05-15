@@ -37,9 +37,12 @@ import {
   Search,
 } from "lucide-react";
 import { toast } from "sonner";
+import { useAuth } from "@/lib/auth-context";
+import { userCanEditRelatorio } from "@/lib/relatorio-permissions";
 
 export default function RelatoriosPage() {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [deleteId, setDeleteId] = useState<number | null>(null);
   const [downloadingIds, setDownloadingIds] = useState<Set<number>>(new Set());
   const [filterModalOpen, setFilterModalOpen] = useState(false);
@@ -354,19 +357,21 @@ export default function RelatoriosPage() {
                         >
                           <Eye className="h-4 w-4" />
                         </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-8 w-8"
-                          onClick={() =>
-                            navigate(
-                              `/dashboard/relatorios/${report.id}/editar`,
-                            )
-                          }
-                          aria-label="Editar"
-                        >
-                          <Pencil className="h-4 w-4" />
-                        </Button>
+                        {userCanEditRelatorio(user, report.criadoPorId) ? (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8"
+                            onClick={() =>
+                              navigate(
+                                `/dashboard/relatorios/${report.id}/editar`,
+                              )
+                            }
+                            aria-label="Editar"
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                        ) : null}
                         <Button
                           variant="ghost"
                           size="icon"

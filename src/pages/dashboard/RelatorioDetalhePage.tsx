@@ -9,10 +9,14 @@ import { fetchRelatorioParaPdf } from "@/lib/relatorios-service";
 import { buildRelatorioPdfBlob } from "@/components/RelatorioPDF";
 import { buildRelatorioPdfFilename, downloadBlobFile } from "@/lib/utils";
 import { toast } from "sonner";
+import { RichTextReadonly } from "@/components/RichTextReadonly";
+import { useAuth } from "@/lib/auth-context";
+import { userCanEditRelatorio } from "@/lib/relatorio-permissions";
 
 export default function RelatorioDetalhePage() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const { relatorio: report, loading, error } = useRelatorio(id);
   const { checklists } = useChecklists();
   const [downloadingPdf, setDownloadingPdf] = useState(false);
@@ -139,16 +143,18 @@ export default function RelatorioDetalhePage() {
           </Badge>
         </div>
         <div className="flex gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() =>
-              navigate(`/dashboard/relatorios/${report.id}/editar`)
-            }
-          >
-            <Pencil className="mr-2 h-4 w-4" />
-            Editar
-          </Button>
+          {userCanEditRelatorio(user, report.criadoPorId) ? (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() =>
+                navigate(`/dashboard/relatorios/${report.id}/editar`)
+              }
+            >
+              <Pencil className="mr-2 h-4 w-4" />
+              Editar
+            </Button>
+          ) : null}
           <Button
             variant="outline"
             size="sm"
@@ -237,11 +243,9 @@ export default function RelatorioDetalhePage() {
         {report.observacoes && (
           <section className="rounded-2xl border border-border p-6">
             <h2 className="mb-4 text-lg font-medium text-foreground">
-              Observações
+              Detalhamento dos Serviços
             </h2>
-            <p className="text-sm text-foreground whitespace-pre-wrap">
-              {report.observacoes}
-            </p>
+            <RichTextReadonly html={report.observacoes} />
           </section>
         )}
 

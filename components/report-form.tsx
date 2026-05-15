@@ -1,10 +1,12 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { useClientes } from "@/hooks/use-clientes";
 import { useSetores } from "@/hooks/use-setores";
 import { useTecnicos } from "@/hooks/use-tecnicos";
 import { useChecklists } from "@/hooks/use-checklists";
 import { useRelatorio } from "@/hooks/use-relatorio";
+import { useAuth } from "@/lib/auth-context";
+import { userCanEditRelatorio } from "@/lib/relatorio-permissions";
 import { apiRequest } from "@/lib/api-client";
 import { Button, Input, Label, SelectionField } from "@/components/index";
 import { RichTextEditor } from "@/components/RichTextEditor";
@@ -53,7 +55,9 @@ function computeTotalHoras(start: string, end: string) {
 
 export function ReportForm({ reportId }: ReportFormProps) {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const isEditing = !!reportId;
+  const editAccessDeniedToast = useRef(false);
 
   const { clientes, loading: loadingClientes } = useClientes();
   const { setores, loading: loadingSetores } = useSetores();
@@ -117,6 +121,20 @@ export function ReportForm({ reportId }: ReportFormProps) {
       setDataVisita(new Date().toISOString().split("T")[0]);
     }
   }, [isEditing, relatorio]);
+
+  useEffect(() => {
+    if (!isEditing || loadingRelatorio || !relatorio || !user) {
+      return;
+    }
+    if (userCanEditRelatorio(user, relatorio.criadoPorId)) {
+      return;
+    }
+    if (!editAccessDeniedToast.current) {
+      editAccessDeniedToast.current = true;
+      toast.error("Você só pode editar relatórios criados por você.");
+    }
+    navigate(`/dashboard/relatorios/${relatorio.id}`, { replace: true });
+  }, [isEditing, loadingRelatorio, relatorio, user, navigate]);
 
   // Limpar contato ao trocar cliente
   useEffect(() => {
@@ -397,6 +415,20 @@ export function ReportForm({ reportId }: ReportFormProps) {
     );
   }
 
+  if (
+    isEditing &&
+    !loadingRelatorio &&
+    relatorio &&
+    user &&
+    !userCanEditRelatorio(user, relatorio.criadoPorId)
+  ) {
+    return (
+      <div className="flex items-center justify-center py-16">
+        <p className="text-muted-foreground">Redirecionando...</p>
+      </div>
+    );
+  }
+
   return (
     <div className="mx-auto max-w-4xl">
       <div className="sticky top-0 z-20 -mx-4 mb-6 flex items-center gap-3 border-b border-border bg-background/95 px-4 py-3 backdrop-blur">
@@ -668,15 +700,15 @@ export function ReportForm({ reportId }: ReportFormProps) {
           </div>
         </section>
 
-        {/* Seção 2 - Observações */}
+        {/* Seção 2 - Detalhamento dos Serviços */}
         <section className="rounded-2xl border border-border p-6">
           <h2 className="mb-4 text-lg font-medium text-foreground">
-            Observações
+            Detalhamento dos Serviços
           </h2>
           <RichTextEditor
             value={observacoes}
             onChange={setObservacoes}
-            placeholder="Descreva as observações do serviço realizado..."
+            placeholder="Descreva o detalhamento dos serviços realizados..."
           />
         </section>
 
@@ -876,7 +908,7 @@ export function ReportForm({ reportId }: ReportFormProps) {
                 {checklistsSelecionadosNomes.join(", ") || "-"}
               </p>
               <p className="text-sm">
-                {observacoesPreview || "Sem observações preenchidas."}
+                {observacoesPreview || "Sem detalhamento dos serviços preenchido."}
               </p>
             </div>
 

@@ -58,7 +58,7 @@ function ToolbarButton({
 export function RichTextEditor({
   value,
   onChange,
-  placeholder = "Descreva as observações do serviço realizado...",
+  placeholder = "Descreva o detalhamento dos serviços realizados...",
 }: RichTextEditorProps) {
   const editor = useEditor({
     extensions: [

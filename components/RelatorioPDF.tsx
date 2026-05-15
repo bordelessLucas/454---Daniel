@@ -9,7 +9,10 @@ import {
   pdf,
 } from "@react-pdf/renderer";
 import type { ApiReport } from "@/lib/types";
-import { tipTapHtmlToPdfParagraphs } from "@/lib/tiptap-html-to-pdf";
+import {
+  tipTapHtmlToServicoPdfBlocks,
+  type ServicoPdfSegment,
+} from "@/lib/tiptap-html-to-pdf";
 
 Font.register({
   family: "Inter",
@@ -47,7 +50,7 @@ const styles = StyleSheet.create({
     fontSize: 9,
     color: "#111111",
     paddingTop: 16,
-    paddingBottom: 16,
+    paddingBottom: 90,
     paddingHorizontal: 16,
   },
   header: {
@@ -144,7 +147,6 @@ const styles = StyleSheet.create({
     paddingTop: 8,
     paddingBottom: 8,
     paddingHorizontal: 8,
-    minHeight: 250,
     marginBottom: 10,
   },
   setorTitle: {
@@ -232,9 +234,13 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
   footer: {
+    position: "absolute",
+    bottom: 25,
+    left: 40,
+    right: 40,
     borderTopWidth: 1,
     borderTopColor: "#111111",
-    paddingTop: 8,
+    paddingTop: 10,
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "flex-end",
@@ -313,6 +319,28 @@ function getPeriodo(hora: Date): string {
   return "Noite";
 }
 
+function ServicoStyledLine({
+  segments,
+}: {
+  segments: ServicoPdfSegment[];
+}) {
+  return (
+    <Text style={styles.servicoLine}>
+      {segments.map((seg, i) => (
+        <Text
+          key={i}
+          style={{
+            fontWeight: seg.bold ? "bold" : "normal",
+            fontStyle: seg.italic ? "italic" : "normal",
+          }}
+        >
+          {seg.text}
+        </Text>
+      ))}
+    </Text>
+  );
+}
+
 function formatDuration(start: Date, end: Date): string {
   const diffMs = end.getTime() - start.getTime();
   if (diffMs <= 0) return "00:00";
@@ -360,8 +388,8 @@ export function RelatorioPDF({ relatorio, logoUrl }: RelatorioPDFProps) {
   const clienteNome = fieldOrNA(relatorio.cliente?.nomeFantasia);
   const dataVisita = parseDate(relatorio.dataVisita);
 
-  const servicoParagraphs = tipTapHtmlToPdfParagraphs(relatorio.observacoes);
-  const showServicoPlaceholder = servicoParagraphs.length === 0;
+  const servicoBlocks = tipTapHtmlToServicoPdfBlocks(relatorio.observacoes);
+  const showServicoPlaceholder = servicoBlocks.length === 0;
   const responsavelCliente =
     contatoNome !== "N/A" ? contatoNome : "Responsável pelo Cliente";
 
@@ -461,12 +489,13 @@ export function RelatorioPDF({ relatorio, logoUrl }: RelatorioPDFProps) {
           {showServicoPlaceholder ? (
             <Text style={styles.emptyLine}>Sem detalhamento informado.</Text>
           ) : (
-            servicoParagraphs.map((block, idx) => (
+            servicoBlocks.map((block, idx) => (
               <View key={`srv-${idx}`} style={styles.paragraphBlock}>
-                {block.split("\n").map((line, li) => (
-                  <Text key={`srv-${idx}-l-${li}`} style={styles.servicoLine}>
-                    {line}
-                  </Text>
+                {block.lines.map((segments, li) => (
+                  <ServicoStyledLine
+                    key={`srv-${idx}-l-${li}`}
+                    segments={segments}
+                  />
                 ))}
               </View>
             ))
@@ -528,7 +557,7 @@ export function RelatorioPDF({ relatorio, logoUrl }: RelatorioPDFProps) {
           </View>
         </View>
 
-        <View style={styles.footer}>
+        <View style={styles.footer} fixed>
           <View>
             <Text style={styles.footerLeftLine}>{LINQ_ADDRESS[0]}</Text>
             <Text style={styles.footerLeftLine}>{LINQ_ADDRESS[1]}</Text>
