@@ -11,6 +11,7 @@ import {
   User,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
+import { useSystemLogo } from "@/hooks/use-system-logo";
 import { Separator } from "@/components/index";
 import {
   Sidebar,
@@ -49,6 +50,7 @@ export function AppSidebar() {
   const pathname = location.pathname;
   const { user, logout } = useAuth();
   const { state } = useSidebar();
+  const { logoSrc } = useSystemLogo();
   const isAdmin = user?.role === "ADMIN";
 
   return (
@@ -57,7 +59,7 @@ export function AppSidebar() {
         <Link to="/dashboard/relatorios" className="flex items-center gap-3">
           <div>
             <img
-              src="/placeholder-logo.svg"
+              src={logoSrc}
               alt="Logo"
               className={state === "collapsed" ? "h-7 w-auto" : "h-10 w-auto"}
             />

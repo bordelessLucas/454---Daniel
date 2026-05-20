@@ -131,6 +131,10 @@ export interface ApiConfiguracoes {
   dataFim: string;
   createdAt: string;
   updatedAt: string;
+  /** Texto do rodapé do relatório/PDF (coluna `texto_rodape_relatorio`). */
+  textoRodapeRelatorio?: string | null;
+  /** URL pública da logo do sistema (PDF, sidebar, etc.). */
+  logoUrl?: string | null;
 }
 
 // Tipos para API de Relatórios

@@ -1,3 +1,4 @@
+import React from "react";
 import {
   Document,
   Font,
@@ -10,9 +11,23 @@ import {
 } from "@react-pdf/renderer";
 import type { ApiReport } from "@/lib/types";
 import {
+  getDefaultPdfFooter,
+  type BuildRelatorioPdfOptions,
+  type RelatorioPdfFooterConfig,
+} from "@/lib/relatorio-pdf-footer";
+import {
   tipTapHtmlToServicoPdfBlocks,
   type ServicoPdfSegment,
 } from "@/lib/tiptap-html-to-pdf";
+
+/** Altura reservada na página para rodapé + bloco fixo de horários/assinaturas. */
+const FOOTER_BOTTOM_OFFSET = 25;
+const FOOTER_BLOCK_HEIGHT = 58;
+const BOTTOM_ANCHOR_HEIGHT = 148;
+const PAGE_BOTTOM_RESERVE =
+  FOOTER_BOTTOM_OFFSET + FOOTER_BLOCK_HEIGHT + BOTTOM_ANCHOR_HEIGHT + 12;
+const BOTTOM_ANCHOR_BOTTOM =
+  FOOTER_BOTTOM_OFFSET + FOOTER_BLOCK_HEIGHT + 6;
 
 Font.register({
   family: "Inter",
@@ -32,13 +47,6 @@ Font.register({
   ],
 });
 
-const LINQ_ADDRESS = [
-  "LINQ INFORMÁTICA",
-  "Rua Geraldo Pereira, 338 - Sala 704",
-  "Alto da Bronze, Estrela/RS - CEP: 95.880-000",
-  "Suporte: 51 3720-4462",
-] as const;
-
 const LEGAL =
   "A LINQ INFORMÁTICA EIRELI-ME, seus diretores, sócios e funcionários, ficam ISENTOS DE QUAISQUER RESPONSABILIDADES, " +
   "sejam elas jurídicas, cíveis, penais ou criminais, referentes ao USO DE LICENÇAS DE SOFTWARE pela EMPRESA CONTRATANTE, " +
@@ -50,8 +58,11 @@ const styles = StyleSheet.create({
     fontSize: 9,
     color: "#111111",
     paddingTop: 16,
-    paddingBottom: 90,
+    paddingBottom: PAGE_BOTTOM_RESERVE,
     paddingHorizontal: 16,
+  },
+  pageMain: {
+    flexGrow: 1,
   },
   header: {
     flexDirection: "row",
@@ -161,17 +172,27 @@ const styles = StyleSheet.create({
   paragraphBlock: {
     marginBottom: 7,
   },
+  servicoParagraphBlock: {
+    marginBottom: 0,
+    paddingBottom: 0,
+  },
   servicoLine: {
-    lineHeight: 1.4,
-    marginBottom: 2,
+    lineHeight: 1,
+    marginBottom: 0,
+    paddingBottom: 0,
   },
   emptyLine: {
     color: "#4b5563",
   },
+  pageBottomAnchor: {
+    position: "absolute",
+    bottom: BOTTOM_ANCHOR_BOTTOM,
+    left: 16,
+    right: 16,
+  },
   bottomGrid: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginBottom: 10,
   },
   bottomColSm: {
     width: "36%",
@@ -196,7 +217,6 @@ const styles = StyleSheet.create({
     borderTopWidth: 0,
     borderColor: "#111111",
     padding: 8,
-    minHeight: 120,
   },
   horarioLine: {
     marginBottom: 4,
@@ -213,7 +233,7 @@ const styles = StyleSheet.create({
   signatures: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginTop: 20,
+    marginTop: 10,
   },
   signCol: {
     width: "46%",
@@ -260,17 +280,9 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontFamily: "Helvetica-Bold",
   },
-  qrPlaceholder: {
-    width: 46,
-    height: 46,
-    borderWidth: 1,
-    borderColor: "#111111",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  qrText: {
-    fontSize: 8,
-    fontFamily: "Helvetica-Bold",
+  footerLogoBox: {
+    width: 40,
+    alignItems: "flex-end",
   },
 });
 
@@ -302,16 +314,6 @@ function formatDatePdf(d: Date): string {
   });
 }
 
-function formatDateTimePdf(d: Date): string {
-  return d.toLocaleString("pt-BR", {
-    day: "2-digit",
-    month: "2-digit",
-    year: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
-
 function getPeriodo(hora: Date): string {
   const h = hora.getHours();
   if (h < 12) return "Manhã";
@@ -319,24 +321,37 @@ function getPeriodo(hora: Date): string {
   return "Noite";
 }
 
-function ServicoStyledLine({
-  segments,
+function ServicoStyledBlock({
+  lines,
 }: {
-  segments: ServicoPdfSegment[];
+  lines: ServicoPdfSegment[][];
 }) {
+  if (lines.length === 0) {
+    return null;
+  }
+
   return (
     <Text style={styles.servicoLine}>
-      {segments.map((seg, i) => (
-        <Text
-          key={i}
-          style={{
-            fontWeight: seg.bold ? "bold" : "normal",
-            fontStyle: seg.italic ? "italic" : "normal",
-          }}
-        >
-          {seg.text}
-        </Text>
-      ))}
+      {lines.flatMap((segments, li) => {
+        const nodes: React.ReactNode[] = [];
+        if (li > 0) {
+          nodes.push("\n");
+        }
+        segments.forEach((seg, si) => {
+          nodes.push(
+            <Text
+              key={`${li}-${si}`}
+              style={{
+                fontWeight: seg.bold ? "bold" : "normal",
+                fontStyle: seg.italic ? "italic" : "normal",
+              }}
+            >
+              {seg.text}
+            </Text>,
+          );
+        });
+        return nodes;
+      })}
     </Text>
   );
 }
@@ -362,22 +377,140 @@ function buildCidadeCliente(r: ApiReport): string {
   return "N/A";
 }
 
+export type {
+  BuildRelatorioPdfOptions,
+  RelatorioPdfFooterConfig,
+} from "@/lib/relatorio-pdf-footer";
+
 export type RelatorioPDFProps = {
   relatorio: ApiReport;
   /** URL absoluta do logo (ex.: variável de ambiente). */
   logoUrl?: string;
+  /** Textos do rodapé (ex.: vindos de GET /configuracoes via mapConfiguracoesToPdfFooter). */
+  footer?: RelatorioPdfFooterConfig;
 };
 
-export function RelatorioPDF({ relatorio, logoUrl }: RelatorioPDFProps) {
-  const origin = typeof window !== "undefined" ? window.location.origin : "";
-  const iconUrl = logoUrl?.trim() || `${origin}/placeholder-logo.svg`;
+function PdfFooter({
+  logoUrl,
+  footer,
+}: {
+  logoUrl: string;
+  footer: RelatorioPdfFooterConfig;
+}) {
+  const websiteTitle = footer.websiteTitle ?? "linqbr";
+  const websiteSubtitle = footer.websiteSubtitle ?? "www.linq.com.br";
 
-  const tecnicosList = relatorio.tecnicos ?? [];
-  const horariosList = [...(relatorio.horarios ?? [])].sort((a, b) => {
+  return (
+    <View style={styles.footer} fixed>
+      <View style={{ flex: 1, paddingRight: 8 }}>
+        {footer.lines.map((line, i) => (
+          <Text key={`footer-line-${i}`} style={styles.footerLeftLine}>
+            {line}
+          </Text>
+        ))}
+      </View>
+      <View style={styles.footerCenter}>
+        <Text style={styles.footerWeb1}>{websiteTitle}</Text>
+        <Text style={styles.footerWeb2}>{websiteSubtitle}</Text>
+      </View>
+      <View style={styles.footerLogoBox}>
+        <Image src={logoUrl} style={{ width: 32, height: 41 }} />
+      </View>
+    </View>
+  );
+}
+
+type PdfBottomAnchorProps = {
+  horariosList: ApiReport["horarios"];
+  totalHorasFmt: string;
+  tecnicoNome: string;
+  responsavelCliente: string;
+  clienteNome: string;
+};
+
+function PdfBottomAnchor({
+  horariosList,
+  totalHorasFmt,
+  tecnicoNome,
+  responsavelCliente,
+  clienteNome,
+}: PdfBottomAnchorProps) {
+  const sorted = [...(horariosList ?? [])].sort((a, b) => {
     const da = parseDate(a.horaChegada)?.getTime() ?? 0;
     const db = parseDate(b.horaChegada)?.getTime() ?? 0;
     return da - db;
   });
+
+  return (
+    <View style={styles.pageBottomAnchor} fixed>
+      <View style={styles.bottomGrid}>
+        <View style={styles.bottomColSm}>
+          <View style={styles.highlightTitleWrap}>
+            <Text style={styles.highlightTitle}>Detalhamento de Horários</Text>
+          </View>
+          <View style={styles.highlightBody}>
+            {sorted.length === 0 ? (
+              <Text style={styles.emptyLine}>Sem horários informados.</Text>
+            ) : (
+              sorted.map((h, idx) => {
+                const chegada = parseDate(h.horaChegada);
+                const saida = parseDate(h.horaSaida);
+                return (
+                  <View key={h.id ?? idx} style={{ marginBottom: 4 }}>
+                    <Text style={styles.horarioLine}>
+                      {chegada ? getPeriodo(chegada) : "Período N/A"}
+                    </Text>
+                    <Text style={styles.horarioLine}>
+                      Hora Inicial: {chegada ? formatTimePdf(chegada) : "N/A"}{" "}
+                      Hora Final: {saida ? formatTimePdf(saida) : "N/A"}
+                    </Text>
+                    <Text style={styles.horarioLine}>
+                      Total de Horas:{" "}
+                      {chegada && saida ? formatDuration(chegada, saida) : "N/A"}
+                    </Text>
+                  </View>
+                );
+              })
+            )}
+            <Text style={styles.totalHoras}>Total de Horas: {totalHorasFmt}</Text>
+          </View>
+        </View>
+
+        <View style={styles.bottomColLg}>
+          <View style={styles.highlightTitleWrap}>
+            <Text style={styles.highlightTitle}>Assinatura dos Responsáveis</Text>
+          </View>
+          <View style={styles.highlightBody}>
+            <Text style={styles.legalText}>{LEGAL}</Text>
+            <View style={styles.signatures}>
+              <View style={styles.signCol}>
+                <View style={styles.signLine} />
+                <Text style={styles.signName}>{tecnicoNome}</Text>
+                <Text style={styles.signHint}>LINQ INFORMÁTICA</Text>
+              </View>
+              <View style={styles.signCol}>
+                <View style={styles.signLine} />
+                <Text style={styles.signName}>{responsavelCliente}</Text>
+                <Text style={styles.signHint}>{clienteNome}</Text>
+              </View>
+            </View>
+          </View>
+        </View>
+      </View>
+    </View>
+  );
+}
+
+export function RelatorioPDF({
+  relatorio,
+  logoUrl,
+  footer: footerProp,
+}: RelatorioPDFProps) {
+  const origin = typeof window !== "undefined" ? window.location.origin : "";
+  const iconUrl = logoUrl?.trim() || `${origin}/placeholder-logo.svg`;
+  const footer = footerProp ?? getDefaultPdfFooter();
+
+  const tecnicosList = relatorio.tecnicos ?? [];
   const setoresList = relatorio.setores ?? [];
 
   const tecnicoNome = fieldOrNA(
@@ -394,7 +527,7 @@ export function RelatorioPDF({ relatorio, logoUrl }: RelatorioPDFProps) {
     contatoNome !== "N/A" ? contatoNome : "Responsável pelo Cliente";
 
   let totalMs = 0;
-  for (const h of horariosList) {
+  for (const h of relatorio.horarios ?? []) {
     const chegada = parseDate(h.horaChegada);
     const saida = parseDate(h.horaSaida);
     if (chegada && saida) {
@@ -409,6 +542,7 @@ export function RelatorioPDF({ relatorio, logoUrl }: RelatorioPDFProps) {
   return (
     <Document>
       <Page size="A4" style={styles.page} wrap>
+        <View style={styles.pageMain}>
         <View style={styles.header}>
           <View style={styles.logoBox}>
             <Image src={iconUrl} style={{ width: 32, height: 41 }} />
@@ -490,91 +624,23 @@ export function RelatorioPDF({ relatorio, logoUrl }: RelatorioPDFProps) {
             <Text style={styles.emptyLine}>Sem detalhamento informado.</Text>
           ) : (
             servicoBlocks.map((block, idx) => (
-              <View key={`srv-${idx}`} style={styles.paragraphBlock}>
-                {block.lines.map((segments, li) => (
-                  <ServicoStyledLine
-                    key={`srv-${idx}-l-${li}`}
-                    segments={segments}
-                  />
-                ))}
+              <View key={`srv-${idx}`} style={styles.servicoParagraphBlock}>
+                <ServicoStyledBlock lines={block.lines} />
               </View>
             ))
           )}
         </View>
-
-        <View style={styles.bottomGrid}>
-          <View style={styles.bottomColSm}>
-            <View style={styles.highlightTitleWrap}>
-              <Text style={styles.highlightTitle}>Detalhamento de Horários</Text>
-            </View>
-            <View style={styles.highlightBody}>
-              {horariosList.length === 0 ? (
-                <Text style={styles.emptyLine}>Sem horários informados.</Text>
-              ) : (
-                horariosList.map((h, idx) => {
-                  const chegada = parseDate(h.horaChegada);
-                  const saida = parseDate(h.horaSaida);
-                  return (
-                    <View key={h.id ?? idx} style={{ marginBottom: 6 }}>
-                      <Text style={styles.horarioLine}>
-                        {chegada ? getPeriodo(chegada) : "Período N/A"}
-                      </Text>
-                      <Text style={styles.horarioLine}>
-                        Hora Inicial: {chegada ? formatTimePdf(chegada) : "N/A"}{" "}
-                        Hora Final: {saida ? formatTimePdf(saida) : "N/A"}
-                      </Text>
-                      <Text style={styles.horarioLine}>
-                        Total de Horas:{" "}
-                        {chegada && saida ? formatDuration(chegada, saida) : "N/A"}
-                      </Text>
-                    </View>
-                  );
-                })
-              )}
-              <Text style={styles.totalHoras}>Total de Horas: {totalHorasFmt}</Text>
-            </View>
-          </View>
-
-          <View style={styles.bottomColLg}>
-            <View style={styles.highlightTitleWrap}>
-              <Text style={styles.highlightTitle}>Assinatura dos Responsáveis</Text>
-            </View>
-            <View style={styles.highlightBody}>
-              <Text style={styles.legalText}>{LEGAL}</Text>
-              <View style={styles.signatures}>
-                <View style={styles.signCol}>
-                  <View style={styles.signLine} />
-                  <Text style={styles.signName}>{tecnicoNome}</Text>
-                  <Text style={styles.signHint}>LINQ INFORMÁTICA</Text>
-                </View>
-                <View style={styles.signCol}>
-                  <View style={styles.signLine} />
-                  <Text style={styles.signName}>{responsavelCliente}</Text>
-                  <Text style={styles.signHint}>{clienteNome}</Text>
-                </View>
-              </View>
-            </View>
-          </View>
         </View>
 
-        <View style={styles.footer} fixed>
-          <View>
-            <Text style={styles.footerLeftLine}>{LINQ_ADDRESS[0]}</Text>
-            <Text style={styles.footerLeftLine}>{LINQ_ADDRESS[1]}</Text>
-            <Text style={styles.footerLeftLine}>{LINQ_ADDRESS[2]}</Text>
-            <Text style={styles.footerLeftLine}>{LINQ_ADDRESS[3]}</Text>
-          </View>
-          <View style={styles.footerCenter}>
-            <Text style={styles.footerWeb1}>linqbr</Text>
-            <Text style={styles.footerWeb2}>www.linq.com.br</Text>
-          </View>
-          <View style={styles.qrPlaceholder}>
-            <Text style={styles.qrText}>QR</Text>
-          </View>
-        </View>
-        <Text style={{ fontSize: 8, color: "#4b5563", marginTop: 4 }}>
-          Emitido em {formatDateTimePdf(new Date())}
-        </Text>
+        <PdfBottomAnchor
+          horariosList={relatorio.horarios}
+          totalHorasFmt={totalHorasFmt}
+          tecnicoNome={tecnicoNome}
+          responsavelCliente={responsavelCliente}
+          clienteNome={clienteNome}
+        />
+
+        <PdfFooter logoUrl={iconUrl} footer={footer} />
       </Page>
     </Document>
   );
@@ -583,9 +649,13 @@ export function RelatorioPDF({ relatorio, logoUrl }: RelatorioPDFProps) {
 /** Gera o Blob do PDF no browser para download. */
 export async function buildRelatorioPdfBlob(
   relatorio: ApiReport,
-  logoUrl?: string,
+  options?: BuildRelatorioPdfOptions,
 ): Promise<Blob> {
   return pdf(
-    <RelatorioPDF relatorio={relatorio} logoUrl={logoUrl} />,
+    <RelatorioPDF
+      relatorio={relatorio}
+      logoUrl={options?.logoUrl}
+      footer={options?.footer}
+    />,
   ).toBlob();
 }

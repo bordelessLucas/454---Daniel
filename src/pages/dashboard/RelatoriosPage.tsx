@@ -5,6 +5,7 @@ import type { ApiReport } from "@/lib/types";
 import { ApiError, apiRequest } from "@/lib/api-client";
 import { fetchRelatorioParaPdf } from "@/lib/relatorios-service";
 import { buildRelatorioPdfBlob } from "@/components/RelatorioPDF";
+import { loadRelatorioPdfBuildOptions } from "@/lib/relatorio-pdf-footer";
 import { buildRelatorioPdfFilename, downloadBlobFile } from "@/lib/utils";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { PageHeader } from "@/components/page-header";
@@ -188,8 +189,11 @@ export default function RelatoriosPage() {
     setDownloadingIds((prev) => new Set(prev).add(reportId));
 
     try {
-      const relatorioPdf = await fetchRelatorioParaPdf(reportId);
-      const blob = await buildRelatorioPdfBlob(relatorioPdf);
+      const [relatorioPdf, pdfOptions] = await Promise.all([
+        fetchRelatorioParaPdf(reportId),
+        loadRelatorioPdfBuildOptions(),
+      ]);
+      const blob = await buildRelatorioPdfBlob(relatorioPdf, pdfOptions);
       downloadBlobFile(blob, getPdfFilename(report));
       setRefetchTrigger((p) => p + 1);
       toast.success("PDF baixado com sucesso.");

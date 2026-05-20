@@ -219,17 +219,21 @@ function formatListBlock(inner: string, ordered: boolean): string {
     return "";
   }
 
-  return bodies
-    .map((raw, idx) => {
-      const normalized = normalizeLiInnerHtml(raw);
-      const line = normalized.replace(/\n+/g, " ").trim();
-      if (!line) {
-        return ordered ? `${idx + 1}. ` : "• ";
-      }
-      const prefix = ordered ? `${idx + 1}. ` : "• ";
-      return prefix + line;
-    })
-    .join("\n");
+  const lines: string[] = [];
+  let order = 0;
+
+  for (const raw of bodies) {
+    const normalized = normalizeLiInnerHtml(raw);
+    const line = normalized.replace(/\n+/g, " ").trim();
+    if (!line) {
+      continue;
+    }
+    order += 1;
+    const prefix = ordered ? `${order}. ` : "• ";
+    lines.push(prefix + line);
+  }
+
+  return lines.join("\n");
 }
 
 /**
@@ -268,7 +272,7 @@ function replaceListTagsWithPlainText(html: string): string {
 
     const block = formatListBlock(consumed.inner, consumed.ordered);
     if (block) {
-      out += `\n\n${block}\n\n`;
+      out += block;
     }
     cursor = consumed.end;
   }
@@ -290,13 +294,21 @@ export function tipTapHtmlToPdfParagraphs(
   let s = stripScriptsAndStyles(html);
   s = replaceListTagsWithPlainText(s);
 
+  // Parágrafo vazio = quebra “forte” (Enter duplo no editor). Demais </p> = só uma linha.
+  s = s.replace(/<p>\s*(?:<br\s*\/?>)?\s*<\/p>/gi, "\n\n");
   s = s
-    .replace(/<\/(p|div|h[1-6])>/gi, "\n\n")
+    .replace(/<\/(p|div|h[1-6])>/gi, "\n")
+    .replace(/<p\b[^>]*>/gi, "")
     .replace(/<br\s*\/?>/gi, "\n");
 
   s = stripUnsupportedTags(s);
   s = decodeBasicEntities(s);
-  s = s.replace(/\u00a0/g, " ").replace(/\n{3,}/g, "\n\n").trim();
+  s = s
+    .replace(/\u00a0/g, " ")
+    .replace(/[ \t]+\n/g, "\n")
+    .replace(/\n[ \t]+/g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
 
   if (!s) {
     return [];
@@ -305,7 +317,7 @@ export function tipTapHtmlToPdfParagraphs(
   return s
     .split(/\n\n+/)
     .map((p) => p.trim())
-    .filter(Boolean);
+    .filter((p) => p.length > 0 && !/^[\s•\d.]*$/.test(p));
 }
 
 /**
@@ -326,15 +338,14 @@ export function tipTapHtmlToServicoPdfBlocks(
     const lines: ServicoPdfSegment[][] = [];
     for (const rawLine of rawPara.split("\n")) {
       const line = rawLine.trim();
-      const segs = parseInlineToSegments(line);
-      if (segs.length === 0 && line === "") {
+      if (!line) {
         continue;
       }
+      const segs = parseInlineToSegments(line);
       if (segs.length === 0) {
-        lines.push([{ text: " ", bold: false, italic: false }]);
-      } else {
-        lines.push(segs);
+        continue;
       }
+      lines.push(segs);
     }
 
     if (lines.length > 0) {
@@ -342,5 +353,17 @@ export function tipTapHtmlToServicoPdfBlocks(
     }
   }
 
-  return blocks;
+  // Um único bloco contínuo: evita margem automática entre “parágrafos” do TipTap.
+  if (blocks.length <= 1) {
+    return blocks;
+  }
+
+  const mergedLines: ServicoPdfSegment[][] = [];
+  for (let i = 0; i < blocks.length; i++) {
+    if (i > 0) {
+      mergedLines.push([{ text: " ", bold: false, italic: false }]);
+    }
+    mergedLines.push(...blocks[i].lines);
+  }
+  return [{ lines: mergedLines }];
 }

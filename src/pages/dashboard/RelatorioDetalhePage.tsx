@@ -7,6 +7,7 @@ import { ArrowLeft, Pencil, FileDown, Loader2 } from "lucide-react";
 import { ApiError } from "@/lib/api-client";
 import { fetchRelatorioParaPdf } from "@/lib/relatorios-service";
 import { buildRelatorioPdfBlob } from "@/components/RelatorioPDF";
+import { loadRelatorioPdfBuildOptions } from "@/lib/relatorio-pdf-footer";
 import { buildRelatorioPdfFilename, downloadBlobFile } from "@/lib/utils";
 import { toast } from "sonner";
 import { RichTextReadonly } from "@/components/RichTextReadonly";
@@ -52,8 +53,11 @@ export default function RelatorioDetalhePage() {
     setDownloadingPdf(true);
 
     try {
-      const relatorioPdf = await fetchRelatorioParaPdf(report.id);
-      const blob = await buildRelatorioPdfBlob(relatorioPdf);
+      const [relatorioPdf, pdfOptions] = await Promise.all([
+        fetchRelatorioParaPdf(report.id),
+        loadRelatorioPdfBuildOptions(),
+      ]);
+      const blob = await buildRelatorioPdfBlob(relatorioPdf, pdfOptions);
       const reportDate = new Date(report.dataVisita);
       const datePart = Number.isNaN(reportDate.getTime())
         ? "Data"
