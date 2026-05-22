@@ -1,6 +1,6 @@
 import { resolveConfiguracaoLogoUrl } from "@/lib/configuracao-logo";
-import { getConfiguracoes } from "@/lib/configuracoes-service";
-import type { ApiConfiguracoes } from "@/lib/types";
+import { getConfiguracoesPdf } from "@/lib/configuracoes-service";
+import type { ApiConfiguracoesPdf } from "@/lib/types";
 
 export type BuildRelatorioPdfOptions = {
   logoUrl?: string;
@@ -40,7 +40,7 @@ export function rodapeTextoToLines(raw: string): string[] {
 
 /** Converte configurações da API em props do rodapé do PDF. */
 export function mapConfiguracoesToPdfFooter(
-  config: ApiConfiguracoes,
+  config: ApiConfiguracoesPdf,
 ): RelatorioPdfFooterConfig {
   const raw = config.textoRodapeRelatorio?.trim() ?? "";
   const lines =
@@ -61,13 +61,10 @@ export function getDefaultPdfFooter(): RelatorioPdfFooterConfig {
   };
 }
 
-/** Carrega opções do PDF a partir de /configuracoes (falha silenciosa → rodapé padrão). */
+/** Carrega opções do PDF a partir de /configuracoes/pdf (falha silenciosa → rodapé padrão). */
 export async function loadRelatorioPdfBuildOptions(): Promise<BuildRelatorioPdfOptions> {
   try {
-    const config = await getConfiguracoes();
-    if (!config) {
-      return {};
-    }
+    const config = await getConfiguracoesPdf();
     return {
       footer: mapConfiguracoesToPdfFooter(config),
       logoUrl: resolveConfiguracaoLogoUrl(config.logoUrl),

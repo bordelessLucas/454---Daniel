@@ -41,6 +41,28 @@ export class ApiError extends Error {
   }
 }
 
+const HORARIO_ACCESS_ERROR_MARKERS = ["horario configurado"] as const;
+
+function clearAuthSessionAndRedirectToLogin(): void {
+  localStorage.removeItem("authToken");
+  localStorage.removeItem("user");
+  if (window.location.pathname !== "/") {
+    window.location.href = "/";
+  }
+}
+
+function isHorarioAccessDenied(responseText: string): boolean {
+  const message = extractApiErrorMessage(responseText, 403, "Forbidden")
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/\p{M}/gu, "");
+  return HORARIO_ACCESS_ERROR_MARKERS.some((marker) =>
+    message.includes(
+      marker.normalize("NFD").replace(/\p{M}/gu, ""),
+    ),
+  );
+}
+
 export interface BlobResponse {
   blob: Blob;
   filename: string | null;
@@ -80,9 +102,9 @@ async function performRequest(
     const responseText = await response.text();
 
     if (response.status === 401) {
-      localStorage.removeItem("authToken");
-      localStorage.removeItem("user");
-      window.location.href = "/";
+      clearAuthSessionAndRedirectToLogin();
+    } else if (response.status === 403 && isHorarioAccessDenied(responseText)) {
+      clearAuthSessionAndRedirectToLogin();
     }
 
     throw new ApiError(response.status, response.statusText, responseText);

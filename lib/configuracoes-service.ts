@@ -1,5 +1,5 @@
 import { apiRequest, API_URL, ApiError } from "./api-client";
-import type { ApiConfiguracoes } from "./types";
+import type { ApiConfiguracoes, ApiConfiguracoesPdf } from "./types";
 
 export type UpdateConfiguracoesPayload = {
   dataInicio?: string;
@@ -7,8 +7,14 @@ export type UpdateConfiguracoesPayload = {
   textoRodapeRelatorio?: string | null;
 };
 
+/** Configurações completas — requer perfil ADMIN. */
 export async function getConfiguracoes(): Promise<ApiConfiguracoes | null> {
   return apiRequest<ApiConfiguracoes | null>("/configuracoes");
+}
+
+/** Logo e rodapé do PDF — qualquer usuário autenticado. */
+export async function getConfiguracoesPdf(): Promise<ApiConfiguracoesPdf> {
+  return apiRequest<ApiConfiguracoesPdf>("/configuracoes/pdf");
 }
 
 export async function updateConfiguracoes(

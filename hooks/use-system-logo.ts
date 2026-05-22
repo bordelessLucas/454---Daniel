@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import { resolveConfiguracaoLogoUrl } from "@/lib/configuracao-logo";
-import { getConfiguracoes } from "@/lib/configuracoes-service";
+import { getConfiguracoesPdf } from "@/lib/configuracoes-service";
 
 const LOGO_UPDATED_EVENT = "system-logo-updated";
 
@@ -25,7 +25,7 @@ export function useSystemLogo() {
     async function load() {
       setLoading(true);
       try {
-        const config = await getConfiguracoes();
+        const config = await getConfiguracoesPdf();
         if (!cancelled) {
           setLogoSrc(resolveConfiguracaoLogoUrl(config?.logoUrl));
         }

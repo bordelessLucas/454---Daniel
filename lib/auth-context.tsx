@@ -68,21 +68,48 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Recuperar token do localStorage na inicialização
+  // Recuperar sessão e validar token com a API
   useEffect(() => {
-    const token = localStorage.getItem("authToken");
-    const storedUser = localStorage.getItem("user");
+    async function bootstrapSession() {
+      const token = localStorage.getItem("authToken");
+      const storedUser = localStorage.getItem("user");
 
-    if (token && storedUser) {
-      const normalizedUser = parseStoredUser(storedUser);
-      if (normalizedUser) {
-        setUser(normalizedUser);
-      } else {
-        localStorage.removeItem("authToken");
-        localStorage.removeItem("user");
+      if (!token || !storedUser) {
+        setIsLoading(false);
+        return;
+      }
+
+      try {
+        const response = await fetch(`${API_URL}/auth/me`, {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        });
+
+        if (!response.ok) {
+          localStorage.removeItem("authToken");
+          localStorage.removeItem("user");
+          setUser(null);
+          return;
+        }
+
+        const apiUser = (await response.json()) as AuthUser;
+        setUser(apiUser);
+        localStorage.setItem("user", JSON.stringify(apiUser));
+      } catch {
+        const normalizedUser = parseStoredUser(storedUser);
+        if (normalizedUser) {
+          setUser(normalizedUser);
+        } else {
+          localStorage.removeItem("authToken");
+          localStorage.removeItem("user");
+        }
+      } finally {
+        setIsLoading(false);
       }
     }
-    setIsLoading(false);
+
+    void bootstrapSession();
   }, []);
 
   const login = useCallback(async (username: string, password: string) => {

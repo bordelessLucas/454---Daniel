@@ -137,6 +137,12 @@ export interface ApiConfiguracoes {
   logoUrl?: string | null;
 }
 
+/** Configurações públicas para PDF/sidebar (sem horário de login). */
+export interface ApiConfiguracoesPdf {
+  logoUrl?: string | null;
+  textoRodapeRelatorio?: string | null;
+}
+
 // Tipos para API de Relatórios
 export interface ReportTecnico {
   id: number;

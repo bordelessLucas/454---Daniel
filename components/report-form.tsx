@@ -7,6 +7,7 @@ import { useChecklists } from "@/hooks/use-checklists";
 import { useRelatorio } from "@/hooks/use-relatorio";
 import { useAuth } from "@/lib/auth-context";
 import { userCanEditRelatorio } from "@/lib/relatorio-permissions";
+import { sanitizeTipTapHtmlForSave } from "@/lib/sanitize-tip-tap-html";
 import { apiRequest } from "@/lib/api-client";
 import { Button, Input, Label, SelectionField } from "@/components/index";
 import { RichTextEditor } from "@/components/RichTextEditor";
@@ -356,6 +357,20 @@ export function ReportForm({ reportId }: ReportFormProps) {
 
     setSaving(true);
 
+    let observacoesSanitized: string | undefined;
+    try {
+      observacoesSanitized =
+        sanitizeTipTapHtmlForSave(observacoes) || undefined;
+    } catch (error) {
+      setSaving(false);
+      toast.error(
+        error instanceof Error
+          ? error.message
+          : "Conteúdo do detalhamento inválido.",
+      );
+      return;
+    }
+
     const payload = {
       clienteId,
       contatoId: contatoId ?? undefined,
@@ -365,7 +380,7 @@ export function ReportForm({ reportId }: ReportFormProps) {
       numeroContrato: exibirContrato ? numeroContrato || undefined : undefined,
       localizacaoCidade: localizacaoCidade.trim() || undefined,
       localizacaoEstado: localizacaoEstado.trim() || undefined,
-      observacoes: observacoes.trim() || undefined,
+      observacoes: observacoesSanitized,
       tecnicos: selectedTecnicos
         .map((id) => {
           const tecnico = tecnicos.find((t) => String(t.id) === id);
