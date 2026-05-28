@@ -177,7 +177,8 @@ const styles = StyleSheet.create({
     paddingBottom: 0,
   },
   servicoLine: {
-    lineHeight: 1,
+    // Compacto, mas com legibilidade (evita aspecto “amontoado”)
+    lineHeight: 1.15,
     marginBottom: 0,
     paddingBottom: 0,
   },
@@ -216,10 +217,24 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderTopWidth: 0,
     borderColor: "#111111",
-    padding: 8,
+    padding: 6,
   },
-  horarioLine: {
-    marginBottom: 4,
+  horariosGrid: {
+    flexDirection: "row",
+    gap: 8,
+  },
+  horariosCol: {
+    flex: 1,
+  },
+  periodoTitle: {
+    fontFamily: "Helvetica-Bold",
+    fontSize: 9,
+    marginBottom: 2,
+  },
+  horarioCompactLine: {
+    fontSize: 8.5,
+    lineHeight: 1.1,
+    marginBottom: 1,
   },
   totalHoras: {
     marginTop: 2,
@@ -441,6 +456,23 @@ function PdfBottomAnchor({
     return da - db;
   });
 
+  const grupos = sorted.reduce(
+    (acc, h) => {
+      const chegada = parseDate(h.horaChegada);
+      const saida = parseDate(h.horaSaida);
+      const key = chegada ? getPeriodo(chegada) : "N/A";
+      acc[key] = acc[key] ?? [];
+      acc[key].push({ h, chegada, saida });
+      return acc;
+    },
+    {} as Record<
+      string,
+      { h: (typeof sorted)[number]; chegada: Date | null; saida: Date | null }[]
+    >,
+  );
+
+  const ordemPeriodos = ["Manhã", "Tarde", "Noite", "N/A"];
+
   return (
     <View style={styles.pageBottomAnchor} fixed>
       <View style={styles.bottomGrid}>
@@ -452,25 +484,23 @@ function PdfBottomAnchor({
             {sorted.length === 0 ? (
               <Text style={styles.emptyLine}>Sem horários informados.</Text>
             ) : (
-              sorted.map((h, idx) => {
-                const chegada = parseDate(h.horaChegada);
-                const saida = parseDate(h.horaSaida);
-                return (
-                  <View key={h.id ?? idx} style={{ marginBottom: 4 }}>
-                    <Text style={styles.horarioLine}>
-                      {chegada ? getPeriodo(chegada) : "Período N/A"}
-                    </Text>
-                    <Text style={styles.horarioLine}>
-                      Hora Inicial: {chegada ? formatTimePdf(chegada) : "N/A"}{" "}
-                      Hora Final: {saida ? formatTimePdf(saida) : "N/A"}
-                    </Text>
-                    <Text style={styles.horarioLine}>
-                      Total de Horas:{" "}
-                      {chegada && saida ? formatDuration(chegada, saida) : "N/A"}
-                    </Text>
-                  </View>
-                );
-              })
+              <View style={styles.horariosGrid}>
+                {ordemPeriodos
+                  .filter((p) => (grupos[p] ?? []).length > 0)
+                  .map((periodo) => (
+                    <View key={periodo} style={styles.horariosCol}>
+                      <Text style={styles.periodoTitle}>{periodo}</Text>
+                      {(grupos[periodo] ?? []).map(({ h, chegada, saida }, idx) => (
+                        <Text key={h.id ?? `${periodo}-${idx}`} style={styles.horarioCompactLine}>
+                          {chegada ? formatTimePdf(chegada) : "N/A"} –{" "}
+                          {saida ? formatTimePdf(saida) : "N/A"}
+                          {"  "}
+                          ({chegada && saida ? formatDuration(chegada, saida) : "N/A"})
+                        </Text>
+                      ))}
+                    </View>
+                  ))}
+              </View>
             )}
             <Text style={styles.totalHoras}>Total de Horas: {totalHorasFmt}</Text>
           </View>

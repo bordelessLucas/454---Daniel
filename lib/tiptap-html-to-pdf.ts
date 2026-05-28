@@ -358,12 +358,34 @@ export function tipTapHtmlToServicoPdfBlocks(
     return blocks;
   }
 
-  const mergedLines: ServicoPdfSegment[][] = [];
-  for (let i = 0; i < blocks.length; i++) {
-    if (i > 0) {
-      mergedLines.push([{ text: " ", bold: false, italic: false }]);
+  // Mescla parágrafos sem criar “linha vazia” (que no PDF vira uma quebra visual maior).
+  // Regra: insere um espaço no fim da última linha do bloco anterior e concatena com a
+  // primeira linha do próximo bloco quando possível; caso contrário, mantém apenas a quebra normal.
+  const mergedLines: ServicoPdfSegment[][] = blocks[0]?.lines
+    ? [...blocks[0].lines]
+    : [];
+
+  for (let i = 1; i < blocks.length; i++) {
+    const next = blocks[i]?.lines ?? [];
+    if (next.length === 0) {
+      continue;
     }
-    mergedLines.push(...blocks[i].lines);
+
+    const lastLineIdx = mergedLines.length - 1;
+    const lastLine = mergedLines[lastLineIdx];
+    const firstNextLine = next[0];
+
+    if (lastLine && lastLine.length > 0 && firstNextLine && firstNextLine.length > 0) {
+      // Adiciona espaço ao final da última linha para manter leitura contínua.
+      lastLine.push({ text: " ", bold: false, italic: false });
+      mergedLines[lastLineIdx] = mergeAdjacentSegments(lastLine);
+      mergedLines.push(mergeAdjacentSegments(firstNextLine));
+      mergedLines.push(...next.slice(1));
+      continue;
+    }
+
+    mergedLines.push(...next);
   }
+
   return [{ lines: mergedLines }];
 }
