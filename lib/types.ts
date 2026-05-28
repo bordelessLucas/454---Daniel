@@ -143,6 +143,21 @@ export interface ApiConfiguracoesPdf {
   textoRodapeRelatorio?: string | null;
 }
 
+export type AuditAction = "CREATE" | "UPDATE" | "DELETE";
+
+export interface ApiAuditLog {
+  id: number;
+  relatorioId: number;
+  usuarioId: number;
+  acao: AuditAction;
+  timestamp: string;
+  usuario: {
+    id: number;
+    nome: string;
+    username: string;
+  };
+}
+
 // Tipos para API de Relatórios
 export interface ReportTecnico {
   id: number;

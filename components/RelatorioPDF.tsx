@@ -194,12 +194,18 @@ const styles = StyleSheet.create({
   bottomGrid: {
     flexDirection: "row",
     justifyContent: "space-between",
+    alignItems: "flex-start",
   },
   bottomColSm: {
-    width: "36%",
+    width: "42%",
+    alignSelf: "flex-start",
   },
   bottomColLg: {
-    width: "62%",
+    width: "56%",
+    alignSelf: "flex-start",
+  },
+  highlightCard: {
+    width: "100%",
   },
   highlightTitleWrap: {
     backgroundColor: "#eab308",
@@ -207,38 +213,91 @@ const styles = StyleSheet.create({
     borderColor: "#111111",
     paddingVertical: 3,
     paddingHorizontal: 8,
+    width: "100%",
   },
   highlightTitle: {
     fontFamily: "Helvetica-Bold",
     fontSize: 9.5,
     textTransform: "uppercase",
   },
+  /** Corpo do card — mesma largura do título; altura só do conteúdo. */
   highlightBody: {
     borderWidth: 1,
     borderTopWidth: 0,
     borderColor: "#111111",
-    padding: 6,
+    paddingVertical: 5,
+    paddingHorizontal: 6,
+    width: "100%",
+    flexGrow: 0,
+    flexShrink: 0,
   },
-  horariosGrid: {
+  horarioTable: {
+    width: "100%",
+  },
+  horarioTableHead: {
     flexDirection: "row",
-    gap: 8,
+    borderBottomWidth: 1,
+    borderBottomColor: "#d1d5db",
+    paddingBottom: 2,
+    marginBottom: 3,
   },
-  horariosCol: {
-    flex: 1,
-  },
-  periodoTitle: {
-    fontFamily: "Helvetica-Bold",
-    fontSize: 9,
+  horarioTableRow: {
+    flexDirection: "row",
+    alignItems: "center",
     marginBottom: 2,
   },
-  horarioCompactLine: {
-    fontSize: 8.5,
-    lineHeight: 1.1,
-    marginBottom: 1,
-  },
-  totalHoras: {
-    marginTop: 2,
+  horarioCellPeriodo: {
+    width: 44,
     fontFamily: "Helvetica-Bold",
+    fontSize: 8,
+  },
+  horarioCellPeriodoEmpty: {
+    fontFamily: "Helvetica",
+  },
+  horarioCellIntervalo: {
+    width: 82,
+    fontSize: 8,
+    fontFamily: "Helvetica",
+  },
+  horarioCellDuracao: {
+    width: 38,
+    fontSize: 8,
+    fontFamily: "Helvetica",
+    textAlign: "right",
+  },
+  horarioHeadText: {
+    fontSize: 7,
+    fontFamily: "Helvetica-Bold",
+    color: "#4b5563",
+    textTransform: "uppercase",
+  },
+  horarioHeadPeriodo: {
+    width: 44,
+  },
+  horarioHeadIntervalo: {
+    width: 82,
+  },
+  horarioHeadDuracao: {
+    width: 38,
+    textAlign: "right",
+  },
+  totalHorasRow: {
+    flexDirection: "row",
+    marginTop: 4,
+    paddingTop: 3,
+    borderTopWidth: 1,
+    borderTopColor: "#111111",
+  },
+  totalHorasLabel: {
+    flex: 1,
+    fontFamily: "Helvetica-Bold",
+    fontSize: 8.5,
+  },
+  totalHorasValue: {
+    width: 38,
+    fontFamily: "Helvetica-Bold",
+    fontSize: 8.5,
+    textAlign: "right",
   },
   legalText: {
     fontSize: 7.5,
@@ -380,6 +439,91 @@ function formatDuration(start: Date, end: Date): string {
   return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}`;
 }
 
+type HorarioTableRowData = {
+  key: string;
+  periodo: string;
+  showPeriodo: boolean;
+  intervalo: string;
+  duracao: string;
+};
+
+function buildHorarioTableRows(
+  grupos: Record<
+    string,
+    { h: { id?: number }; chegada: Date | null; saida: Date | null }[]
+  >,
+  ordemPeriodos: string[],
+): HorarioTableRowData[] {
+  const rows: HorarioTableRowData[] = [];
+
+  for (const periodo of ordemPeriodos) {
+    const items = grupos[periodo] ?? [];
+    items.forEach((item, idx) => {
+      const { h, chegada, saida } = item;
+      const intervalo =
+        chegada && saida
+          ? `${formatTimePdf(chegada)} - ${formatTimePdf(saida)}`
+          : "N/A";
+      const duracao =
+        chegada && saida ? formatDuration(chegada, saida) : "N/A";
+
+      rows.push({
+        key: String(h.id ?? `${periodo}-${idx}`),
+        periodo,
+        showPeriodo: idx === 0,
+        intervalo,
+        duracao,
+      });
+    });
+  }
+
+  return rows;
+}
+
+function PdfHorariosTable({
+  rows,
+  totalHorasFmt,
+}: {
+  rows: HorarioTableRowData[];
+  totalHorasFmt: string;
+}) {
+  return (
+    <View style={styles.horarioTable}>
+      <View style={styles.horarioTableHead}>
+        <Text style={[styles.horarioHeadText, styles.horarioHeadPeriodo]}>
+          Período
+        </Text>
+        <Text style={[styles.horarioHeadText, styles.horarioHeadIntervalo]}>
+          Horário
+        </Text>
+        <Text style={[styles.horarioHeadText, styles.horarioHeadDuracao]}>
+          Total
+        </Text>
+      </View>
+
+      {rows.map((row) => (
+        <View key={row.key} style={styles.horarioTableRow}>
+          <Text
+            style={[
+              styles.horarioCellPeriodo,
+              !row.showPeriodo && styles.horarioCellPeriodoEmpty,
+            ]}
+          >
+            {row.showPeriodo ? row.periodo : " "}
+          </Text>
+          <Text style={styles.horarioCellIntervalo}>{row.intervalo}</Text>
+          <Text style={styles.horarioCellDuracao}>({row.duracao})</Text>
+        </View>
+      ))}
+
+      <View style={styles.totalHorasRow}>
+        <Text style={styles.totalHorasLabel}>Total de Horas</Text>
+        <Text style={styles.totalHorasValue}>{totalHorasFmt}</Text>
+      </View>
+    </View>
+  );
+}
+
 function buildCidadeCliente(r: ApiReport): string {
   const c = r.cliente?.cidade?.trim();
   const e = r.cliente?.estado?.trim();
@@ -472,45 +616,35 @@ function PdfBottomAnchor({
   );
 
   const ordemPeriodos = ["Manhã", "Tarde", "Noite", "N/A"];
+  const horarioRows = buildHorarioTableRows(grupos, ordemPeriodos);
 
   return (
     <View style={styles.pageBottomAnchor} fixed>
       <View style={styles.bottomGrid}>
         <View style={styles.bottomColSm}>
-          <View style={styles.highlightTitleWrap}>
-            <Text style={styles.highlightTitle}>Detalhamento de Horários</Text>
-          </View>
-          <View style={styles.highlightBody}>
-            {sorted.length === 0 ? (
-              <Text style={styles.emptyLine}>Sem horários informados.</Text>
-            ) : (
-              <View style={styles.horariosGrid}>
-                {ordemPeriodos
-                  .filter((p) => (grupos[p] ?? []).length > 0)
-                  .map((periodo) => (
-                    <View key={periodo} style={styles.horariosCol}>
-                      <Text style={styles.periodoTitle}>{periodo}</Text>
-                      {(grupos[periodo] ?? []).map(({ h, chegada, saida }, idx) => (
-                        <Text key={h.id ?? `${periodo}-${idx}`} style={styles.horarioCompactLine}>
-                          {chegada ? formatTimePdf(chegada) : "N/A"} –{" "}
-                          {saida ? formatTimePdf(saida) : "N/A"}
-                          {"  "}
-                          ({chegada && saida ? formatDuration(chegada, saida) : "N/A"})
-                        </Text>
-                      ))}
-                    </View>
-                  ))}
-              </View>
-            )}
-            <Text style={styles.totalHoras}>Total de Horas: {totalHorasFmt}</Text>
+          <View style={styles.highlightCard}>
+            <View style={styles.highlightTitleWrap}>
+              <Text style={styles.highlightTitle}>Detalhamento de Horários</Text>
+            </View>
+            <View style={styles.highlightBody}>
+              {sorted.length === 0 ? (
+                <Text style={styles.emptyLine}>Sem horários informados.</Text>
+              ) : (
+                <PdfHorariosTable
+                  rows={horarioRows}
+                  totalHorasFmt={totalHorasFmt}
+                />
+              )}
+            </View>
           </View>
         </View>
 
         <View style={styles.bottomColLg}>
-          <View style={styles.highlightTitleWrap}>
-            <Text style={styles.highlightTitle}>Assinatura dos Responsáveis</Text>
-          </View>
-          <View style={styles.highlightBody}>
+          <View style={styles.highlightCard}>
+            <View style={styles.highlightTitleWrap}>
+              <Text style={styles.highlightTitle}>Assinatura dos Responsáveis</Text>
+            </View>
+            <View style={styles.highlightBody}>
             <Text style={styles.legalText}>{LEGAL}</Text>
             <View style={styles.signatures}>
               <View style={styles.signCol}>
@@ -524,6 +658,7 @@ function PdfBottomAnchor({
                 <Text style={styles.signHint}>{clienteNome}</Text>
               </View>
             </View>
+          </View>
           </View>
         </View>
       </View>

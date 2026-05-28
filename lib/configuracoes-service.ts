@@ -33,24 +33,16 @@ export async function uploadConfiguracaoLogo(
   const formData = new FormData();
   formData.append("logo", file);
 
-  const headers: Record<string, string> = {};
-  const token = localStorage.getItem("authToken");
-  if (token) {
-    headers.Authorization = `Bearer ${token}`;
-  }
-
   const response = await fetch(`${API_URL}/configuracoes/logo`, {
     method: "POST",
-    headers,
     body: formData,
+    credentials: "include",
   });
 
   const responseText = await response.text();
 
   if (!response.ok) {
     if (response.status === 401) {
-      localStorage.removeItem("authToken");
-      localStorage.removeItem("user");
       window.location.href = "/";
     }
     throw new ApiError(response.status, response.statusText, responseText);

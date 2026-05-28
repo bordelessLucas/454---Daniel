@@ -40,70 +40,27 @@ function getErrorMessageFromResponse(
   return `Erro ${status}: ${statusText}`;
 }
 
-function parseStoredUser(value: string): AuthUser | null {
-  try {
-    const parsed = JSON.parse(value) as Partial<AuthUser>;
-    if (
-      typeof parsed.id === "number" &&
-      typeof parsed.username === "string" &&
-      typeof parsed.nome === "string" &&
-      (parsed.role === "ADMIN" || parsed.role === "TECNICO")
-    ) {
-      return {
-        id: parsed.id,
-        username: parsed.username,
-        nome: parsed.nome,
-        role: parsed.role,
-        clienteId: parsed.clienteId ?? null,
-        unidadeId: parsed.unidadeId ?? null,
-      };
-    }
-    return null;
-  } catch {
-    return null;
-  }
-}
-
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Recuperar sessão e validar token com a API
+  // Recuperar sessão via cookie httpOnly
   useEffect(() => {
     async function bootstrapSession() {
-      const token = localStorage.getItem("authToken");
-      const storedUser = localStorage.getItem("user");
-
-      if (!token || !storedUser) {
-        setIsLoading(false);
-        return;
-      }
-
       try {
         const response = await fetch(`${API_URL}/auth/me`, {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
+          credentials: "include",
         });
 
         if (!response.ok) {
-          localStorage.removeItem("authToken");
-          localStorage.removeItem("user");
           setUser(null);
           return;
         }
 
         const apiUser = (await response.json()) as AuthUser;
         setUser(apiUser);
-        localStorage.setItem("user", JSON.stringify(apiUser));
       } catch {
-        const normalizedUser = parseStoredUser(storedUser);
-        if (normalizedUser) {
-          setUser(normalizedUser);
-        } else {
-          localStorage.removeItem("authToken");
-          localStorage.removeItem("user");
-        }
+        setUser(null);
       } finally {
         setIsLoading(false);
       }
@@ -145,30 +102,24 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       const data = parsedPayload as Partial<LoginResponse>;
-      const token = data.token;
       const apiUser = data.user;
-
-      if (!token || !apiUser) {
-        return {
-          success: false,
-          error: "Resposta de autenticação inválida.",
-        };
+      if (apiUser) {
+        setUser(apiUser);
+        return { success: true };
       }
 
-      // Armazenar token
-      localStorage.setItem("authToken", token);
-
-      const sessionUser: AuthUser = {
-        id: apiUser.id,
-        username: apiUser.username,
-        nome: apiUser.nome,
-        role: apiUser.role,
-        clienteId: apiUser.clienteId,
-        unidadeId: apiUser.unidadeId,
-      };
-
-      setUser(sessionUser);
-      localStorage.setItem("user", JSON.stringify(sessionUser));
+      // Caso o backend não retorne user no /login, busca via /me (cookie).
+      const meResponse = await fetch(`${API_URL}/auth/me`, {
+        credentials: "include",
+      });
+      if (!meResponse.ok) {
+        return {
+          success: false,
+          error: "Não foi possível validar a sessão após o login.",
+        };
+      }
+      const meUser = (await meResponse.json()) as AuthUser;
+      setUser(meUser);
       return { success: true };
     } catch (error) {
       const errorMessage =
@@ -181,9 +132,12 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const logout = useCallback(() => {
+    // Cookie httpOnly não pode ser limpo pelo frontend; tentativa best-effort.
+    void fetch(`${API_URL}/auth/logout`, {
+      method: "POST",
+      credentials: "include",
+    }).catch(() => undefined);
     setUser(null);
-    localStorage.removeItem("authToken");
-    localStorage.removeItem("user");
   }, []);
 
   const isAdmin = user?.role === "ADMIN";

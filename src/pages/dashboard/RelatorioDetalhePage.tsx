@@ -13,6 +13,7 @@ import { toast } from "sonner";
 import { RichTextReadonly } from "@/components/RichTextReadonly";
 import { useAuth } from "@/lib/auth-context";
 import { userCanEditRelatorio } from "@/lib/relatorio-permissions";
+import { RelatorioAuditLogSection } from "@/components/relatorio-audit-log-section";
 
 export default function RelatorioDetalhePage() {
   const { id } = useParams();
@@ -360,6 +361,8 @@ export default function RelatorioDetalhePage() {
             </div>
           </section>
         )}
+
+        <RelatorioAuditLogSection relatorioId={report.id} />
 
         <section className="rounded-2xl border border-border p-6 bg-muted/30">
           <h2 className="mb-4 text-sm font-medium text-muted-foreground">

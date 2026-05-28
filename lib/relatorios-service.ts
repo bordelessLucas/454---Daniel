@@ -1,5 +1,5 @@
 import { apiRequest } from '@/lib/api-client'
-import type { ApiReport } from '@/lib/types'
+import type { ApiAuditLog, ApiReport } from '@/lib/types'
 
 /** JSON completo do relatório (marca impresso no servidor). Rota: GET /relatorios/:id/pdf */
 export async function fetchRelatorioParaPdf(
@@ -8,4 +8,10 @@ export async function fetchRelatorioParaPdf(
   return apiRequest<ApiReport>(`/relatorios/${reportId}/pdf`, {
     method: 'GET',
   })
+}
+
+export async function fetchRelatorioAuditLogs(
+  reportId: number,
+): Promise<ApiAuditLog[]> {
+  return apiRequest<ApiAuditLog[]>(`/relatorios/${reportId}/audit-logs`)
 }

@@ -43,9 +43,7 @@ export class ApiError extends Error {
 
 const HORARIO_ACCESS_ERROR_MARKERS = ["horario configurado"] as const;
 
-function clearAuthSessionAndRedirectToLogin(): void {
-  localStorage.removeItem("authToken");
-  localStorage.removeItem("user");
+function redirectToLogin(): void {
   if (window.location.pathname !== "/") {
     window.location.href = "/";
   }
@@ -69,19 +67,13 @@ export interface BlobResponse {
   contentType: string | null;
 }
 
-function getAuthHeaders(options: RequestInit): Record<string, string> {
+function buildHeaders(options: RequestInit): Record<string, string> {
   const headers: Record<string, string> = {
     ...(options.headers as Record<string, string>),
   };
 
   if (options.body && !headers["Content-Type"]) {
     headers["Content-Type"] = "application/json";
-  }
-
-  const token = localStorage.getItem("authToken");
-
-  if (token) {
-    headers.Authorization = `Bearer ${token}`;
   }
 
   return headers;
@@ -91,20 +83,21 @@ async function performRequest(
   endpoint: string,
   options: RequestInit = {},
 ): Promise<Response> {
-  const headers = getAuthHeaders(options);
+  const headers = buildHeaders(options);
 
   const response = await fetch(`${API_URL}${endpoint}`, {
     ...options,
     headers,
+    credentials: options.credentials ?? "include",
   });
 
   if (!response.ok) {
     const responseText = await response.text();
 
     if (response.status === 401) {
-      clearAuthSessionAndRedirectToLogin();
+      redirectToLogin();
     } else if (response.status === 403 && isHorarioAccessDenied(responseText)) {
-      clearAuthSessionAndRedirectToLogin();
+      redirectToLogin();
     }
 
     throw new ApiError(response.status, response.statusText, responseText);

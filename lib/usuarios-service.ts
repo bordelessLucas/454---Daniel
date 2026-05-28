@@ -14,16 +14,7 @@ interface ChangePasswordData {
   newPassword: string;
 }
 
-function ensureAuthenticated(): void {
-  const token = localStorage.getItem("authToken");
-  if (!token) {
-    throw new Error("Sessão expirada. Faça login novamente.");
-  }
-}
-
 export async function createUsuario(data: CreateUserPayload): Promise<ApiUser> {
-  ensureAuthenticated();
-
   const payload = {
     username: data.username,
     password: data.password,
@@ -43,8 +34,6 @@ export async function updateUsuario(
   id: number,
   data: UpdateUsuarioData,
 ): Promise<ApiUser> {
-  ensureAuthenticated();
-
   return apiRequest<ApiUser>(`/users/${id}`, {
     method: "PUT",
     body: JSON.stringify(data),
@@ -55,8 +44,6 @@ export async function changePassword(
   id: number,
   data: ChangePasswordData,
 ): Promise<{ message: string }> {
-  ensureAuthenticated();
-
   return apiRequest<{ message: string }>(`/users/${id}/password`, {
     method: "PUT",
     body: JSON.stringify(data),
@@ -64,8 +51,6 @@ export async function changePassword(
 }
 
 export async function deleteUsuario(id: number): Promise<void> {
-  ensureAuthenticated();
-
   return apiRequest<void>(`/users/${id}`, {
     method: "DELETE",
   });
