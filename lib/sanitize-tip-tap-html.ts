@@ -26,6 +26,50 @@ export function sanitizeTipTapHtmlInput(html: string): string {
 /** Sanitiza e retorna string vazia se não houver texto visível. */
 export function sanitizeTipTapHtmlForSave(html: string): string {
   const sanitized = sanitizeTipTapHtmlInput(html);
-  const textOnly = sanitized.replace(/<[^>]*>/g, "").trim();
-  return textOnly ? sanitized : "";
+  const allowedTags = [
+    "b",
+    "i",
+    "em",
+    "strong",
+    "a",
+    "p",
+    "ul",
+    "ol",
+    "li",
+    "br",
+  ];
+
+  const clean = sanitized.replace(
+    /<\/?([a-zA-Z0-9]+)(\s[^>]*?)?>/g,
+    (tag, tagName, attributes) => {
+      const name = String(tagName).toLowerCase();
+      if (!allowedTags.includes(name)) {
+        return "";
+      }
+
+      if (name === "br") {
+        return "<br>";
+      }
+
+      if (name === "a") {
+        if (tag.startsWith("</")) {
+          return "</a>";
+        }
+        const hrefMatch = /href\s*=\s*(?:"([^"]*)"|'([^']*)'|([^\s>]+))/i.exec(
+          String(attributes) || "",
+        );
+        const href = hrefMatch?.[1] ?? hrefMatch?.[2] ?? hrefMatch?.[3] ?? "";
+        return href ? `<a href="${href}">` : "<a>";
+      }
+
+      if (tag.startsWith("</")) {
+        return `</${name}>`;
+      }
+
+      return `<${name}>`;
+    },
+  );
+
+  const textOnly = clean.replace(/<[^>]*>/g, "").trim();
+  return textOnly ? clean : "";
 }

@@ -17,6 +17,7 @@ import {
 } from "@/lib/relatorio-pdf-footer";
 import {
   tipTapHtmlToServicoPdfBlocks,
+  mergeAdjacentSegments,
   type ServicoPdfSegment,
 } from "@/lib/tiptap-html-to-pdf";
 
@@ -26,8 +27,7 @@ const FOOTER_BLOCK_HEIGHT = 58;
 const BOTTOM_ANCHOR_HEIGHT = 148;
 const PAGE_BOTTOM_RESERVE =
   FOOTER_BOTTOM_OFFSET + FOOTER_BLOCK_HEIGHT + BOTTOM_ANCHOR_HEIGHT + 12;
-const BOTTOM_ANCHOR_BOTTOM =
-  FOOTER_BOTTOM_OFFSET + FOOTER_BLOCK_HEIGHT + 6;
+const BOTTOM_ANCHOR_BOTTOM = FOOTER_BOTTOM_OFFSET + FOOTER_BLOCK_HEIGHT + 6;
 
 Font.register({
   family: "Inter",
@@ -395,38 +395,29 @@ function getPeriodo(hora: Date): string {
   return "Noite";
 }
 
-function ServicoStyledBlock({
-  lines,
-}: {
-  lines: ServicoPdfSegment[][];
-}) {
+function ServicoStyledBlock({ lines }: { lines: ServicoPdfSegment[][] }) {
   if (lines.length === 0) {
     return null;
   }
 
   return (
-    <Text style={styles.servicoLine}>
-      {lines.flatMap((segments, li) => {
-        const nodes: React.ReactNode[] = [];
-        if (li > 0) {
-          nodes.push("\n");
-        }
-        segments.forEach((seg, si) => {
-          nodes.push(
+    <>
+      {lines.map((segments, li) => (
+        <Text key={`line-${li}`} style={styles.servicoLine}>
+          {segments.map((seg, si) => (
             <Text
-              key={`${li}-${si}`}
+              key={`seg-${li}-${si}`}
               style={{
                 fontWeight: seg.bold ? "bold" : "normal",
                 fontStyle: seg.italic ? "italic" : "normal",
               }}
             >
               {seg.text}
-            </Text>,
-          );
-        });
-        return nodes;
-      })}
-    </Text>
+            </Text>
+          ))}
+        </Text>
+      ))}
+    </>
   );
 }
 
@@ -464,8 +455,7 @@ function buildHorarioTableRows(
         chegada && saida
           ? `${formatTimePdf(chegada)} - ${formatTimePdf(saida)}`
           : "N/A";
-      const duracao =
-        chegada && saida ? formatDuration(chegada, saida) : "N/A";
+      const duracao = chegada && saida ? formatDuration(chegada, saida) : "N/A";
 
       rows.push({
         key: String(h.id ?? `${periodo}-${idx}`),
@@ -624,7 +614,9 @@ function PdfBottomAnchor({
         <View style={styles.bottomColSm}>
           <View style={styles.highlightCard}>
             <View style={styles.highlightTitleWrap}>
-              <Text style={styles.highlightTitle}>Detalhamento de Horários</Text>
+              <Text style={styles.highlightTitle}>
+                Detalhamento de Horários
+              </Text>
             </View>
             <View style={styles.highlightBody}>
               {sorted.length === 0 ? (
@@ -642,23 +634,25 @@ function PdfBottomAnchor({
         <View style={styles.bottomColLg}>
           <View style={styles.highlightCard}>
             <View style={styles.highlightTitleWrap}>
-              <Text style={styles.highlightTitle}>Assinatura dos Responsáveis</Text>
+              <Text style={styles.highlightTitle}>
+                Assinatura dos Responsáveis
+              </Text>
             </View>
             <View style={styles.highlightBody}>
-            <Text style={styles.legalText}>{LEGAL}</Text>
-            <View style={styles.signatures}>
-              <View style={styles.signCol}>
-                <View style={styles.signLine} />
-                <Text style={styles.signName}>{tecnicoNome}</Text>
-                <Text style={styles.signHint}>LINQ INFORMÁTICA</Text>
-              </View>
-              <View style={styles.signCol}>
-                <View style={styles.signLine} />
-                <Text style={styles.signName}>{responsavelCliente}</Text>
-                <Text style={styles.signHint}>{clienteNome}</Text>
+              <Text style={styles.legalText}>{LEGAL}</Text>
+              <View style={styles.signatures}>
+                <View style={styles.signCol}>
+                  <View style={styles.signLine} />
+                  <Text style={styles.signName}>{tecnicoNome}</Text>
+                  <Text style={styles.signHint}>LINQ INFORMÁTICA</Text>
+                </View>
+                <View style={styles.signCol}>
+                  <View style={styles.signLine} />
+                  <Text style={styles.signName}>{responsavelCliente}</Text>
+                  <Text style={styles.signHint}>{clienteNome}</Text>
+                </View>
               </View>
             </View>
-          </View>
           </View>
         </View>
       </View>
@@ -682,7 +676,9 @@ export function RelatorioPDF({
     tecnicosList[0]?.nome ?? relatorio.criadoPor?.nome,
   );
   const contatoNome = fieldOrNA(relatorio.contato?.nome);
-  const contatoCargo = fieldOrNA(relatorio.contatoCargo ?? relatorio.contato?.cargo);
+  const contatoCargo = fieldOrNA(
+    relatorio.contatoCargo ?? relatorio.contato?.cargo,
+  );
   const clienteNome = fieldOrNA(relatorio.cliente?.nomeFantasia);
   const dataVisita = parseDate(relatorio.dataVisita);
 
@@ -700,101 +696,105 @@ export function RelatorioPDF({
     }
   }
   const totalHorasFmt =
-    totalMs > 0
-      ? formatDuration(new Date(0), new Date(totalMs))
-      : "00:00";
+    totalMs > 0 ? formatDuration(new Date(0), new Date(totalMs)) : "00:00";
 
   return (
     <Document>
       <Page size="A4" style={styles.page} wrap>
         <View style={styles.pageMain}>
-        <View style={styles.header}>
-          <View style={styles.logoBox}>
-            <Image src={iconUrl} style={{ width: 32, height: 41 }} />
-            <Text style={styles.logoText}>Linq</Text>
+          <View style={styles.header}>
+            <View style={styles.logoBox}>
+              <Image src={iconUrl} style={{ width: 32, height: 41 }} />
+              <Text style={styles.logoText}>Linq</Text>
+            </View>
+            <View style={styles.titleBox}>
+              <Text style={styles.pageTitle}>
+                Relatório de Atendimento Técnico
+              </Text>
+            </View>
+            <View style={styles.headerMeta}>
+              <Text style={styles.metaLine}>
+                Relatório Nº {relatorio.id ?? "N/A"}
+              </Text>
+              <Text style={styles.metaLine}>
+                Data: {dataVisita ? formatDatePdf(dataVisita) : "N/A"}
+              </Text>
+            </View>
           </View>
-          <View style={styles.titleBox}>
-            <Text style={styles.pageTitle}>Relatório de Atendimento Técnico</Text>
-          </View>
-          <View style={styles.headerMeta}>
-            <Text style={styles.metaLine}>Relatório Nº {relatorio.id ?? "N/A"}</Text>
-            <Text style={styles.metaLine}>
-              Data: {dataVisita ? formatDatePdf(dataVisita) : "N/A"}
-            </Text>
-          </View>
-        </View>
 
-        <View style={styles.sectionTitleWrap}>
-          <Text style={styles.sectionTitle}>Informações do Cliente</Text>
-        </View>
-        <View style={styles.sectionBody}>
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLineFull}>
-              <Text style={styles.label}>Cliente: </Text>
-              {clienteNome}
-            </Text>
+          <View style={styles.sectionTitleWrap}>
+            <Text style={styles.sectionTitle}>Informações do Cliente</Text>
           </View>
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLine}>
-              <Text style={styles.label}>Contato: </Text>
-              {contatoNome}
-            </Text>
-            <Text style={styles.infoLine}>
-              <Text style={styles.label}>Função/Cargo Responsável de TI: </Text>
-              {contatoCargo}
-            </Text>
-            <Text style={styles.infoLine}>
-              <Text style={styles.label}>Cidade: </Text>
-              {buildCidadeCliente(relatorio)}
-            </Text>
-          </View>
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLine}>
-              <Text style={styles.label}>Modalidade de atendimento: </Text>
-              {fieldOrNA(relatorio.modalidadeServico)}
-            </Text>
-            <Text style={styles.infoLine}>
-              <Text style={styles.label}>N° contrato: </Text>
-              {fieldOrNA(relatorio.numeroContrato)}
-            </Text>
-          </View>
-          <View style={styles.infoRow}>
-            <Text style={styles.infoLine}>
-              <Text style={styles.label}>Técnico designado: </Text>
-              {tecnicoNome}
-            </Text>
-            <Text style={styles.infoLine}>
-              <Text style={styles.label}>Data da visita: </Text>
-              {dataVisita ? formatDatePdf(dataVisita) : "N/A"}
-            </Text>
-          </View>
-        </View>
-
-        <View style={styles.sectionTitleWrap}>
-          <Text style={styles.sectionTitle}>Detalhamento dos Serviços</Text>
-        </View>
-        <View style={styles.servicesBody}>
-          {setoresList.length > 0 &&
-            setoresList.map((setor, idx) => (
-              <View key={setor.id ?? idx} style={styles.paragraphBlock}>
-                <Text style={styles.setorTitle}>
-                  {fieldOrNA(setor.setor?.nome)}
+          <View style={styles.sectionBody}>
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLineFull}>
+                <Text style={styles.label}>Cliente: </Text>
+                {clienteNome}
+              </Text>
+            </View>
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLine}>
+                <Text style={styles.label}>Contato: </Text>
+                {contatoNome}
+              </Text>
+              <Text style={styles.infoLine}>
+                <Text style={styles.label}>
+                  Função/Cargo Responsável de TI:{" "}
                 </Text>
-                {setor.observacao ? (
-                  <Text style={styles.bulletLine}>• {setor.observacao}</Text>
-                ) : null}
-              </View>
-            ))}
-          {showServicoPlaceholder ? (
-            <Text style={styles.emptyLine}>Sem detalhamento informado.</Text>
-          ) : (
-            servicoBlocks.map((block, idx) => (
-              <View key={`srv-${idx}`} style={styles.servicoParagraphBlock}>
-                <ServicoStyledBlock lines={block.lines} />
-              </View>
-            ))
-          )}
-        </View>
+                {contatoCargo}
+              </Text>
+              <Text style={styles.infoLine}>
+                <Text style={styles.label}>Cidade: </Text>
+                {buildCidadeCliente(relatorio)}
+              </Text>
+            </View>
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLine}>
+                <Text style={styles.label}>Modalidade de atendimento: </Text>
+                {fieldOrNA(relatorio.modalidadeServico)}
+              </Text>
+              <Text style={styles.infoLine}>
+                <Text style={styles.label}>N° contrato: </Text>
+                {fieldOrNA(relatorio.numeroContrato)}
+              </Text>
+            </View>
+            <View style={styles.infoRow}>
+              <Text style={styles.infoLine}>
+                <Text style={styles.label}>Técnico designado: </Text>
+                {tecnicoNome}
+              </Text>
+              <Text style={styles.infoLine}>
+                <Text style={styles.label}>Data da visita: </Text>
+                {dataVisita ? formatDatePdf(dataVisita) : "N/A"}
+              </Text>
+            </View>
+          </View>
+
+          <View style={styles.sectionTitleWrap}>
+            <Text style={styles.sectionTitle}>Detalhamento dos Serviços</Text>
+          </View>
+          <View style={styles.servicesBody}>
+            {setoresList.length > 0 &&
+              setoresList.map((setor, idx) => (
+                <View key={setor.id ?? idx} style={styles.paragraphBlock}>
+                  <Text style={styles.setorTitle}>
+                    {fieldOrNA(setor.setor?.nome)}
+                  </Text>
+                  {setor.observacao ? (
+                    <Text style={styles.bulletLine}>• {setor.observacao}</Text>
+                  ) : null}
+                </View>
+              ))}
+            {showServicoPlaceholder ? (
+              <Text style={styles.emptyLine}>Sem detalhamento informado.</Text>
+            ) : (
+              servicoBlocks.map((block, idx) => (
+                <View key={`srv-${idx}`} style={styles.servicoParagraphBlock}>
+                  <ServicoStyledBlock lines={block.lines} />
+                </View>
+              ))
+            )}
+          </View>
         </View>
 
         <PdfBottomAnchor

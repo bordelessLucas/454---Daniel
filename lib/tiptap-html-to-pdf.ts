@@ -33,17 +33,13 @@ function decodeBasicEntities(t: string): string {
     .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(Number(n)));
 }
 
-function mergeAdjacentSegments(
+export function mergeAdjacentSegments(
   segments: ServicoPdfSegment[],
 ): ServicoPdfSegment[] {
   const out: ServicoPdfSegment[] = [];
   for (const seg of segments) {
     const prev = out[out.length - 1];
-    if (
-      prev &&
-      prev.bold === seg.bold &&
-      prev.italic === seg.italic
-    ) {
+    if (prev && prev.bold === seg.bold && prev.italic === seg.italic) {
       prev.text += seg.text;
     } else if (seg.text.length > 0) {
       out.push({ ...seg });
@@ -203,14 +199,61 @@ function extractDirectLiBodies(listInner: string): string[] {
 /** Reduz conteúdo interno de um `<li>` a HTML “quase plano” (quebras e ênfase). */
 function normalizeLiInnerHtml(fragment: string): string {
   let s = fragment
+    .replace(
+      /<br\s*\/?>\s*<\/(p|div|h[1-6])>/gi,
+      "__TIPPAP_PDF_BR_BEFORE_CLOSE__",
+    )
     .replace(/<\/(p|div|h[1-6])>/gi, "\n")
     .replace(/<p\b[^>]*>/gi, "")
-    .replace(/<br\s*\/?>/gi, "\n");
+    .replace(/<br\s*\/?>/gi, "\n")
+    .replace(/__TIPPAP_PDF_BR_BEFORE_CLOSE__/g, "\n");
 
   s = stripUnsupportedTags(s);
   s = s.replace(/[ \t]+\n/g, "\n").replace(/\n[ \t]+/g, "\n");
   s = s.replace(/\n{3,}/g, "\n\n").trim();
   return s;
+}
+
+/**
+ * Converte HTML do TipTap em parágrafos (cada string pode conter `\n` para itens de lista).
+ * `<ul>` gera linhas `• …`; `<ol>` gera `1.` `2.` …; quebras reais `\n` entre itens são preservadas.
+ */
+export function tipTapHtmlToPdfParagraphs(
+  html: string | null | undefined,
+): string[] {
+  if (!html?.trim()) {
+    return [];
+  }
+
+  let s = stripScriptsAndStyles(html);
+  s = replaceListTagsWithPlainText(s);
+
+  // Parágrafo vazio = quebra “forte” (Enter duplo no editor). Demais </p> = só uma linha.
+  s = s.replace(/<p>\s*(?:<br\s*\/?>)?\s*<\/p>/gi, "\n\n");
+  s = s.replace(/<br\s*\/?>\s*<\/p>/gi, "__TIPPAP_PDF_BR_BEFORE_CLOSE__");
+  s = s
+    .replace(/<\/(p|div|h[1-6])>/gi, "\n")
+    .replace(/<p\b[^>]*>/gi, "")
+    .replace(/<br\s*\/?>/gi, "\n") // <-- REGEX CORRIGIDA AQUI
+    .replace(/__TIPPAP_PDF_BR_BEFORE_CLOSE__/g, "\n");
+
+  s = stripUnsupportedTags(s);
+  s = decodeBasicEntities(s);
+  s = s
+    .replace(/\u00a0/g, " ")
+    .replace(/[ \t]+\n/g, "\n")
+    .replace(/\n[ \t]+/g, "\n")
+    .replace(/\n{3,}/g, "\n\n")
+    .trim();
+
+  if (!s) {
+    return [];
+  }
+
+  return s
+    .split(/\n\n+/)
+    .map((p) => p.trim())
+    .filter((p) => p.length > 0 && !/^[\s•\d.]*$/.test(p));
 }
 
 function formatListBlock(inner: string, ordered: boolean): string {
@@ -284,41 +327,6 @@ function replaceListTagsWithPlainText(html: string): string {
  * Converte HTML do TipTap em parágrafos (cada string pode conter `\n` para itens de lista).
  * `<ul>` gera linhas `• …`; `<ol>` gera `1.` `2.` …; quebras reais `\n` entre itens são preservadas.
  */
-export function tipTapHtmlToPdfParagraphs(
-  html: string | null | undefined,
-): string[] {
-  if (!html?.trim()) {
-    return [];
-  }
-
-  let s = stripScriptsAndStyles(html);
-  s = replaceListTagsWithPlainText(s);
-
-  // Parágrafo vazio = quebra “forte” (Enter duplo no editor). Demais </p> = só uma linha.
-  s = s.replace(/<p>\s*(?:<br\s*\/?>)?\s*<\/p>/gi, "\n\n");
-  s = s
-    .replace(/<\/(p|div|h[1-6])>/gi, "\n")
-    .replace(/<p\b[^>]*>/gi, "")
-    .replace(/<br\s*\/?>/gi, "\n");
-
-  s = stripUnsupportedTags(s);
-  s = decodeBasicEntities(s);
-  s = s
-    .replace(/\u00a0/g, " ")
-    .replace(/[ \t]+\n/g, "\n")
-    .replace(/\n[ \t]+/g, "\n")
-    .replace(/\n{3,}/g, "\n\n")
-    .trim();
-
-  if (!s) {
-    return [];
-  }
-
-  return s
-    .split(/\n\n+/)
-    .map((p) => p.trim())
-    .filter((p) => p.length > 0 && !/^[\s•\d.]*$/.test(p));
-}
 
 /**
  * Converte HTML do TipTap em blocos com segmentos estilizados para o PDF
@@ -375,7 +383,12 @@ export function tipTapHtmlToServicoPdfBlocks(
     const lastLine = mergedLines[lastLineIdx];
     const firstNextLine = next[0];
 
-    if (lastLine && lastLine.length > 0 && firstNextLine && firstNextLine.length > 0) {
+    if (
+      lastLine &&
+      lastLine.length > 0 &&
+      firstNextLine &&
+      firstNextLine.length > 0
+    ) {
       // Adiciona espaço ao final da última linha para manter leitura contínua.
       lastLine.push({ text: " ", bold: false, italic: false });
       mergedLines[lastLineIdx] = mergeAdjacentSegments(lastLine);

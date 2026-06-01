@@ -14,7 +14,7 @@ interface RichTextEditorProps {
 function normalizeHtml(html: string): string {
   const compact = html
     .replace(/<p><\/p>/g, "")
-    .replace(/<p><br><\/p>/g, "")
+    .replace(/<p><br\s*\/?><\/p>/g, "")
     .replace(/&nbsp;/g, " ")
     .trim();
 
