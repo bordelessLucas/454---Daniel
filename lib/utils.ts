@@ -12,20 +12,6 @@ export function sanitizeFilename(filename: string) {
     .trim()
 }
 
-function normalizeFilenamePart(value: string) {
-  return value
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^a-zA-Z0-9]+/g, '_')
-    .replace(/^_+|_+$/g, '')
-}
-
-export function buildRelatorioPdfFilename(clientName: string, dateStr: string) {
-  const client = normalizeFilenamePart(clientName || 'Cliente')
-  const reportDate = normalizeFilenamePart(dateStr || 'Data')
-  return sanitizeFilename(`Relatorio_${client}_${reportDate}.pdf`)
-}
-
 export function downloadBlobFile(blob: Blob, filename: string) {
   if (!blob || blob.size === 0) {
     throw new Error('Arquivo inválido para download.')

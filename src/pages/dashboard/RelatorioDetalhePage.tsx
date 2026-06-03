@@ -8,7 +8,11 @@ import { ApiError } from "@/lib/api-client";
 import { fetchRelatorioParaPdf } from "@/lib/relatorios-service";
 import { buildRelatorioPdfBlob } from "@/components/RelatorioPDF";
 import { loadRelatorioPdfBuildOptions } from "@/lib/relatorio-pdf-footer";
-import { buildRelatorioPdfFilename, downloadBlobFile } from "@/lib/utils";
+import { downloadBlobFile } from "@/lib/utils";
+import {
+  buildRelatorioPdfFilename,
+  formatRelatorioTitulo,
+} from "@/lib/relatorio-naming";
 import { toast } from "sonner";
 import { RichTextReadonly } from "@/components/RichTextReadonly";
 import { useAuth } from "@/lib/auth-context";
@@ -59,15 +63,7 @@ export default function RelatorioDetalhePage() {
         loadRelatorioPdfBuildOptions(),
       ]);
       const blob = await buildRelatorioPdfBlob(relatorioPdf, pdfOptions);
-      const reportDate = new Date(report.dataVisita);
-      const datePart = Number.isNaN(reportDate.getTime())
-        ? "Data"
-        : reportDate.toISOString().split("T")[0];
-      const filename = buildRelatorioPdfFilename(
-        report.cliente.nomeFantasia,
-        datePart,
-      );
-      downloadBlobFile(blob, filename);
+      downloadBlobFile(blob, buildRelatorioPdfFilename(report.id));
       setIsPrinted(true);
       toast.success("PDF baixado com sucesso.");
     } catch (downloadError) {
@@ -141,7 +137,7 @@ export default function RelatorioDetalhePage() {
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <h1 className="text-2xl font-semibold tracking-tight text-foreground">
-            Relatório #{report.id}
+            {formatRelatorioTitulo(report.id)}
           </h1>
           <Badge variant={isPrinted ? "default" : "secondary"}>
             {isPrinted ? "Impresso" : "Não Impresso"}

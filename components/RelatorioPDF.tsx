@@ -15,19 +15,33 @@ import {
   type BuildRelatorioPdfOptions,
   type RelatorioPdfFooterConfig,
 } from "@/lib/relatorio-pdf-footer";
+import { formatRelatorioTitulo } from "@/lib/relatorio-naming";
 import {
   tipTapHtmlToServicoPdfBlocks,
   mergeAdjacentSegments,
   type ServicoPdfSegment,
 } from "@/lib/tiptap-html-to-pdf";
 
-/** Altura reservada na página para rodapé + bloco fixo de horários/assinaturas. */
-const FOOTER_BOTTOM_OFFSET = 25;
+/** Margens laterais alinhadas ao `paddingHorizontal` da página. */
+const PAGE_MARGIN_HORIZONTAL = 16;
+/** Rodapé corporativo quase no limite inferior da página. */
+const FOOTER_BOTTOM = 12;
+const FOOTER_MARGIN_HORIZONTAL = 20;
 const FOOTER_BLOCK_HEIGHT = 58;
-const BOTTOM_ANCHOR_HEIGHT = 148;
+/** Folga entre o texto legal e o rodapé corporativo. */
+const LEGAL_GAP_ABOVE_FOOTER = 6;
+/** Folga entre o card de assinaturas e o texto legal. */
+const LEGAL_GAP_BELOW_SIGNATURES = 22;
+/** Texto legal fixo logo acima do rodapé corporativo. */
+const LEGAL_TEXT_BOTTOM =
+  FOOTER_BOTTOM + FOOTER_BLOCK_HEIGHT + LEGAL_GAP_ABOVE_FOOTER;
+/** Base do bloco horários/assinaturas (acima do texto legal). */
+const PAGE_BOTTOM_STACK_BOTTOM =
+  LEGAL_TEXT_BOTTOM + LEGAL_GAP_BELOW_SIGNATURES;
+const PAGE_BOTTOM_STACK_ESTIMATED_HEIGHT = 270;
+/** Evita sobreposição do conteúdo dinâmico com rodapé fixo + legal + cards. */
 const PAGE_BOTTOM_RESERVE =
-  FOOTER_BOTTOM_OFFSET + FOOTER_BLOCK_HEIGHT + BOTTOM_ANCHOR_HEIGHT + 12;
-const BOTTOM_ANCHOR_BOTTOM = FOOTER_BOTTOM_OFFSET + FOOTER_BLOCK_HEIGHT + 6;
+  PAGE_BOTTOM_STACK_BOTTOM + PAGE_BOTTOM_STACK_ESTIMATED_HEIGHT + 16;
 
 Font.register({
   family: "Inter",
@@ -48,7 +62,7 @@ Font.register({
 });
 
 const LEGAL =
-  "A LINQ INFORMÁTICA EIRELI-ME, seus diretores, sócios e funcionários, ficam ISENTOS DE QUAISQUER RESPONSABILIDADES, " +
+  "A LINQ INFORMÁTICA, seus diretores, sócios e funcionários, ficam ISENTOS DE QUAISQUER RESPONSABILIDADES, " +
   "sejam elas jurídicas, cíveis, penais ou criminais, referentes ao USO DE LICENÇAS DE SOFTWARE pela EMPRESA CONTRATANTE, " +
   "na sua sede matriz e respectivas filiais.";
 
@@ -59,7 +73,7 @@ const styles = StyleSheet.create({
     color: "#111111",
     paddingTop: 16,
     paddingBottom: PAGE_BOTTOM_RESERVE,
-    paddingHorizontal: 16,
+    paddingHorizontal: PAGE_MARGIN_HORIZONTAL,
   },
   pageMain: {
     flexGrow: 1,
@@ -185,27 +199,18 @@ const styles = StyleSheet.create({
   emptyLine: {
     color: "#4b5563",
   },
-  pageBottomAnchor: {
+  pageBottomStack: {
     position: "absolute",
-    bottom: BOTTOM_ANCHOR_BOTTOM,
-    left: 16,
-    right: 16,
-  },
-  bottomGrid: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-  },
-  bottomColSm: {
-    width: "42%",
-    alignSelf: "flex-start",
-  },
-  bottomColLg: {
-    width: "56%",
-    alignSelf: "flex-start",
+    bottom: PAGE_BOTTOM_STACK_BOTTOM,
+    left: PAGE_MARGIN_HORIZONTAL,
+    right: PAGE_MARGIN_HORIZONTAL,
+    flexDirection: "column",
   },
   highlightCard: {
     width: "100%",
+  },
+  bottomAnchorCardSpaced: {
+    marginTop: 10,
   },
   highlightTitleWrap: {
     backgroundColor: "#eab308",
@@ -255,12 +260,12 @@ const styles = StyleSheet.create({
     fontFamily: "Helvetica",
   },
   horarioCellIntervalo: {
-    width: 82,
+    flex: 1,
     fontSize: 8,
     fontFamily: "Helvetica",
   },
   horarioCellDuracao: {
-    width: 38,
+    width: 72,
     fontSize: 8,
     fontFamily: "Helvetica",
     textAlign: "right",
@@ -275,10 +280,10 @@ const styles = StyleSheet.create({
     width: 44,
   },
   horarioHeadIntervalo: {
-    width: 82,
+    flex: 1,
   },
   horarioHeadDuracao: {
-    width: 38,
+    width: 72,
     textAlign: "right",
   },
   totalHorasRow: {
@@ -299,19 +304,41 @@ const styles = StyleSheet.create({
     fontSize: 8.5,
     textAlign: "right",
   },
+  legalTextWrap: {
+    position: "absolute",
+    bottom: LEGAL_TEXT_BOTTOM,
+    left: FOOTER_MARGIN_HORIZONTAL,
+    right: FOOTER_MARGIN_HORIZONTAL,
+  },
   legalText: {
-    fontSize: 7.5,
-    lineHeight: 1.25,
-    marginBottom: 10,
+    fontSize: 5.5,
+    textAlign: "center",
+    color: "#374151",
+    width: "100%",
+    marginTop: 4,
+  },
+  highlightBodySignatures: {
+    paddingTop: 10,
+    paddingBottom: 8,
+    minHeight: 88,
   },
   signatures: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginTop: 10,
+    alignItems: "flex-start",
+    width: "100%",
+    flexShrink: 0,
   },
   signCol: {
-    width: "46%",
+    width: "48.5%",
+    flexDirection: "column",
     alignItems: "center",
+  },
+  /** Espaço em branco acima da linha para assinatura manuscrita ou digital. */
+  signArea: {
+    width: "100%",
+    height: 44,
+    marginBottom: 6,
   },
   signLine: {
     width: "100%",
@@ -329,12 +356,12 @@ const styles = StyleSheet.create({
   },
   footer: {
     position: "absolute",
-    bottom: 25,
-    left: 40,
-    right: 40,
+    bottom: FOOTER_BOTTOM,
+    left: FOOTER_MARGIN_HORIZONTAL,
+    right: FOOTER_MARGIN_HORIZONTAL,
     borderTopWidth: 1,
     borderTopColor: "#111111",
-    paddingTop: 10,
+    paddingTop: 6,
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "flex-end",
@@ -433,7 +460,6 @@ function formatDuration(start: Date, end: Date): string {
 type HorarioTableRowData = {
   key: string;
   periodo: string;
-  showPeriodo: boolean;
   intervalo: string;
   duracao: string;
 };
@@ -449,21 +475,28 @@ function buildHorarioTableRows(
 
   for (const periodo of ordemPeriodos) {
     const items = grupos[periodo] ?? [];
-    items.forEach((item, idx) => {
-      const { h, chegada, saida } = item;
-      const intervalo =
+    if (items.length === 0) continue;
+
+    const intervalos: string[] = [];
+    const duracoes: string[] = [];
+
+    for (const item of items) {
+      const { chegada, saida } = item;
+      intervalos.push(
         chegada && saida
           ? `${formatTimePdf(chegada)} - ${formatTimePdf(saida)}`
-          : "N/A";
-      const duracao = chegada && saida ? formatDuration(chegada, saida) : "N/A";
+          : "N/A",
+      );
+      duracoes.push(
+        chegada && saida ? `(${formatDuration(chegada, saida)})` : "(N/A)",
+      );
+    }
 
-      rows.push({
-        key: String(h.id ?? `${periodo}-${idx}`),
-        periodo,
-        showPeriodo: idx === 0,
-        intervalo,
-        duracao,
-      });
+    rows.push({
+      key: periodo,
+      periodo,
+      intervalo: intervalos.join(" | "),
+      duracao: duracoes.join(" | "),
     });
   }
 
@@ -493,16 +526,9 @@ function PdfHorariosTable({
 
       {rows.map((row) => (
         <View key={row.key} style={styles.horarioTableRow}>
-          <Text
-            style={[
-              styles.horarioCellPeriodo,
-              !row.showPeriodo && styles.horarioCellPeriodoEmpty,
-            ]}
-          >
-            {row.showPeriodo ? row.periodo : " "}
-          </Text>
+          <Text style={styles.horarioCellPeriodo}>{row.periodo}</Text>
           <Text style={styles.horarioCellIntervalo}>{row.intervalo}</Text>
-          <Text style={styles.horarioCellDuracao}>({row.duracao})</Text>
+          <Text style={styles.horarioCellDuracao}>{row.duracao}</Text>
         </View>
       ))}
 
@@ -551,7 +577,7 @@ function PdfFooter({
 
   return (
     <View style={styles.footer} fixed>
-      <View style={{ flex: 1, paddingRight: 8 }}>
+      <View style={{ flex: 1 }}>
         {footer.lines.map((line, i) => (
           <Text key={`footer-line-${i}`} style={styles.footerLeftLine}>
             {line}
@@ -609,49 +635,40 @@ function PdfBottomAnchor({
   const horarioRows = buildHorarioTableRows(grupos, ordemPeriodos);
 
   return (
-    <View style={styles.pageBottomAnchor} fixed>
-      <View style={styles.bottomGrid}>
-        <View style={styles.bottomColSm}>
-          <View style={styles.highlightCard}>
-            <View style={styles.highlightTitleWrap}>
-              <Text style={styles.highlightTitle}>
-                Detalhamento de Horários
-              </Text>
-            </View>
-            <View style={styles.highlightBody}>
-              {sorted.length === 0 ? (
-                <Text style={styles.emptyLine}>Sem horários informados.</Text>
-              ) : (
-                <PdfHorariosTable
-                  rows={horarioRows}
-                  totalHorasFmt={totalHorasFmt}
-                />
-              )}
-            </View>
-          </View>
+    <View style={styles.pageBottomStack} fixed>
+      <View style={styles.highlightCard}>
+        <View style={styles.highlightTitleWrap}>
+          <Text style={styles.highlightTitle}>Detalhamento de Horários</Text>
         </View>
+        <View style={styles.highlightBody}>
+          {sorted.length === 0 ? (
+            <Text style={styles.emptyLine}>Sem horários informados.</Text>
+          ) : (
+            <PdfHorariosTable
+              rows={horarioRows}
+              totalHorasFmt={totalHorasFmt}
+            />
+          )}
+        </View>
+      </View>
 
-        <View style={styles.bottomColLg}>
-          <View style={styles.highlightCard}>
-            <View style={styles.highlightTitleWrap}>
-              <Text style={styles.highlightTitle}>
-                Assinatura dos Responsáveis
-              </Text>
+      <View style={[styles.highlightCard, styles.bottomAnchorCardSpaced]}>
+        <View style={styles.highlightTitleWrap}>
+          <Text style={styles.highlightTitle}>Assinatura dos Responsáveis</Text>
+        </View>
+        <View style={[styles.highlightBody, styles.highlightBodySignatures]}>
+          <View style={styles.signatures}>
+            <View style={styles.signCol}>
+              <View style={styles.signArea} />
+              <View style={styles.signLine} />
+              <Text style={styles.signName}>{tecnicoNome}</Text>
+              <Text style={styles.signHint}>LINQ INFORMÁTICA</Text>
             </View>
-            <View style={styles.highlightBody}>
-              <Text style={styles.legalText}>{LEGAL}</Text>
-              <View style={styles.signatures}>
-                <View style={styles.signCol}>
-                  <View style={styles.signLine} />
-                  <Text style={styles.signName}>{tecnicoNome}</Text>
-                  <Text style={styles.signHint}>LINQ INFORMÁTICA</Text>
-                </View>
-                <View style={styles.signCol}>
-                  <View style={styles.signLine} />
-                  <Text style={styles.signName}>{responsavelCliente}</Text>
-                  <Text style={styles.signHint}>{clienteNome}</Text>
-                </View>
-              </View>
+            <View style={styles.signCol}>
+              <View style={styles.signArea} />
+              <View style={styles.signLine} />
+              <Text style={styles.signName}>{responsavelCliente}</Text>
+              <Text style={styles.signHint}>{clienteNome}</Text>
             </View>
           </View>
         </View>
@@ -709,12 +726,14 @@ export function RelatorioPDF({
             </View>
             <View style={styles.titleBox}>
               <Text style={styles.pageTitle}>
-                Relatório de Atendimento Técnico
+                {relatorio.id != null
+                  ? formatRelatorioTitulo(relatorio.id)
+                  : "Relatório Técnico"}
               </Text>
             </View>
             <View style={styles.headerMeta}>
               <Text style={styles.metaLine}>
-                Relatório Nº {relatorio.id ?? "N/A"}
+                {relatorio.id != null ? `Nº ${relatorio.id}` : "Nº —"}
               </Text>
               <Text style={styles.metaLine}>
                 Data: {dataVisita ? formatDatePdf(dataVisita) : "N/A"}
@@ -804,6 +823,12 @@ export function RelatorioPDF({
           responsavelCliente={responsavelCliente}
           clienteNome={clienteNome}
         />
+
+        <View style={styles.legalTextWrap} fixed>
+          <Text style={styles.legalText} wrap>
+            {LEGAL}
+          </Text>
+        </View>
 
         <PdfFooter logoUrl={iconUrl} footer={footer} />
       </Page>

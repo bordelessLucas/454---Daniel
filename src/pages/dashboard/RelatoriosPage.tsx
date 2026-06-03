@@ -6,7 +6,11 @@ import { ApiError, apiRequest } from "@/lib/api-client";
 import { fetchRelatorioParaPdf } from "@/lib/relatorios-service";
 import { buildRelatorioPdfBlob } from "@/components/RelatorioPDF";
 import { loadRelatorioPdfBuildOptions } from "@/lib/relatorio-pdf-footer";
-import { buildRelatorioPdfFilename, downloadBlobFile } from "@/lib/utils";
+import { downloadBlobFile } from "@/lib/utils";
+import {
+  buildRelatorioPdfFilename,
+  formatRelatorioTitulo,
+} from "@/lib/relatorio-naming";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { PageHeader } from "@/components/page-header";
 import { EmptyState } from "@/components/empty-state";
@@ -101,19 +105,6 @@ export default function RelatoriosPage() {
     );
   }, [relatorios]);
 
-  function formatDateForFilename(dateStr: string) {
-    const date = new Date(dateStr);
-    if (Number.isNaN(date.getTime())) return "Data";
-    return date.toISOString().split("T")[0];
-  }
-
-  function getPdfFilename(report: ApiReport) {
-    return buildRelatorioPdfFilename(
-      report.cliente.nomeFantasia,
-      formatDateForFilename(report.dataVisita),
-    );
-  }
-
   const filteredRelatorios = useMemo(() => {
     return relatorios.filter((report) => {
       const clienteMatch =
@@ -194,7 +185,7 @@ export default function RelatoriosPage() {
         loadRelatorioPdfBuildOptions(),
       ]);
       const blob = await buildRelatorioPdfBlob(relatorioPdf, pdfOptions);
-      downloadBlobFile(blob, getPdfFilename(report));
+      downloadBlobFile(blob, buildRelatorioPdfFilename(report.id));
       setRefetchTrigger((p) => p + 1);
       toast.success("PDF baixado com sucesso.");
     } catch (error) {
@@ -316,7 +307,7 @@ export default function RelatoriosPage() {
             <Table className="min-w-[900px]">
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-20">ID</TableHead>
+                  <TableHead className="min-w-[180px]">Relatório</TableHead>
                   <TableHead>Data</TableHead>
                   <TableHead>Cliente</TableHead>
                   <TableHead>Criado por</TableHead>
@@ -328,8 +319,8 @@ export default function RelatoriosPage() {
               <TableBody>
                 {filteredRelatorios.map((report) => (
                   <TableRow key={report.id}>
-                    <TableCell className="font-mono text-sm">
-                      #{report.id}
+                    <TableCell className="text-sm font-medium">
+                      {formatRelatorioTitulo(report.id)}
                     </TableCell>
                     <TableCell className="whitespace-nowrap">
                       {formatDate(report.dataVisita)}

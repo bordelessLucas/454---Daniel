@@ -7,6 +7,7 @@ import { useChecklists } from "@/hooks/use-checklists";
 import { useRelatorio } from "@/hooks/use-relatorio";
 import { useAuth } from "@/lib/auth-context";
 import { userCanEditRelatorio } from "@/lib/relatorio-permissions";
+import { formatRelatorioTitulo } from "@/lib/relatorio-naming";
 import { sanitizeTipTapHtmlForSave } from "@/lib/sanitize-tip-tap-html";
 import { apiRequest } from "@/lib/api-client";
 import { Button, Input, Label, SelectionField } from "@/components/index";
@@ -81,7 +82,6 @@ export function ReportForm({ reportId }: ReportFormProps) {
   const [selectedChecklists, setSelectedChecklists] = useState<number[]>([]);
   const [selectedSetores, setSelectedSetores] = useState<string[]>([]);
   const [horarios, setHorarios] = useState<Horario[]>([]);
-  const [clientSearch, setClientSearch] = useState("");
   const [saving, setSaving] = useState(false);
 
   // Preencher formulário ao editar
@@ -279,13 +279,58 @@ export function ReportForm({ reportId }: ReportFormProps) {
     }
   }, [exibirContrato, contratosVigentes, numeroContrato]);
 
-  const filteredClientes = clientSearch
-    ? clientes.filter(
-        (c) =>
-          c.nomeFantasia.toLowerCase().includes(clientSearch.toLowerCase()) ||
-          c.razaoSocial.toLowerCase().includes(clientSearch.toLowerCase()),
-      )
-    : clientes;
+  const clienteOptions = useMemo(
+    () =>
+      clientes.map((cliente) => ({
+        value: String(cliente.id),
+        label: cliente.cidade
+          ? `${cliente.nomeFantasia} · ${cliente.cidade}`
+          : cliente.nomeFantasia,
+        searchText: [
+          cliente.nomeFantasia,
+          cliente.razaoSocial,
+          cliente.cidade,
+          cliente.estado,
+        ]
+          .filter(Boolean)
+          .join(" "),
+      })),
+    [clientes],
+  );
+
+  const tecnicoOptions = useMemo(
+    () =>
+      tecnicos.map((tecnico) => ({
+        value: String(tecnico.id),
+        label: tecnico.nome,
+        searchText: [tecnico.nome, tecnico.username, tecnico.email]
+          .filter(Boolean)
+          .join(" "),
+      })),
+    [tecnicos],
+  );
+
+  const setorOptions = useMemo(
+    () =>
+      setores.map((setor) => ({
+        value: String(setor.id),
+        label: setor.nome,
+        searchText: [setor.nome, setor.descricao].filter(Boolean).join(" "),
+      })),
+    [setores],
+  );
+
+  const checklistOptions = useMemo(
+    () =>
+      checklists.map((checklist) => ({
+        value: String(checklist.id),
+        label: checklist.nome,
+        searchText: [checklist.nome, checklist.descricao]
+          .filter(Boolean)
+          .join(" "),
+      })),
+    [checklists],
+  );
 
   const tecnicosSelecionadosNomes = selectedTecnicos
     .map((id) => tecnicos.find((t) => String(t.id) === id)?.nome)
@@ -559,64 +604,24 @@ export function ReportForm({ reportId }: ReportFormProps) {
               </div>
             )}
 
-            {/* Cliente */}
-            <div className="flex flex-col gap-2 sm:col-span-2">
-              <Label>Cliente</Label>
-              {clienteSelecionado ? (
-                <div className="flex items-center justify-between rounded-xl border border-border bg-muted px-3 py-2">
-                  <span className="text-sm font-medium text-foreground">
-                    {clienteSelecionado.nomeFantasia}
-                  </span>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="icon"
-                    className="h-6 w-6 text-muted-foreground"
-                    onClick={() => {
-                      setClienteId(null);
-                      setContatoId(null);
-                    }}
-                  >
-                    <X className="h-4 w-4" />
-                  </Button>
-                </div>
-              ) : (
-                <>
-                  <Input
-                    placeholder="Buscar cliente..."
-                    value={clientSearch}
-                    onChange={(e) => setClientSearch(e.target.value)}
-                    disabled={loadingClientes}
-                  />
-                  {clientSearch && (
-                    <div className="flex max-h-40 flex-col gap-1 overflow-y-auto rounded-xl border border-border p-2">
-                      {filteredClientes.length === 0 ? (
-                        <p className="px-2 py-1 text-sm text-muted-foreground">
-                          Nenhum cliente encontrado.
-                        </p>
-                      ) : (
-                        filteredClientes.map((client) => (
-                          <button
-                            key={client.id}
-                            type="button"
-                            onClick={() => {
-                              setClienteId(client.id);
-                              setClientSearch("");
-                            }}
-                            className="rounded-lg px-3 py-2 text-left text-sm text-foreground transition-colors hover:bg-muted"
-                          >
-                            {client.nomeFantasia}
-                            <span className="ml-2 text-xs text-muted-foreground">
-                              {client.cidade}
-                            </span>
-                          </button>
-                        ))
-                      )}
-                    </div>
-                  )}
-                </>
-              )}
-            </div>
+            <SelectionField
+              className="sm:col-span-2"
+              label="Cliente"
+              searchable
+              searchPlaceholder="Buscar cliente..."
+              placeholder={
+                loadingClientes
+                  ? "Carregando clientes..."
+                  : "Selecione um cliente"
+              }
+              options={clienteOptions}
+              value={clienteId ? String(clienteId) : ""}
+              onChange={(value) => {
+                const nextValue = typeof value === "string" ? value : "";
+                setClienteId(nextValue ? Number(nextValue) : null);
+              }}
+              disabled={loadingClientes}
+            />
 
             <div className="flex flex-col gap-2">
               <Label htmlFor="localizacao-cidade">Cidade</Label>
@@ -697,21 +702,22 @@ export function ReportForm({ reportId }: ReportFormProps) {
               </div>
             )}
 
-            {/* Técnicos */}
-            <div className="flex flex-col gap-2 sm:col-span-2">
-              <SelectionField
-                label="Técnicos Envolvidos"
-                selectionMode="multiple"
-                value={selectedTecnicos}
-                onChange={(value) => setSelectedTecnicos(value as string[])}
-                options={tecnicos.map((t) => ({
-                  value: String(t.id),
-                  label: t.nome,
-                }))}
-                placeholder="Selecione os técnicos"
-                disabled={loadingTecnicos}
-              />
-            </div>
+            <SelectionField
+              className="sm:col-span-2"
+              label="Técnicos Envolvidos"
+              selectionMode="multiple"
+              searchable
+              searchPlaceholder="Buscar técnico..."
+              value={selectedTecnicos}
+              onChange={(value) => setSelectedTecnicos(value as string[])}
+              options={tecnicoOptions}
+              placeholder={
+                loadingTecnicos
+                  ? "Carregando técnicos..."
+                  : "Selecione os técnicos"
+              }
+              disabled={loadingTecnicos}
+            />
           </div>
         </section>
 
@@ -733,15 +739,15 @@ export function ReportForm({ reportId }: ReportFormProps) {
           <SelectionField
             label=""
             selectionMode="multiple"
+            searchable
+            searchPlaceholder="Buscar setor..."
             value={selectedSetores}
             onChange={(value) => setSelectedSetores(value as string[])}
-            options={setores.map((s) => ({
-              value: String(s.id),
-              label: s.nome,
-            }))}
-            placeholder="Selecione os setores"
+            options={setorOptions}
+            placeholder={
+              loadingSetores ? "Carregando setores..." : "Selecione os setores"
+            }
             disabled={loadingSetores}
-            className="[&_[role='listbox']]:grid [&_[role='listbox']]:grid-cols-3 [&_[role='listbox']]:gap-1"
           />
         </section>
 
@@ -753,17 +759,19 @@ export function ReportForm({ reportId }: ReportFormProps) {
           <SelectionField
             label=""
             selectionMode="multiple"
+            searchable
+            searchPlaceholder="Buscar checklist..."
             value={selectedChecklists.map(String)}
             onChange={(value) =>
               setSelectedChecklists((value as string[]).map((id) => Number(id)))
             }
-            options={checklists.map((checklist) => ({
-              value: String(checklist.id),
-              label: checklist.nome,
-            }))}
-            placeholder="Selecione os checklists"
+            options={checklistOptions}
+            placeholder={
+              loadingChecklists
+                ? "Carregando checklists..."
+                : "Selecione os checklists"
+            }
             disabled={loadingChecklists || checklists.length === 0}
-            className="[&_[role='listbox']]:grid [&_[role='listbox']]:grid-cols-3 [&_[role='listbox']]:gap-1"
           />
           {!loadingChecklists && checklists.length === 0 ? (
             <p className="mt-2 text-sm text-muted-foreground">
@@ -872,10 +880,13 @@ export function ReportForm({ reportId }: ReportFormProps) {
 
           <div className="space-y-4 rounded-xl border border-border bg-background p-4">
             <div className="text-center">
-              <p className="text-sm font-semibold">RELATÓRIO DE ATENDIMENTO TÉCNICO</p>
+              <p className="text-sm font-semibold">
+                {isEditing && reportId
+                  ? formatRelatorioTitulo(Number(reportId)).toUpperCase()
+                  : "RELATÓRIO TÉCNICO — NOVO"}
+              </p>
               <p className="text-xs text-muted-foreground">
-                Relatório Nº {isEditing ? reportId : "Novo"} | Data:{" "}
-                {dataVisitaPreview}
+                Data: {dataVisitaPreview}
               </p>
             </div>
 
