@@ -1,4 +1,10 @@
 import { useState, useEffect, useRef } from "react";
+import { ApiError } from "@/lib/api-client";
+import {
+  hasConfiguredLogo,
+  resolveConfiguracaoLogoUrl,
+  withLogoCacheBuster,
+} from "@/lib/configuracao-logo";
 import {
   getConfiguracoes,
   updateConfiguracoes,
@@ -8,6 +14,7 @@ import {
   notifySystemLogoUpdated,
   useSystemLogo,
 } from "@/hooks/use-system-logo";
+import { useAuth } from "@/lib/auth-context";
 import { PageHeader } from "@/components/page-header";
 import {
   Button,
@@ -23,14 +30,18 @@ import { Clock, FileText, ImageIcon, Save, Upload } from "lucide-react";
 import { toast } from "sonner";
 
 export default function ConfiguracoesPage() {
+  const { isAdmin } = useAuth();
   const [startTime, setStartTime] = useState("");
   const [endTime, setEndTime] = useState("");
   const [textoRodapeRelatorio, setTextoRodapeRelatorio] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
+  const [hasLogo, setHasLogo] = useState(false);
+  const [localPreviewSrc, setLocalPreviewSrc] = useState<string | null>(null);
   const logoInputRef = useRef<HTMLInputElement>(null);
   const { logoSrc } = useSystemLogo();
+  const displayLogoSrc = localPreviewSrc ?? logoSrc;
 
   const MAX_LOGO_BYTES = 2 * 1024 * 1024;
 
@@ -57,6 +68,7 @@ export default function ConfiguracoesPage() {
           }),
         );
         setTextoRodapeRelatorio(data.textoRodapeRelatorio ?? "");
+        setHasLogo(hasConfiguredLogo(data.logoUrl));
       } catch {
         toast.error("Erro ao carregar configuracoes.");
       } finally {
@@ -102,13 +114,25 @@ export default function ConfiguracoesPage() {
       return;
     }
 
+    if (!isAdmin) {
+      toast.error("Apenas administradores podem alterar a logo do sistema.");
+      return;
+    }
+
     setUploadingLogo(true);
     try {
-      await uploadConfiguracaoLogo(file);
-      notifySystemLogoUpdated();
+      const updated = await uploadConfiguracaoLogo(file);
+      const resolved = resolveConfiguracaoLogoUrl(updated.logoUrl);
+      setLocalPreviewSrc(withLogoCacheBuster(resolved));
+      setHasLogo(hasConfiguredLogo(updated.logoUrl));
+      notifySystemLogoUpdated(updated.logoUrl);
       toast.success("Logo atualizada com sucesso.");
-    } catch {
-      toast.error("Erro ao enviar a logo.");
+    } catch (error) {
+      const message =
+        error instanceof ApiError
+          ? error.message
+          : "Erro ao enviar a logo.";
+      toast.error(message);
     } finally {
       setUploadingLogo(false);
     }
@@ -142,13 +166,17 @@ export default function ConfiguracoesPage() {
           </CardHeader>
           <CardContent className="flex flex-col gap-4">
             <p className="text-sm text-muted-foreground">
-              Exibida na barra lateral e nos PDFs de relatorio. Formatos de
-              imagem, ate 2 MB.
+              Exibida na barra lateral. Nos PDFs gerados no servidor, o backend
+              usa o arquivo salvo em Configuracoes (nao e enviado no download).
+              Formatos de imagem, ate 2 MB.
+            </p>
+            <p className="text-xs font-medium text-foreground">
+              {hasLogo ? "Logo configurada" : "Nenhuma logo configurada"}
             </p>
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
               <div className="flex h-24 w-40 shrink-0 items-center justify-center rounded-xl border border-border bg-muted/50 p-3">
                 <img
-                  src={logoSrc}
+                  src={displayLogoSrc}
                   alt="Logo atual do sistema"
                   className="max-h-full max-w-full object-contain"
                 />
@@ -157,25 +185,32 @@ export default function ConfiguracoesPage() {
                 <input
                   ref={logoInputRef}
                   type="file"
-                  accept="image/*"
+                  accept="image/png,image/jpeg,image/jpg,image/svg+xml,image/webp"
                   className="sr-only"
-                  disabled={loading || uploadingLogo}
+                  disabled={loading || uploadingLogo || !isAdmin}
                   onChange={handleLogoFileChange}
                 />
                 <Button
                   type="button"
                   variant="outline"
                   className="w-fit"
-                  disabled={loading || uploadingLogo}
+                  disabled={loading || uploadingLogo || !isAdmin}
                   onClick={() => logoInputRef.current?.click()}
                 >
                   <Upload className="mr-2 h-4 w-4" />
                   {uploadingLogo ? "Enviando..." : "Trocar logo"}
                 </Button>
-                <p className="text-xs text-muted-foreground">
-                  O upload e salvo imediatamente; nao e necessario clicar em
-                  Salvar Configuracoes.
-                </p>
+                {!isAdmin ? (
+                  <p className="text-xs text-muted-foreground">
+                    Apenas administradores podem enviar uma nova logo.
+                  </p>
+                ) : (
+                  <p className="text-xs text-muted-foreground">
+                    O upload e salvo imediatamente; nao e necessario clicar em
+                    Salvar Configuracoes. Apos redeploy do backend, reenvie a
+                    logo se ela sumir do PDF.
+                  </p>
+                )}
               </div>
             </div>
           </CardContent>

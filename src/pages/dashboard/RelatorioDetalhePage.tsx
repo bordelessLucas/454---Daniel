@@ -5,14 +5,9 @@ import { useChecklists } from "@/hooks/use-checklists";
 import { Badge, Button } from "@/components/index";
 import { ArrowLeft, Pencil, FileDown, Loader2 } from "lucide-react";
 import { ApiError } from "@/lib/api-client";
-import { fetchRelatorioParaPdf } from "@/lib/relatorios-service";
-import { buildRelatorioPdfBlob } from "@/components/RelatorioPDF";
-import { loadRelatorioPdfBuildOptions } from "@/lib/relatorio-pdf-footer";
+import { downloadRelatorioPdf } from "@/lib/relatorio-pdf-download";
 import { downloadBlobFile } from "@/lib/utils";
-import {
-  buildRelatorioPdfFilename,
-  formatRelatorioTitulo,
-} from "@/lib/relatorio-naming";
+import { formatRelatorioTitulo } from "@/lib/relatorio-naming";
 import { toast } from "sonner";
 import { RichTextReadonly } from "@/components/RichTextReadonly";
 import { useAuth } from "@/lib/auth-context";
@@ -58,12 +53,8 @@ export default function RelatorioDetalhePage() {
     setDownloadingPdf(true);
 
     try {
-      const [relatorioPdf, pdfOptions] = await Promise.all([
-        fetchRelatorioParaPdf(report.id),
-        loadRelatorioPdfBuildOptions(),
-      ]);
-      const blob = await buildRelatorioPdfBlob(relatorioPdf, pdfOptions);
-      downloadBlobFile(blob, buildRelatorioPdfFilename(report.id));
+      const { blob, filename } = await downloadRelatorioPdf(report.id);
+      downloadBlobFile(blob, filename);
       setIsPrinted(true);
       toast.success("PDF baixado com sucesso.");
     } catch (downloadError) {

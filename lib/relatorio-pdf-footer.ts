@@ -1,4 +1,4 @@
-import { resolveConfiguracaoLogoUrl } from "@/lib/configuracao-logo";
+import { resolveLogoForPdfEmbed } from "@/lib/configuracao-logo";
 import { getConfiguracoesPdf } from "@/lib/configuracoes-service";
 import type { ApiConfiguracoesPdf } from "@/lib/types";
 
@@ -61,13 +61,17 @@ export function getDefaultPdfFooter(): RelatorioPdfFooterConfig {
   };
 }
 
-/** Carrega opções do PDF a partir de /configuracoes/pdf (falha silenciosa → rodapé padrão). */
+/**
+ * Carrega logo + rodapé para o PDF gerado no browser (react-pdf).
+ * A logo vem de GET /configuracoes/pdf e é embutida em base64 no header e footer do PDF.
+ */
 export async function loadRelatorioPdfBuildOptions(): Promise<BuildRelatorioPdfOptions> {
   try {
     const config = await getConfiguracoesPdf();
+    const logoUrl = await resolveLogoForPdfEmbed(config.logoUrl);
     return {
       footer: mapConfiguracoesToPdfFooter(config),
-      logoUrl: resolveConfiguracaoLogoUrl(config.logoUrl),
+      logoUrl,
     };
   } catch {
     return {};

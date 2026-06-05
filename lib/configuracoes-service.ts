@@ -26,7 +26,11 @@ export async function updateConfiguracoes(
   });
 }
 
-/** Envia nova logo (multipart). Requer perfil ADMIN. */
+/**
+ * Envia nova logo (multipart). Requer perfil ADMIN.
+ * Campo obrigatório no FormData: `logo` (nome exato exigido pelo multer no backend).
+ * Não definir Content-Type manualmente — o browser inclui o boundary.
+ */
 export async function uploadConfiguracaoLogo(
   file: File,
 ): Promise<ApiConfiguracoes> {

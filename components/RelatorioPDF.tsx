@@ -18,9 +18,12 @@ import {
 import { formatRelatorioTitulo } from "@/lib/relatorio-naming";
 import {
   tipTapHtmlToServicoPdfBlocks,
-  mergeAdjacentSegments,
   type ServicoPdfSegment,
 } from "@/lib/tiptap-html-to-pdf";
+
+/** Tamanho da logo no cabeçalho e rodapé do PDF (proporção ~32:41). */
+const PDF_LOGO_WIDTH = 40;
+const PDF_LOGO_HEIGHT = 51;
 
 /** Margens laterais alinhadas ao `paddingHorizontal` da página. */
 const PAGE_MARGIN_HORIZONTAL = 16;
@@ -91,7 +94,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 6,
-    width: 130,
+    width: 138,
   },
   logoText: {
     fontFamily: "Inter",
@@ -187,13 +190,16 @@ const styles = StyleSheet.create({
     marginBottom: 7,
   },
   servicoParagraphBlock: {
+    marginTop: 0,
     marginBottom: 0,
+    paddingTop: 0,
     paddingBottom: 0,
   },
   servicoLine: {
-    // Compacto, mas com legibilidade (evita aspecto “amontoado”)
-    lineHeight: 1.15,
+    lineHeight: 1,
+    marginTop: 0,
     marginBottom: 0,
+    paddingTop: 0,
     paddingBottom: 0,
   },
   emptyLine: {
@@ -382,7 +388,7 @@ const styles = StyleSheet.create({
     fontFamily: "Helvetica-Bold",
   },
   footerLogoBox: {
-    width: 40,
+    width: 50,
     alignItems: "flex-end",
   },
 });
@@ -422,30 +428,25 @@ function getPeriodo(hora: Date): string {
   return "Noite";
 }
 
+function servicoLineHasTextContent(segments: ServicoPdfSegment[]): boolean {
+  return segments.some(
+    (seg) => seg.text.replace(/\u00a0/g, " ").trim().length > 0,
+  );
+}
+
 function ServicoStyledBlock({ lines }: { lines: ServicoPdfSegment[][] }) {
-  if (lines.length === 0) {
+  const visibleLines = lines.filter(servicoLineHasTextContent);
+  if (visibleLines.length === 0) {
     return null;
   }
 
-  return (
-    <>
-      {lines.map((segments, li) => (
-        <Text key={`line-${li}`} style={styles.servicoLine}>
-          {segments.map((seg, si) => (
-            <Text
-              key={`seg-${li}-${si}`}
-              style={{
-                fontWeight: seg.bold ? "bold" : "normal",
-                fontStyle: seg.italic ? "italic" : "normal",
-              }}
-            >
-              {seg.text}
-            </Text>
-          ))}
-        </Text>
-      ))}
-    </>
-  );
+  // react-pdf trata <Text> irmãos como blocos; aqui usamos 1 <Text> com string pura e \n.
+  // Negrito/itálico inline não é suportado de forma confiável neste motor — ver comentário abaixo.
+  const plainText = visibleLines
+    .map((segments) => segments.map((seg) => seg.text).join(""))
+    .join("\n");
+
+  return <Text style={styles.servicoLine}>{plainText}</Text>;
 }
 
 function formatDuration(start: Date, end: Date): string {
@@ -589,7 +590,10 @@ function PdfFooter({
         <Text style={styles.footerWeb2}>{websiteSubtitle}</Text>
       </View>
       <View style={styles.footerLogoBox}>
-        <Image src={logoUrl} style={{ width: 32, height: 41 }} />
+        <Image
+          src={logoUrl}
+          style={{ width: PDF_LOGO_WIDTH, height: PDF_LOGO_HEIGHT }}
+        />
       </View>
     </View>
   );
@@ -721,7 +725,10 @@ export function RelatorioPDF({
         <View style={styles.pageMain}>
           <View style={styles.header}>
             <View style={styles.logoBox}>
-              <Image src={iconUrl} style={{ width: 32, height: 41 }} />
+              <Image
+                src={iconUrl}
+                style={{ width: PDF_LOGO_WIDTH, height: PDF_LOGO_HEIGHT }}
+              />
               <Text style={styles.logoText}>Linq</Text>
             </View>
             <View style={styles.titleBox}>

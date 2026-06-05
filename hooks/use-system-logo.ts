@@ -1,11 +1,22 @@
 import { useCallback, useEffect, useState } from "react";
-import { resolveConfiguracaoLogoUrl } from "@/lib/configuracao-logo";
+import {
+  resolveConfiguracaoLogoUrl,
+  withLogoCacheBuster,
+} from "@/lib/configuracao-logo";
 import { getConfiguracoesPdf } from "@/lib/configuracoes-service";
 
 const LOGO_UPDATED_EVENT = "system-logo-updated";
 
-export function notifySystemLogoUpdated(): void {
-  window.dispatchEvent(new Event(LOGO_UPDATED_EVENT));
+type LogoUpdatedDetail = {
+  logoUrl?: string | null;
+};
+
+export function notifySystemLogoUpdated(logoUrl?: string | null): void {
+  window.dispatchEvent(
+    new CustomEvent<LogoUpdatedDetail>(LOGO_UPDATED_EVENT, {
+      detail: { logoUrl },
+    }),
+  );
 }
 
 export function useSystemLogo() {
@@ -29,9 +40,12 @@ export function useSystemLogo() {
         if (!cancelled) {
           setLogoSrc(resolveConfiguracaoLogoUrl(config?.logoUrl));
         }
-      } catch {
-        if (!cancelled) {
-          setLogoSrc(resolveConfiguracaoLogoUrl(null));
+      } catch (error) {
+        if (import.meta.env.DEV) {
+          console.warn(
+            "[useSystemLogo] Falha ao carregar GET /configuracoes/pdf:",
+            error,
+          );
         }
       } finally {
         if (!cancelled) {
@@ -47,13 +61,19 @@ export function useSystemLogo() {
   }, [version]);
 
   useEffect(() => {
-    const onUpdate = () => reload();
+    const onUpdate = (event: Event) => {
+      const detail = (event as CustomEvent<LogoUpdatedDetail>).detail;
+      if (detail?.logoUrl) {
+        setLogoSrc(resolveConfiguracaoLogoUrl(detail.logoUrl));
+      }
+      reload();
+    };
     window.addEventListener(LOGO_UPDATED_EVENT, onUpdate);
     return () => window.removeEventListener(LOGO_UPDATED_EVENT, onUpdate);
   }, [reload]);
 
   const displaySrc =
-    version > 0 ? `${logoSrc}${logoSrc.includes("?") ? "&" : "?"}v=${version}` : logoSrc;
+    version > 0 ? withLogoCacheBuster(logoSrc, version) : logoSrc;
 
   return { logoSrc: displaySrc, loading, reload };
 }

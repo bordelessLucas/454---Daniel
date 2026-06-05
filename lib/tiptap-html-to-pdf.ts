@@ -33,6 +33,12 @@ function decodeBasicEntities(t: string): string {
     .replace(/&#(\d+);/g, (_, n) => String.fromCharCode(Number(n)));
 }
 
+function lineHasMeaningfulText(segments: ServicoPdfSegment[]): boolean {
+  return segments.some(
+    (seg) => seg.text.replace(/\u00a0/g, " ").trim().length > 0,
+  );
+}
+
 export function mergeAdjacentSegments(
   segments: ServicoPdfSegment[],
 ): ServicoPdfSegment[] {
@@ -345,12 +351,12 @@ export function tipTapHtmlToServicoPdfBlocks(
   for (const rawPara of paragraphs) {
     const lines: ServicoPdfSegment[][] = [];
     for (const rawLine of rawPara.split("\n")) {
-      const line = rawLine.trim();
+      const line = rawLine.replace(/\u00a0/g, " ").trim();
       if (!line) {
         continue;
       }
       const segs = parseInlineToSegments(line);
-      if (segs.length === 0) {
+      if (segs.length === 0 || !lineHasMeaningfulText(segs)) {
         continue;
       }
       lines.push(segs);

@@ -3,14 +3,9 @@ import { useNavigate } from "react-router-dom";
 import { useRelatorios } from "@/hooks/use-relatorios";
 import type { ApiReport } from "@/lib/types";
 import { ApiError, apiRequest } from "@/lib/api-client";
-import { fetchRelatorioParaPdf } from "@/lib/relatorios-service";
-import { buildRelatorioPdfBlob } from "@/components/RelatorioPDF";
-import { loadRelatorioPdfBuildOptions } from "@/lib/relatorio-pdf-footer";
+import { downloadRelatorioPdf } from "@/lib/relatorio-pdf-download";
 import { downloadBlobFile } from "@/lib/utils";
-import {
-  buildRelatorioPdfFilename,
-  formatRelatorioTitulo,
-} from "@/lib/relatorio-naming";
+import { formatRelatorioTitulo } from "@/lib/relatorio-naming";
 import { ConfirmDialog } from "@/components/confirm-dialog";
 import { PageHeader } from "@/components/page-header";
 import { EmptyState } from "@/components/empty-state";
@@ -180,12 +175,8 @@ export default function RelatoriosPage() {
     setDownloadingIds((prev) => new Set(prev).add(reportId));
 
     try {
-      const [relatorioPdf, pdfOptions] = await Promise.all([
-        fetchRelatorioParaPdf(reportId),
-        loadRelatorioPdfBuildOptions(),
-      ]);
-      const blob = await buildRelatorioPdfBlob(relatorioPdf, pdfOptions);
-      downloadBlobFile(blob, buildRelatorioPdfFilename(report.id));
+      const { blob, filename } = await downloadRelatorioPdf(reportId);
+      downloadBlobFile(blob, filename);
       setRefetchTrigger((p) => p + 1);
       toast.success("PDF baixado com sucesso.");
     } catch (error) {
