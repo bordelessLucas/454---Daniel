@@ -5,6 +5,8 @@ import type { ApiConfiguracoesPdf } from "@/lib/types";
 export type BuildRelatorioPdfOptions = {
   logoUrl?: string;
   footer?: RelatorioPdfFooterConfig;
+  /** Texto de isenção de responsabilidade (ex.: vindo da API). */
+  legalText?: string;
 };
 
 export type RelatorioPdfFooterConfig = {

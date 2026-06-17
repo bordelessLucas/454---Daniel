@@ -32,15 +32,17 @@ const FOOTER_BOTTOM = 12;
 const FOOTER_MARGIN_HORIZONTAL = 20;
 const FOOTER_BLOCK_HEIGHT = 58;
 /** Folga entre o texto legal e o rodapé corporativo. */
-const LEGAL_GAP_ABOVE_FOOTER = 6;
-/** Folga entre o card de assinaturas e o texto legal. */
-const LEGAL_GAP_BELOW_SIGNATURES = 22;
-/** Texto legal fixo logo acima do rodapé corporativo. */
-const LEGAL_TEXT_BOTTOM =
-  FOOTER_BOTTOM + FOOTER_BLOCK_HEIGHT + LEGAL_GAP_ABOVE_FOOTER;
-/** Base do bloco horários/assinaturas (acima do texto legal). */
+const LEGAL_GAP_ABOVE_FOOTER = 8;
+/** Respiro entre o quadro de assinaturas e o texto legal (fora do card). */
+const LEGAL_GAP_BELOW_SIGNATURES = 16;
+/** Altura estimada do bloco legal (~3 linhas em 7pt). */
+const LEGAL_BLOCK_HEIGHT = 24;
+/** Base do stack fixo (horários + assinaturas + legal), acima do rodapé. */
 const PAGE_BOTTOM_STACK_BOTTOM =
-  LEGAL_TEXT_BOTTOM + LEGAL_GAP_BELOW_SIGNATURES;
+  FOOTER_BOTTOM +
+  FOOTER_BLOCK_HEIGHT +
+  LEGAL_GAP_ABOVE_FOOTER +
+  LEGAL_BLOCK_HEIGHT;
 const PAGE_BOTTOM_STACK_ESTIMATED_HEIGHT = 270;
 /** Evita sobreposição do conteúdo dinâmico com rodapé fixo + legal + cards. */
 const PAGE_BOTTOM_RESERVE =
@@ -310,18 +312,20 @@ const styles = StyleSheet.create({
     fontSize: 8.5,
     textAlign: "right",
   },
-  legalTextWrap: {
-    position: "absolute",
-    bottom: LEGAL_TEXT_BOTTOM,
-    left: FOOTER_MARGIN_HORIZONTAL,
-    right: FOOTER_MARGIN_HORIZONTAL,
+  legalTextContainer: {
+    width: "100%",
+    height: "20px",
+    marginTop: LEGAL_GAP_BELOW_SIGNATURES,
+    paddingHorizontal: 0,
   },
   legalText: {
-    fontSize: 5.5,
-    textAlign: "center",
+    fontSize: 16,
+    textAlign: "left",
     color: "#374151",
     width: "100%",
-    marginTop: 4,
+    height: "20px",
+
+    lineHeight: 1.2,
   },
   highlightBodySignatures: {
     paddingTop: 10,
@@ -398,6 +402,19 @@ function fieldOrNA(value: string | null | undefined): string {
     return "N/A";
   }
   return String(value);
+}
+
+function PdfLegalText({ text }: { text: string }) {
+  const normalized = text.replace(/\s+/g, " ").trim();
+  if (!normalized) {
+    return null;
+  }
+
+  return (
+    <View style={styles.legalTextContainer}>
+      <Text style={styles.legalText}>{normalized}</Text>
+    </View>
+  );
 }
 
 function parseDate(iso: string): Date | null {
@@ -564,6 +581,8 @@ export type RelatorioPDFProps = {
   logoUrl?: string;
   /** Textos do rodapé (ex.: vindos de GET /configuracoes via mapConfiguracoesToPdfFooter). */
   footer?: RelatorioPdfFooterConfig;
+  /** Texto de isenção de responsabilidade (padrão: constante LEGAL). */
+  legalText?: string;
 };
 
 function PdfFooter({
@@ -605,6 +624,7 @@ type PdfBottomAnchorProps = {
   tecnicoNome: string;
   responsavelCliente: string;
   clienteNome: string;
+  legalText: string;
 };
 
 function PdfBottomAnchor({
@@ -613,6 +633,7 @@ function PdfBottomAnchor({
   tecnicoNome,
   responsavelCliente,
   clienteNome,
+  legalText,
 }: PdfBottomAnchorProps) {
   const sorted = [...(horariosList ?? [])].sort((a, b) => {
     const da = parseDate(a.horaChegada)?.getTime() ?? 0;
@@ -677,6 +698,8 @@ function PdfBottomAnchor({
           </View>
         </View>
       </View>
+
+      <PdfLegalText text={legalText} />
     </View>
   );
 }
@@ -685,10 +708,12 @@ export function RelatorioPDF({
   relatorio,
   logoUrl,
   footer: footerProp,
+  legalText: legalTextProp,
 }: RelatorioPDFProps) {
   const origin = typeof window !== "undefined" ? window.location.origin : "";
   const iconUrl = logoUrl?.trim() || `${origin}/LogoIcon.png`;
   const footer = footerProp ?? getDefaultPdfFooter();
+  const legalText = legalTextProp?.trim() || LEGAL;
 
   const tecnicosList = relatorio.tecnicos ?? [];
   const setoresList = relatorio.setores ?? [];
@@ -829,13 +854,8 @@ export function RelatorioPDF({
           tecnicoNome={tecnicoNome}
           responsavelCliente={responsavelCliente}
           clienteNome={clienteNome}
+          legalText={legalText}
         />
-
-        <View style={styles.legalTextWrap} fixed>
-          <Text style={styles.legalText} wrap>
-            {LEGAL}
-          </Text>
-        </View>
 
         <PdfFooter logoUrl={iconUrl} footer={footer} />
       </Page>
@@ -853,6 +873,7 @@ export async function buildRelatorioPdfBlob(
       relatorio={relatorio}
       logoUrl={options?.logoUrl}
       footer={options?.footer}
+      legalText={options?.legalText}
     />,
   ).toBlob();
 }

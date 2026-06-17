@@ -9,6 +9,11 @@ import React, {
 } from "react";
 import type { AuthUser, LoginResponse } from "./types";
 import { API_URL } from "./api-client";
+import {
+  finishAuthPerf,
+  measureAuthStep,
+  resetAuthPerf,
+} from "./auth-perf";
 
 interface AuthContextType {
   user: AuthUser | null;
@@ -70,15 +75,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const login = useCallback(async (username: string, password: string) => {
+    resetAuthPerf();
     try {
-      const response = await fetch(`${API_URL}/auth/login`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        credentials: "include",
-        body: JSON.stringify({ username, password }),
-      });
+      const response = await measureAuthStep("POST /auth/login", () =>
+        fetch(`${API_URL}/auth/login`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          credentials: "include",
+          body: JSON.stringify({ username, password }),
+        }),
+      );
 
       const responseText = await response.text();
       let parsedPayload: unknown = {};
@@ -91,6 +99,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
 
       if (!response.ok) {
+        finishAuthPerf("login");
         return {
           success: false,
           error: getErrorMessageFromResponse(
@@ -105,14 +114,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const apiUser = data.user;
       if (apiUser) {
         setUser(apiUser);
+        finishAuthPerf("login");
         return { success: true };
       }
 
       // Caso o backend não retorne user no /login, busca via /me (cookie).
-      const meResponse = await fetch(`${API_URL}/auth/me`, {
-        credentials: "include",
-      });
+      const meResponse = await measureAuthStep("GET /auth/me (fallback)", () =>
+        fetch(`${API_URL}/auth/me`, {
+          credentials: "include",
+        }),
+      );
       if (!meResponse.ok) {
+        finishAuthPerf("login");
         return {
           success: false,
           error: "Não foi possível validar a sessão após o login.",
@@ -120,8 +133,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
       const meUser = (await meResponse.json()) as AuthUser;
       setUser(meUser);
+      finishAuthPerf("login");
       return { success: true };
     } catch (error) {
+      finishAuthPerf("login");
       const errorMessage =
         error instanceof Error ? error.message : String(error);
       return {
