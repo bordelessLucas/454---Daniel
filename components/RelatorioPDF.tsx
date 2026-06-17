@@ -687,7 +687,7 @@ export function RelatorioPDF({
   footer: footerProp,
 }: RelatorioPDFProps) {
   const origin = typeof window !== "undefined" ? window.location.origin : "";
-  const iconUrl = logoUrl?.trim() || `${origin}/placeholder-logo.svg`;
+  const iconUrl = logoUrl?.trim() || `${origin}/LogoIcon.png`;
   const footer = footerProp ?? getDefaultPdfFooter();
 
   const tecnicosList = relatorio.tecnicos ?? [];

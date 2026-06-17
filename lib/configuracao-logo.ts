@@ -1,6 +1,9 @@
 import { API_URL } from "@/lib/api-client";
 
-const DEFAULT_LOGO_PATH = "/placeholder-logo.svg";
+const DEFAULT_LOGO_PATH = "/LogoIcon.png";
+
+const LOGIN_LOGO_DARK = "/LogoBlack.png";
+const LOGIN_LOGO_LIGHT = "/logoWhite.png";
 
 function getApiBaseUrl(): string {
   return API_URL.replace(/\/$/, "");
@@ -33,6 +36,18 @@ function normalizeLogoAssetUrl(logoUrl: string): string {
   }
 
   return `${apiBase}/${logoUrl}`;
+}
+
+/**
+ * Logo da tela de login conforme o tema.
+ * Antes da hidratação do next-themes, usa a variante escura (defaultTheme="dark").
+ */
+export function resolveLoginLogoUrl(
+  resolvedTheme?: string,
+  isMounted = true,
+): string {
+  const isLight = isMounted && resolvedTheme === "light";
+  return isLight ? LOGIN_LOGO_LIGHT : LOGIN_LOGO_DARK;
 }
 
 /** URL absoluta da logo para exibição no app (sidebar, configurações). */
@@ -84,7 +99,7 @@ export async function resolveLogoForPdfEmbed(
     return resolved;
   }
 
-  if (resolved.includes("placeholder-logo")) {
+  if (resolved.includes("LogoIcon.png")) {
     return resolved;
   }
 

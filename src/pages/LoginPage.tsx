@@ -3,6 +3,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTheme } from "next-themes";
 import { useAuth } from "@/lib/auth-context";
+import { resolveLoginLogoUrl } from "@/lib/configuracao-logo";
 import {
   Button,
   Card,
@@ -20,10 +21,15 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const { login, user } = useAuth();
-  const { theme } = useTheme();
+  const { resolvedTheme } = useTheme();
   const navigate = useNavigate();
+  const [isThemeReady, setIsThemeReady] = useState(false);
 
-  const logoSrc = theme === "dark" ? "/LogoBlack.png" : "/logoWhite.png";
+  const logoSrc = resolveLoginLogoUrl(resolvedTheme, isThemeReady);
+
+  useEffect(() => {
+    setIsThemeReady(true);
+  }, []);
 
   useEffect(() => {
     if (user) {

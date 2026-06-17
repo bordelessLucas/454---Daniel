@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from "react";
 import {
+  hasConfiguredLogo,
   resolveConfiguracaoLogoUrl,
   withLogoCacheBuster,
 } from "@/lib/configuracao-logo";
@@ -23,6 +24,7 @@ export function useSystemLogo() {
   const [logoSrc, setLogoSrc] = useState(() =>
     resolveConfiguracaoLogoUrl(null),
   );
+  const [hasCustomLogo, setHasCustomLogo] = useState(false);
   const [loading, setLoading] = useState(true);
   const [version, setVersion] = useState(0);
 
@@ -38,6 +40,7 @@ export function useSystemLogo() {
       try {
         const config = await getConfiguracoesPdf();
         if (!cancelled) {
+          setHasCustomLogo(hasConfiguredLogo(config?.logoUrl));
           setLogoSrc(resolveConfiguracaoLogoUrl(config?.logoUrl));
         }
       } catch (error) {
@@ -63,9 +66,8 @@ export function useSystemLogo() {
   useEffect(() => {
     const onUpdate = (event: Event) => {
       const detail = (event as CustomEvent<LogoUpdatedDetail>).detail;
-      if (detail?.logoUrl) {
-        setLogoSrc(resolveConfiguracaoLogoUrl(detail.logoUrl));
-      }
+      setHasCustomLogo(hasConfiguredLogo(detail?.logoUrl));
+      setLogoSrc(resolveConfiguracaoLogoUrl(detail?.logoUrl));
       reload();
     };
     window.addEventListener(LOGO_UPDATED_EVENT, onUpdate);
@@ -75,5 +77,5 @@ export function useSystemLogo() {
   const displaySrc =
     version > 0 ? withLogoCacheBuster(logoSrc, version) : logoSrc;
 
-  return { logoSrc: displaySrc, loading, reload };
+  return { logoSrc: displaySrc, hasCustomLogo, loading, reload };
 }

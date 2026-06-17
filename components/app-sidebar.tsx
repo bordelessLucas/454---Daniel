@@ -50,29 +50,44 @@ export function AppSidebar() {
   const pathname = location.pathname;
   const { user, logout } = useAuth();
   const { state } = useSidebar();
-  const { logoSrc } = useSystemLogo();
+  const { logoSrc, hasCustomLogo } = useSystemLogo();
   const isAdmin = user?.role === "ADMIN";
+  const showBrandText = !hasCustomLogo;
 
   return (
     <Sidebar collapsible="icon">
       <SidebarHeader className="p-4">
         <Link to="/dashboard/relatorios" className="flex items-center gap-3">
-          <div>
+          <div className={hasCustomLogo ? "min-w-0 flex-1" : undefined}>
             <img
               src={logoSrc}
-              alt="Logo"
-              className={state === "collapsed" ? "h-7 w-auto" : "h-10 w-auto"}
+              alt={showBrandText ? "Linq" : "Logo"}
+              className={
+                state === "collapsed"
+                  ? "h-7 w-auto max-w-8 object-contain"
+                  : hasCustomLogo
+                    ? "h-10 max-w-[10rem] w-auto object-contain"
+                    : "h-10 w-auto"
+              }
+              onError={(event) => {
+                const img = event.currentTarget;
+                if (!img.src.endsWith("/LogoIcon.png")) {
+                  img.src = "/LogoIcon.png";
+                }
+              }}
             />
           </div>
-          <span
-            className={
-              state === "collapsed"
-                ? "sr-only"
-                : "truncate text-lg font-semibold text-foreground"
-            }
-          >
-            Linq
-          </span>
+          {showBrandText ? (
+            <span
+              className={
+                state === "collapsed"
+                  ? "sr-only"
+                  : "truncate text-lg font-semibold text-foreground"
+              }
+            >
+              Linq
+            </span>
+          ) : null}
         </Link>
       </SidebarHeader>
 

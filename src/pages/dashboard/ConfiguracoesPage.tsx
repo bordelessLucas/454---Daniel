@@ -179,6 +179,12 @@ export default function ConfiguracoesPage() {
                   src={displayLogoSrc}
                   alt="Logo atual do sistema"
                   className="max-h-full max-w-full object-contain"
+                  onError={(event) => {
+                    const img = event.currentTarget;
+                    if (!img.src.endsWith("/LogoIcon.png")) {
+                      img.src = "/LogoIcon.png";
+                    }
+                  }}
                 />
               </div>
               <div className="flex flex-col gap-2">
