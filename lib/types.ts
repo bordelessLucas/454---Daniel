@@ -208,9 +208,12 @@ export interface ReportChecklist {
 
 export interface ReportHorario {
   id: number;
+  relatorioId?: number;
   periodo?: "Manhã" | "Tarde" | "Noite";
   horaChegada: string;
   horaSaida: string;
+  horaChegadaHhmm?: string;
+  horaSaidaHhmm?: string;
   totalHoras?: string;
 }
 
@@ -221,6 +224,7 @@ export interface ApiReport {
   contatoCargo?: string | null;
   criadoPorId: number;
   dataVisita: string;
+  dataVisitaHhmm?: string;
   modalidadeServico?: string;
   numeroContrato?: string | null;
   localizacaoCidade?: string | null;

@@ -10,6 +10,17 @@ import { userCanEditRelatorio } from "@/lib/relatorio-permissions";
 import { formatRelatorioTitulo } from "@/lib/relatorio-naming";
 import { sanitizeTipTapHtmlForSave } from "@/lib/sanitize-tip-tap-html";
 import { apiRequest } from "@/lib/api-client";
+import {
+  buildHorariosPayload,
+  computeDurationHhmm,
+  formatDataVisitaBr,
+  normalizeDataVisitaForApi,
+  parseLocalDate,
+  resolveDataVisitaInput,
+  resolveHoraChegadaHhmm,
+  resolveHoraSaidaHhmm,
+} from "@/lib/relatorio-datetime";
+import type { ReportHorario } from "@/lib/types";
 import { Button, Input, Label, SelectionField } from "@/components/index";
 import { RichTextEditor } from "@/components/RichTextEditor";
 import { CheckCircle2, ArrowLeft, X } from "lucide-react";
@@ -31,29 +42,6 @@ const MODALIDADES_SEM_CONTRATO = [
   "Sem contrato - local",
   "Sem contrato - remoto",
 ];
-
-function computeTotalHoras(start: string, end: string) {
-  if (!start || !end) return "00:00";
-  const [startHour, startMinute] = start.split(":").map(Number);
-  const [endHour, endMinute] = end.split(":").map(Number);
-
-  if (
-    Number.isNaN(startHour) ||
-    Number.isNaN(startMinute) ||
-    Number.isNaN(endHour) ||
-    Number.isNaN(endMinute)
-  ) {
-    return "00:00";
-  }
-
-  const startInMinutes = startHour * 60 + startMinute;
-  const endInMinutes = endHour * 60 + endMinute;
-  const totalInMinutes = Math.max(0, endInMinutes - startInMinutes);
-
-  const totalHours = String(Math.floor(totalInMinutes / 60)).padStart(2, "0");
-  const totalMinutes = String(totalInMinutes % 60).padStart(2, "0");
-  return `${totalHours}:${totalMinutes}`;
-}
 
 export function ReportForm({ reportId }: ReportFormProps) {
   const navigate = useNavigate();
@@ -87,7 +75,7 @@ export function ReportForm({ reportId }: ReportFormProps) {
   // Preencher formulário ao editar
   useEffect(() => {
     if (isEditing && relatorio) {
-      setDataVisita(relatorio.dataVisita.split("T")[0]);
+      setDataVisita(resolveDataVisitaInput(relatorio));
       setClienteId(relatorio.clienteId);
       setContatoId(relatorio.contatoId ?? null);
       setContatoCargo(relatorio.contatoCargo ?? relatorio.contato?.cargo ?? "");
@@ -102,19 +90,11 @@ export function ReportForm({ reportId }: ReportFormProps) {
       setSelectedChecklists(relatorio.checklists.map((c) => c.checklistId));
       setSelectedSetores(relatorio.setores.map((s) => String(s.setorId)));
       if (relatorio.horarios && Array.isArray(relatorio.horarios)) {
-        const horariosEditando = relatorio.horarios.map((h: any) => ({
+        const horariosEditando = relatorio.horarios.map((h: ReportHorario) => ({
           id: crypto.randomUUID(),
           periodo: (h.periodo as "Manhã" | "Tarde" | "Noite") || "Manhã",
-          horaChegada: new Date(h.horaChegada).toLocaleTimeString("pt-BR", {
-            hour: "2-digit",
-            minute: "2-digit",
-            hour12: false,
-          }),
-          horaSaida: new Date(h.horaSaida).toLocaleTimeString("pt-BR", {
-            hour: "2-digit",
-            minute: "2-digit",
-            hour12: false,
-          }),
+          horaChegada: resolveHoraChegadaHhmm(h),
+          horaSaida: resolveHoraSaidaHhmm(h),
         }));
         setHorarios(horariosEditando);
       }
@@ -153,17 +133,14 @@ export function ReportForm({ reportId }: ReportFormProps) {
   const contratosVigentes = useMemo(() => {
     if (!clienteSelecionado || !dataVisita) return [];
 
-    const visitDate = new Date(dataVisita);
-    if (Number.isNaN(visitDate.getTime())) return [];
+    const visitDate = parseLocalDate(dataVisita);
+    if (!visitDate) return [];
 
     return clienteSelecionado.contratos.filter((contrato) => {
       if (!contrato.ativo) return false;
-      const contractStart = new Date(contrato.dataInicio);
-      const contractEnd = new Date(contrato.dataFim);
-      if (
-        Number.isNaN(contractStart.getTime()) ||
-        Number.isNaN(contractEnd.getTime())
-      ) {
+      const contractStart = parseLocalDate(contrato.dataInicio.slice(0, 10));
+      const contractEnd = parseLocalDate(contrato.dataFim.slice(0, 10));
+      if (!contractStart || !contractEnd) {
         return false;
       }
       return visitDate >= contractStart && visitDate <= contractEnd;
@@ -173,19 +150,16 @@ export function ReportForm({ reportId }: ReportFormProps) {
   function hasActiveContractForDate() {
     if (!clienteSelecionado || !dataVisita) return false;
 
-    const visitDate = new Date(dataVisita);
-    if (Number.isNaN(visitDate.getTime())) return false;
+    const visitDate = parseLocalDate(dataVisita);
+    if (!visitDate) return false;
 
     return clienteSelecionado.contratos.some((contrato) => {
       if (!contrato.ativo) return false;
 
-      const contractStart = new Date(contrato.dataInicio);
-      const contractEnd = new Date(contrato.dataFim);
+      const contractStart = parseLocalDate(contrato.dataInicio.slice(0, 10));
+      const contractEnd = parseLocalDate(contrato.dataFim.slice(0, 10));
 
-      if (
-        Number.isNaN(contractStart.getTime()) ||
-        Number.isNaN(contractEnd.getTime())
-      ) {
+      if (!contractStart || !contractEnd) {
         return false;
       }
 
@@ -355,9 +329,7 @@ export function ReportForm({ reportId }: ReportFormProps) {
 
   const dataVisitaPreview = useMemo(() => {
     if (!dataVisita) return "-";
-    const parsed = new Date(dataVisita);
-    if (Number.isNaN(parsed.getTime())) return dataVisita;
-    return parsed.toLocaleDateString("pt-BR");
+    return formatDataVisitaBr(dataVisita) || dataVisita;
   }, [dataVisita]);
 
   function addHorario() {
@@ -420,7 +392,7 @@ export function ReportForm({ reportId }: ReportFormProps) {
       clienteId,
       contatoId: contatoId ?? undefined,
       contatoCargo: contatoCargo.trim() || undefined,
-      dataVisita: new Date(dataVisita).toISOString(),
+      dataVisita: normalizeDataVisitaForApi(dataVisita),
       modalidadeServico,
       numeroContrato: exibirContrato ? numeroContrato || undefined : undefined,
       localizacaoCidade: localizacaoCidade.trim() || undefined,
@@ -436,12 +408,7 @@ export function ReportForm({ reportId }: ReportFormProps) {
         setorId: Number(id),
         observacao: undefined,
       })),
-      horarios: horarios.map((h) => ({
-        periodo: h.periodo,
-        horaChegada: h.horaChegada,
-        horaSaida: h.horaSaida,
-        totalHoras: computeTotalHoras(h.horaChegada, h.horaSaida),
-      })),
+      horarios: buildHorariosPayload(horarios),
       checklists: selectedChecklists.map((id) => ({ checklistId: id })),
     };
 
@@ -841,7 +808,7 @@ export function ReportForm({ reportId }: ReportFormProps) {
                   <div className="flex flex-col gap-1">
                     <Label className="text-xs">Total de Horas</Label>
                     <Input
-                      value={computeTotalHoras(
+                      value={computeDurationHhmm(
                         horario.horaChegada,
                         horario.horaSaida,
                       )}
@@ -963,7 +930,7 @@ export function ReportForm({ reportId }: ReportFormProps) {
                       </p>
                       <p>
                         Total de Horas:{" "}
-                        {computeTotalHoras(horario.horaChegada, horario.horaSaida)}
+                        {computeDurationHhmm(horario.horaChegada, horario.horaSaida)}
                       </p>
                     </div>
                   ))}

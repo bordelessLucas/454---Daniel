@@ -12,6 +12,11 @@ import { toast } from "sonner";
 import { RichTextReadonly } from "@/components/RichTextReadonly";
 import { useAuth } from "@/lib/auth-context";
 import { userCanEditRelatorio } from "@/lib/relatorio-permissions";
+import {
+  formatDataVisitaBr,
+  resolveHoraChegadaHhmm,
+  resolveHoraSaidaHhmm,
+} from "@/lib/relatorio-datetime";
 import { RelatorioAuditLogSection } from "@/components/relatorio-audit-log-section";
 
 export default function RelatorioDetalhePage() {
@@ -89,29 +94,24 @@ export default function RelatorioDetalhePage() {
     );
   }
 
-  function formatDate(dateStr: string) {
-    try {
-      return new Date(dateStr).toLocaleDateString("pt-BR");
-    } catch {
-      return dateStr;
-    }
+  function formatDate(dateStr: string, dataVisitaHhmm?: string | null) {
+    return formatDataVisitaBr(dateStr, dataVisitaHhmm) || dateStr;
   }
 
-  function formatTime(timeStr: string) {
+  function formatHorario(horario: {
+    horaChegada: string;
+    horaSaida: string;
+    horaChegadaHhmm?: string;
+    horaSaidaHhmm?: string;
+  }) {
+    return `${resolveHoraChegadaHhmm(horario)} - ${resolveHoraSaidaHhmm(horario)}`;
+  }
+
+  function formatDateTime(dateStr: string) {
     try {
-      // Se for um timestamp ISO completo
-      if (timeStr.includes("T") || timeStr.includes("Z")) {
-        const date = new Date(timeStr);
-        return date.toLocaleTimeString("pt-BR", {
-          hour: "2-digit",
-          minute: "2-digit",
-          hour12: false,
-        });
-      }
-      // Se já for no formato HH:mm, retorna direto
-      return timeStr;
+      return new Date(dateStr).toLocaleString("pt-BR");
     } catch {
-      return timeStr;
+      return dateStr;
     }
   }
 
@@ -172,7 +172,7 @@ export default function RelatorioDetalhePage() {
             <div>
               <span className="text-muted-foreground">Data da Visita</span>
               <p className="font-medium text-foreground">
-                {formatDate(report.dataVisita)}
+                {formatDate(report.dataVisita, report.dataVisitaHhmm)}
               </p>
             </div>
             {report.modalidadeServico && (
@@ -340,8 +340,7 @@ export default function RelatorioDetalhePage() {
                   className="flex items-center gap-2 rounded-lg bg-muted px-4 py-3 text-sm"
                 >
                   <span className="font-medium text-foreground">
-                    {formatTime(horario.horaChegada)} -{" "}
-                    {formatTime(horario.horaSaida)}
+                    {formatHorario(horario)}
                   </span>
                 </div>
               ))}
@@ -358,11 +357,11 @@ export default function RelatorioDetalhePage() {
           <div className="grid gap-3 text-xs">
             <div className="flex justify-between">
               <span className="text-muted-foreground">Criado em:</span>
-              <span className="font-mono">{formatDate(report.createdAt)}</span>
+              <span className="font-mono">{formatDateTime(report.createdAt)}</span>
             </div>
             <div className="flex justify-between">
               <span className="text-muted-foreground">Atualizado em:</span>
-              <span className="font-mono">{formatDate(report.updatedAt)}</span>
+              <span className="font-mono">{formatDateTime(report.updatedAt)}</span>
             </div>
           </div>
         </section>

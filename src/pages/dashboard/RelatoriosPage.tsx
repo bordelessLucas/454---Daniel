@@ -1,6 +1,7 @@
 import { useState, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { useRelatorios } from "@/hooks/use-relatorios";
+import { formatDataVisitaBr } from "@/lib/relatorio-datetime";
 import type { ApiReport } from "@/lib/types";
 import { ApiError, apiRequest } from "@/lib/api-client";
 import { downloadRelatorioPdf } from "@/lib/relatorio-pdf-download";
@@ -108,10 +109,8 @@ export default function RelatoriosPage() {
           .toLowerCase()
           .includes(searchCliente.trim().toLowerCase());
 
-      const parsedDate = new Date(report.dataVisita);
-      const reportDate = Number.isNaN(parsedDate.getTime())
-        ? ""
-        : parsedDate.toISOString().split("T")[0];
+      const reportDate =
+        report.dataVisitaHhmm?.trim() || report.dataVisita.slice(0, 10);
       const dataMatch = searchData === "" || reportDate === searchData;
 
       const statusMatch =
@@ -190,12 +189,8 @@ export default function RelatoriosPage() {
     }
   }
 
-  function formatDate(dateStr: string) {
-    try {
-      return new Date(dateStr).toLocaleDateString("pt-BR");
-    } catch {
-      return dateStr;
-    }
+  function formatDate(dateStr: string, dataVisitaHhmm?: string | null) {
+    return formatDataVisitaBr(dateStr, dataVisitaHhmm) || dateStr;
   }
 
   const hasActiveFilters =
@@ -314,7 +309,7 @@ export default function RelatoriosPage() {
                       {formatRelatorioTitulo(report.id)}
                     </TableCell>
                     <TableCell className="whitespace-nowrap">
-                      {formatDate(report.dataVisita)}
+                      {formatDate(report.dataVisita, report.dataVisitaHhmm)}
                     </TableCell>
                     <TableCell className="font-medium">
                       {report.cliente.nomeFantasia}
