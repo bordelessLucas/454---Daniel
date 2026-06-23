@@ -13,6 +13,8 @@ import SetoresPage from "./pages/dashboard/SetoresPage";
 import RamosAtividadePage from "./pages/dashboard/RamosAtividadePage";
 import ChecklistsPage from "./pages/dashboard/ChecklistsPage";
 import ConfiguracoesPage from "./pages/dashboard/ConfiguracoesPage";
+import RelatoriosGerenciaisPage from "./pages/relatorios/RelatoriosGerenciaisPage";
+import AgendaPage from "./pages/agenda/AgendaPage";
 
 export default function App() {
   return (
@@ -37,6 +39,14 @@ export default function App() {
           }
         />
         <Route
+          path="relatorios/gerenciais"
+          element={
+            <ProtectedRoute requiredRole="ADMIN">
+              <RelatoriosGerenciaisPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
           path="relatorios/:id"
           element={
             <ProtectedRoute>
@@ -49,6 +59,14 @@ export default function App() {
           element={
             <ProtectedRoute>
               <RelatorioEditarPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="agenda"
+          element={
+            <ProtectedRoute>
+              <AgendaPage />
             </ProtectedRoute>
           }
         />

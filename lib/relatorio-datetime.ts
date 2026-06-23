@@ -97,6 +97,35 @@ export function normalizeDataVisitaForApi(dateStr: string): string {
   return dateStr.trim().slice(0, 10);
 }
 
+/** Converte ISO do FullCalendar para YYYY-MM-DD (data local). */
+export function toApiDateOnly(value: string | Date): string {
+  const date = typeof value === "string" ? new Date(value) : value;
+  if (Number.isNaN(date.getTime())) {
+    return typeof value === "string" ? value.slice(0, 10) : "";
+  }
+
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return `${year}-${month}-${day}`;
+}
+
+/** FullCalendar usa `end` exclusivo; retorna o último dia inclusivo. */
+export function toInclusiveApiEndDate(exclusiveEnd: string): string {
+  const date = new Date(exclusiveEnd);
+  if (Number.isNaN(date.getTime())) {
+    return exclusiveEnd.slice(0, 10);
+  }
+
+  date.setMilliseconds(date.getMilliseconds() - 1);
+  return toApiDateOnly(date);
+}
+
+export function extractHhmmFromDatetimeLocal(value: string): string {
+  const match = /T(\d{2}:\d{2})/.exec(value);
+  return match?.[1] ?? "09:00";
+}
+
 export function buildHorariosPayload(
   horarios: Array<{ horaChegada: string; horaSaida: string }>,
 ): Array<{ horaChegada: string; horaSaida: string }> {

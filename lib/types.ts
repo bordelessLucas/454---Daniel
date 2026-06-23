@@ -244,4 +244,95 @@ export interface ApiReport {
   setores: ReportSetor[];
   horarios: ReportHorario[];
   checklists: ReportChecklist[];
+  statusAgenda?: RelatorioAgendaStatus;
+  horaVisita?: string | null;
+}
+
+// Relatórios Gerenciais
+export type GerencialTipo =
+  | "resumo-cliente"
+  | "produtividade-tecnico"
+  | "sla-contratos";
+
+export type GerencialFormato = "json" | "xlsx";
+
+export type GerencialSlaStatus = "dentro" | "fora" | "ok" | "atencao";
+
+export interface GerencialResumoClienteRow {
+  clienteId: number;
+  clienteNome: string;
+  totalRelatorios: number;
+  totalHoras: string;
+}
+
+export interface GerencialProdutividadeTecnicoRow {
+  tecnicoId: number;
+  tecnicoNome: string;
+  totalRelatorios: number;
+  totalHoras: string;
+  mediaHorasPorRelatorio?: string | null;
+}
+
+export interface GerencialSlaContratoRow {
+  clienteId: number;
+  clienteNome: string;
+  numeroContrato: string;
+  visitasRealizadas: number;
+  visitasPrevistas: number;
+  percentualSla: number;
+  statusSla: GerencialSlaStatus;
+}
+
+export type GerencialJsonData =
+  | GerencialResumoClienteRow[]
+  | GerencialProdutividadeTecnicoRow[]
+  | GerencialSlaContratoRow[];
+
+export interface GerencialQueryParams {
+  tipo: GerencialTipo;
+  periodo: string;
+  formato: GerencialFormato;
+}
+
+// Agenda / Calendário
+export type RelatorioAgendaStatus = "AGENDADO" | "FINALIZADO" | "CANCELADO";
+
+export interface CalendarioEventoTecnico {
+  id: number;
+  nome: string;
+}
+
+export interface CalendarioEventoCliente {
+  id: number;
+  nomeFantasia: string;
+}
+
+export interface CalendarioEvento {
+  id: number;
+  title: string;
+  start: string;
+  end?: string | null;
+  status: RelatorioAgendaStatus;
+  cliente: CalendarioEventoCliente;
+  tecnicos: CalendarioEventoTecnico[];
+  modalidadeServico?: string | null;
+  criadoPorId: number;
+  /** Quando true, exibe como evento de dia inteiro no mês. */
+  allDay?: boolean;
+}
+
+export interface AgendamentoPayload {
+  clienteId: number;
+  /** YYYY-MM-DD ou datetime-local (será normalizado). */
+  dataVisita: string;
+  /** HH:mm — opcional. */
+  horaVisita?: string;
+  /** Nomes dos técnicos (mesmo formato do POST /relatorios). */
+  tecnicos: string[];
+  modalidadeServico?: string;
+}
+
+export interface ReagendarDataVisitaPayload {
+  dataVisita: string;
+  horaVisita?: string;
 }

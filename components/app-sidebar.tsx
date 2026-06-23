@@ -2,6 +2,7 @@ import { Link, useLocation } from "react-router-dom";
 import {
   FileText,
   Users,
+  Calendar,
   Wrench,
   ClipboardCheck,
   Layers,
@@ -9,6 +10,7 @@ import {
   Settings,
   LogOut,
   User,
+  BarChart3,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { useSystemLogo } from "@/hooks/use-system-logo";
@@ -30,7 +32,16 @@ import {
 
 const mainNav = [
   { label: "Relatórios", href: "/dashboard/relatorios", icon: FileText },
+  { label: "Agenda", href: "/dashboard/agenda", icon: Calendar },
   { label: "Clientes", href: "/dashboard/clientes", icon: Users },
+];
+
+const adminRelatoriosNav = [
+  {
+    label: "Gerenciais",
+    href: "/dashboard/relatorios/gerenciais",
+    icon: BarChart3,
+  },
 ];
 
 const adminNav = [
@@ -104,7 +115,12 @@ export function AppSidebar() {
                 <SidebarMenuItem key={item.href}>
                   <SidebarMenuButton
                     asChild
-                    isActive={pathname.startsWith(item.href)}
+                    isActive={
+                      item.href === "/dashboard/relatorios"
+                        ? pathname.startsWith(item.href) &&
+                          !pathname.startsWith("/dashboard/relatorios/gerenciais")
+                        : pathname.startsWith(item.href)
+                    }
                     tooltip={item.label}
                     className={
                       state === "collapsed" ? "justify-center" : undefined
@@ -123,6 +139,30 @@ export function AppSidebar() {
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
+              {isAdmin &&
+                adminRelatoriosNav.map((item) => (
+                  <SidebarMenuItem key={item.href}>
+                    <SidebarMenuButton
+                      asChild
+                      isActive={pathname.startsWith(item.href)}
+                      tooltip={item.label}
+                      className={
+                        state === "collapsed" ? "justify-center" : undefined
+                      }
+                    >
+                      <Link to={item.href}>
+                        <item.icon />
+                        <span
+                          className={
+                            state === "collapsed" ? "sr-only" : undefined
+                          }
+                        >
+                          {item.label}
+                        </span>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
             </SidebarMenu>
           </SidebarGroupContent>
         </SidebarGroup>
