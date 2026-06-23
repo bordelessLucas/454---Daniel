@@ -2,8 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { ApiError } from "@/lib/api-client";
 import {
   hasConfiguredLogo,
-  resolveConfiguracaoLogoUrl,
-  withLogoCacheBuster,
+  resolveLogoDisplaySrc,
 } from "@/lib/configuracao-logo";
 import {
   getConfiguracoes,
@@ -68,7 +67,7 @@ export default function ConfiguracoesPage() {
           }),
         );
         setTextoRodapeRelatorio(data.textoRodapeRelatorio ?? "");
-        setHasLogo(hasConfiguredLogo(data.logoUrl));
+        setHasLogo(hasConfiguredLogo(data));
       } catch {
         toast.error("Erro ao carregar configuracoes.");
       } finally {
@@ -122,10 +121,10 @@ export default function ConfiguracoesPage() {
     setUploadingLogo(true);
     try {
       const updated = await uploadConfiguracaoLogo(file);
-      const resolved = resolveConfiguracaoLogoUrl(updated.logoUrl);
-      setLocalPreviewSrc(withLogoCacheBuster(resolved));
-      setHasLogo(hasConfiguredLogo(updated.logoUrl));
-      notifySystemLogoUpdated(updated.logoUrl);
+      const previewVersion = Date.now();
+      setLocalPreviewSrc(resolveLogoDisplaySrc(updated, previewVersion));
+      setHasLogo(hasConfiguredLogo(updated));
+      notifySystemLogoUpdated(updated);
       toast.success("Logo atualizada com sucesso.");
     } catch (error) {
       const message =

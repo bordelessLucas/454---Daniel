@@ -5,6 +5,11 @@ const DEFAULT_LOGO_PATH = "/LogoIcon.png";
 const LOGIN_LOGO_DARK = "/LogoBlack.png";
 const LOGIN_LOGO_LIGHT = "/logoWhite.png";
 
+export type LogoConfigSource = {
+  logoUrl?: string | null;
+  logoDataUrl?: string | null;
+};
+
 function getApiBaseUrl(): string {
   return API_URL.replace(/\/$/, "");
 }
@@ -63,8 +68,51 @@ export function resolveConfiguracaoLogoUrl(
   return normalizeLogoAssetUrl(trimmed);
 }
 
-export function hasConfiguredLogo(logoUrl?: string | null): boolean {
-  return Boolean(logoUrl?.trim());
+function isDataUrl(value: string): boolean {
+  return value.startsWith("data:");
+}
+
+export function isServerHostedLogoUrl(url: string): boolean {
+  return /\/uploads\//i.test(url);
+}
+
+export function hasConfiguredLogo(
+  source?: string | null | LogoConfigSource,
+): boolean {
+  if (source && typeof source === "object") {
+    return Boolean(source.logoDataUrl?.trim() || source.logoUrl?.trim());
+  }
+
+  return Boolean(source?.trim());
+}
+
+/**
+ * Resolve a URL/data URL da logo para exibição (sidebar, configurações).
+ * Prioriza logoDataUrl; aplica cache bust em logos servidas pelo backend (/uploads/).
+ */
+export function resolveLogoDisplaySrc(
+  config?: LogoConfigSource | null,
+  cacheBuster?: number | string,
+): string {
+  const dataUrl = config?.logoDataUrl?.trim();
+  if (dataUrl && isDataUrl(dataUrl)) {
+    return dataUrl;
+  }
+
+  const resolved = resolveConfiguracaoLogoUrl(config?.logoUrl);
+  if (!hasConfiguredLogo(config)) {
+    return resolved;
+  }
+
+  const needsCacheBust =
+    isServerHostedLogoUrl(resolved) ||
+    isServerHostedLogoUrl(config?.logoUrl ?? "");
+
+  if (needsCacheBust && cacheBuster !== undefined) {
+    return withLogoCacheBuster(resolved, cacheBuster);
+  }
+
+  return resolved;
 }
 
 /** Evita cache do browser após upload (mesmo URL, arquivo novo no servidor). */

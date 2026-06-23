@@ -1,35 +1,29 @@
 import { useCallback, useEffect, useState } from "react";
 import {
   hasConfiguredLogo,
-  resolveConfiguracaoLogoUrl,
-  withLogoCacheBuster,
+  resolveLogoDisplaySrc,
+  type LogoConfigSource,
 } from "@/lib/configuracao-logo";
 import { getConfiguracoesPdf } from "@/lib/configuracoes-service";
 
 const LOGO_UPDATED_EVENT = "system-logo-updated";
 
-type LogoUpdatedDetail = {
-  logoUrl?: string | null;
-};
-
-export function notifySystemLogoUpdated(logoUrl?: string | null): void {
+export function notifySystemLogoUpdated(config?: LogoConfigSource | null): void {
   window.dispatchEvent(
-    new CustomEvent<LogoUpdatedDetail>(LOGO_UPDATED_EVENT, {
-      detail: { logoUrl },
+    new CustomEvent<LogoConfigSource>(LOGO_UPDATED_EVENT, {
+      detail: config ?? {},
     }),
   );
 }
 
 export function useSystemLogo() {
-  const [logoSrc, setLogoSrc] = useState(() =>
-    resolveConfiguracaoLogoUrl(null),
-  );
+  const [logoConfig, setLogoConfig] = useState<LogoConfigSource | null>(null);
   const [hasCustomLogo, setHasCustomLogo] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [version, setVersion] = useState(0);
+  const [version, setVersion] = useState(() => Date.now());
 
   const reload = useCallback(() => {
-    setVersion((v) => v + 1);
+    setVersion(Date.now());
   }, []);
 
   useEffect(() => {
@@ -40,8 +34,8 @@ export function useSystemLogo() {
       try {
         const config = await getConfiguracoesPdf();
         if (!cancelled) {
-          setHasCustomLogo(hasConfiguredLogo(config?.logoUrl));
-          setLogoSrc(resolveConfiguracaoLogoUrl(config?.logoUrl));
+          setLogoConfig(config);
+          setHasCustomLogo(hasConfiguredLogo(config));
         }
       } catch (error) {
         if (import.meta.env.DEV) {
@@ -65,17 +59,16 @@ export function useSystemLogo() {
 
   useEffect(() => {
     const onUpdate = (event: Event) => {
-      const detail = (event as CustomEvent<LogoUpdatedDetail>).detail;
-      setHasCustomLogo(hasConfiguredLogo(detail?.logoUrl));
-      setLogoSrc(resolveConfiguracaoLogoUrl(detail?.logoUrl));
+      const detail = (event as CustomEvent<LogoConfigSource>).detail;
+      setLogoConfig(detail);
+      setHasCustomLogo(hasConfiguredLogo(detail));
       reload();
     };
     window.addEventListener(LOGO_UPDATED_EVENT, onUpdate);
     return () => window.removeEventListener(LOGO_UPDATED_EVENT, onUpdate);
   }, [reload]);
 
-  const displaySrc =
-    version > 0 ? withLogoCacheBuster(logoSrc, version) : logoSrc;
+  const logoSrc = resolveLogoDisplaySrc(logoConfig, version);
 
-  return { logoSrc: displaySrc, hasCustomLogo, loading, reload };
+  return { logoSrc, hasCustomLogo, loading, reload, logoConfig };
 }

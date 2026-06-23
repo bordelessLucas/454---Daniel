@@ -72,7 +72,11 @@ function buildHeaders(options: RequestInit): Record<string, string> {
     ...(options.headers as Record<string, string>),
   };
 
-  if (options.body && !headers["Content-Type"]) {
+  if (
+    options.body &&
+    !(options.body instanceof FormData) &&
+    !headers["Content-Type"]
+  ) {
     headers["Content-Type"] = "application/json";
   }
 
@@ -138,6 +142,24 @@ export async function apiRequest<T>(
   const response = await performRequest(endpoint, options);
 
   // 204 No Content - não tem body para parsear
+  if (response.status === 204) {
+    return null as T;
+  }
+
+  return response.json();
+}
+
+export async function apiRequestFormData<T>(
+  endpoint: string,
+  formData: FormData,
+  options: Omit<RequestInit, "body"> = {},
+): Promise<T> {
+  const response = await performRequest(endpoint, {
+    ...options,
+    method: options.method ?? "POST",
+    body: formData,
+  });
+
   if (response.status === 204) {
     return null as T;
   }

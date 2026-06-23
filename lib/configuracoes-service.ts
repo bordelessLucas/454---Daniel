@@ -1,4 +1,5 @@
-import { apiRequest, API_URL, ApiError } from "./api-client";
+import { apiRequest, apiRequestFormData } from "./api-client";
+import { hasConfiguredLogo } from "./configuracao-logo";
 import type { ApiConfiguracoes, ApiConfiguracoesPdf } from "./types";
 
 export type UpdateConfiguracoesPayload = {
@@ -6,6 +7,20 @@ export type UpdateConfiguracoesPayload = {
   dataFim?: string;
   textoRodapeRelatorio?: string | null;
 };
+
+function toPdfConfig(
+  data: ApiConfiguracoes | ApiConfiguracoesPdf | null | undefined,
+): ApiConfiguracoesPdf | null {
+  if (!data) {
+    return null;
+  }
+
+  return {
+    logoUrl: data.logoUrl ?? null,
+    logoDataUrl: data.logoDataUrl ?? null,
+    textoRodapeRelatorio: data.textoRodapeRelatorio ?? null,
+  };
+}
 
 /** Configurações completas — requer perfil ADMIN. */
 export async function getConfiguracoes(): Promise<ApiConfiguracoes | null> {
@@ -33,24 +48,20 @@ export async function updateConfiguracoes(
  */
 export async function uploadConfiguracaoLogo(
   file: File,
-): Promise<ApiConfiguracoes> {
+): Promise<ApiConfiguracoesPdf> {
   const formData = new FormData();
   formData.append("logo", file);
 
-  const response = await fetch(`${API_URL}/configuracoes/logo`, {
-    method: "POST",
-    body: formData,
-    credentials: "include",
-  });
+  const updated = await apiRequestFormData<ApiConfiguracoes>(
+    "/configuracoes/logo",
+    formData,
+  );
 
-  const responseText = await response.text();
-
-  if (!response.ok) {
-    if (response.status === 401) {
-      window.location.href = "/";
-    }
-    throw new ApiError(response.status, response.statusText, responseText);
+  const normalized = toPdfConfig(updated);
+  if (normalized && hasConfiguredLogo(normalized)) {
+    return normalized;
   }
 
-  return responseText ? (JSON.parse(responseText) as ApiConfiguracoes) : ({} as ApiConfiguracoes);
+  // Backend pode retornar 204/corpo vazio ou omitir logoUrl — recarrega do endpoint público.
+  return getConfiguracoesPdf();
 }

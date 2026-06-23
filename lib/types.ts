@@ -135,11 +135,15 @@ export interface ApiConfiguracoes {
   textoRodapeRelatorio?: string | null;
   /** URL pública da logo do sistema (PDF, sidebar, etc.). */
   logoUrl?: string | null;
+  /** Data URL da logo (opcional; prioridade sobre logoUrl no preview). */
+  logoDataUrl?: string | null;
 }
 
 /** Configurações públicas para PDF/sidebar (sem horário de login). */
 export interface ApiConfiguracoesPdf {
   logoUrl?: string | null;
+  /** Data URL da logo (opcional; prioridade sobre logoUrl no preview). */
+  logoDataUrl?: string | null;
   textoRodapeRelatorio?: string | null;
 }
 
