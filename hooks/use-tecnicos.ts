@@ -10,22 +10,23 @@ export function useTecnicos(refetchTrigger = 0) {
   useEffect(() => {
     async function fetchTecnicos() {
       try {
-        console.log("[use-tecnicos] Buscando técnicos...");
         setLoading(true);
         setError(null);
         const data = await apiRequest<ApiUser[]>("/users/tecnico");
-        console.log("[use-tecnicos] Técnicos recebidos:", data);
-        setTecnicos(data);
+        setTecnicos(
+          [...data].sort((a, b) => a.nome.localeCompare(b.nome, "pt-BR")),
+        );
       } catch (err) {
         setError(
           err instanceof Error ? err.message : "Erro ao buscar técnicos",
         );
+        setTecnicos([]);
       } finally {
         setLoading(false);
       }
     }
 
-    fetchTecnicos();
+    void fetchTecnicos();
   }, [refetchTrigger]);
 
   return { tecnicos, loading, error };

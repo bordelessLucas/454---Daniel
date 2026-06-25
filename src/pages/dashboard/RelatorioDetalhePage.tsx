@@ -255,11 +255,16 @@ export default function RelatorioDetalhePage() {
                   <span className="font-medium text-foreground">
                     {setor.setor.nome}
                   </span>
-                  {setor.setor.descricao && (
+                  {setor.observacao ? (
+                    <p className="mt-2 text-sm text-foreground">
+                      {setor.observacao}
+                    </p>
+                  ) : null}
+                  {setor.setor.descricao ? (
                     <p className="mt-2 text-sm text-muted-foreground">
                       {setor.setor.descricao}
                     </p>
-                  )}
+                  ) : null}
                 </div>
               ))}
             </div>

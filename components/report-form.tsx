@@ -21,7 +21,7 @@ import {
   resolveHoraSaidaHhmm,
 } from "@/lib/relatorio-datetime";
 import type { ReportHorario } from "@/lib/types";
-import { Button, Input, Label, SelectionField } from "@/components/index";
+import { Button, Input, Label, SelectionField, Textarea } from "@/components/index";
 import { RichTextEditor } from "@/components/RichTextEditor";
 import { CheckCircle2, ArrowLeft, X } from "lucide-react";
 import { toast } from "sonner";
@@ -31,6 +31,12 @@ interface Horario {
   periodo: "Manhã" | "Tarde" | "Noite";
   horaChegada: string;
   horaSaida: string;
+}
+
+interface SelectedSetor {
+  setorId: number;
+  nome: string;
+  observacao: string;
 }
 
 interface ReportFormProps {
@@ -51,7 +57,8 @@ export function ReportForm({ reportId }: ReportFormProps) {
 
   const { clientes, loading: loadingClientes } = useClientes();
   const { setores, loading: loadingSetores } = useSetores();
-  const { tecnicos, loading: loadingTecnicos } = useTecnicos();
+  const { tecnicos, loading: loadingTecnicos, error: errorTecnicos } =
+    useTecnicos();
   const { checklists, loading: loadingChecklists } = useChecklists();
   const { relatorio, loading: loadingRelatorio } = useRelatorio(reportId);
 
@@ -68,7 +75,8 @@ export function ReportForm({ reportId }: ReportFormProps) {
   const [observacoes, setObservacoes] = useState("");
   const [selectedTecnicos, setSelectedTecnicos] = useState<string[]>([]);
   const [selectedChecklists, setSelectedChecklists] = useState<number[]>([]);
-  const [selectedSetores, setSelectedSetores] = useState<string[]>([]);
+  const [selectedSetores, setSelectedSetores] = useState<SelectedSetor[]>([]);
+  const [setorPickerValue, setSetorPickerValue] = useState("");
   const [horarios, setHorarios] = useState<Horario[]>([]);
   const [saving, setSaving] = useState(false);
 
@@ -88,7 +96,13 @@ export function ReportForm({ reportId }: ReportFormProps) {
       setObservacoes(relatorio.observacoes ?? "");
       setSelectedTecnicos(relatorio.tecnicos.map((t) => String(t.id)));
       setSelectedChecklists(relatorio.checklists.map((c) => c.checklistId));
-      setSelectedSetores(relatorio.setores.map((s) => String(s.setorId)));
+      setSelectedSetores(
+        relatorio.setores.map((s) => ({
+          setorId: s.setorId,
+          nome: s.setor.nome,
+          observacao: s.observacao ?? "",
+        })),
+      );
       if (relatorio.horarios && Array.isArray(relatorio.horarios)) {
         const horariosEditando = relatorio.horarios.map((h: ReportHorario) => ({
           id: crypto.randomUUID(),
@@ -277,6 +291,7 @@ export function ReportForm({ reportId }: ReportFormProps) {
       tecnicos.map((tecnico) => ({
         value: String(tecnico.id),
         label: tecnico.nome,
+        badge: tecnico.role === "ADMIN" ? "Admin" : undefined,
         searchText: [tecnico.nome, tecnico.username, tecnico.email]
           .filter(Boolean)
           .join(" "),
@@ -284,14 +299,19 @@ export function ReportForm({ reportId }: ReportFormProps) {
     [tecnicos],
   );
 
-  const setorOptions = useMemo(
+  const availableSetorOptions = useMemo(
     () =>
-      setores.map((setor) => ({
-        value: String(setor.id),
-        label: setor.nome,
-        searchText: [setor.nome, setor.descricao].filter(Boolean).join(" "),
-      })),
-    [setores],
+      setores
+        .filter(
+          (setor) =>
+            !selectedSetores.some((selected) => selected.setorId === setor.id),
+        )
+        .map((setor) => ({
+          value: String(setor.id),
+          label: setor.nome,
+          searchText: [setor.nome, setor.descricao].filter(Boolean).join(" "),
+        })),
+    [setores, selectedSetores],
   );
 
   const checklistOptions = useMemo(
@@ -314,10 +334,6 @@ export function ReportForm({ reportId }: ReportFormProps) {
     .map((id) => checklists.find((checklist) => checklist.id === id)?.nome)
     .filter((nome): nome is string => Boolean(nome));
 
-  const setoresSelecionadosNomes = selectedSetores
-    .map((id) => setores.find((setor) => String(setor.id) === id)?.nome)
-    .filter((nome): nome is string => Boolean(nome));
-
   const observacoesPreview = useMemo(() => {
     if (!observacoes) return "";
     return observacoes
@@ -331,6 +347,35 @@ export function ReportForm({ reportId }: ReportFormProps) {
     if (!dataVisita) return "-";
     return formatDataVisitaBr(dataVisita) || dataVisita;
   }, [dataVisita]);
+
+  function addSetor(setorId: string) {
+    const setor = setores.find((item) => String(item.id) === setorId);
+    if (!setor) {
+      return;
+    }
+    if (selectedSetores.some((selected) => selected.setorId === setor.id)) {
+      return;
+    }
+    setSelectedSetores((prev) => [
+      ...prev,
+      { setorId: setor.id, nome: setor.nome, observacao: "" },
+    ]);
+    setSetorPickerValue("");
+  }
+
+  function removeSetor(setorId: number) {
+    setSelectedSetores((prev) =>
+      prev.filter((selected) => selected.setorId !== setorId),
+    );
+  }
+
+  function updateSetorObservacao(setorId: number, observacao: string) {
+    setSelectedSetores((prev) =>
+      prev.map((selected) =>
+        selected.setorId === setorId ? { ...selected, observacao } : selected,
+      ),
+    );
+  }
 
   function addHorario() {
     const novoHorario: Horario = {
@@ -404,9 +449,9 @@ export function ReportForm({ reportId }: ReportFormProps) {
           return tecnico?.nome ?? "";
         })
         .filter(Boolean),
-      setores: selectedSetores.map((id) => ({
-        setorId: Number(id),
-        observacao: undefined,
+      setores: selectedSetores.map((setor) => ({
+        setorId: setor.setorId,
+        observacao: setor.observacao.trim() || undefined,
       })),
       horarios: buildHorariosPayload(horarios),
       checklists: selectedChecklists.map((id) => ({ checklistId: id })),
@@ -681,10 +726,23 @@ export function ReportForm({ reportId }: ReportFormProps) {
               placeholder={
                 loadingTecnicos
                   ? "Carregando técnicos..."
-                  : "Selecione os técnicos"
+                  : tecnicos.length === 0
+                    ? "Nenhum técnico disponível"
+                    : "Selecione os técnicos"
               }
-              disabled={loadingTecnicos}
+              disabled={loadingTecnicos || tecnicos.length === 0}
             />
+            {errorTecnicos ? (
+              <p className="text-sm text-destructive sm:col-span-2">
+                Não foi possível carregar a lista de técnicos: {errorTecnicos}
+              </p>
+            ) : null}
+            {!loadingTecnicos && !errorTecnicos && tecnicos.length === 0 ? (
+              <p className="text-sm text-muted-foreground sm:col-span-2">
+                Nenhum técnico ou administrador ativo disponível para este
+                relatório.
+              </p>
+            ) : null}
           </div>
         </section>
 
@@ -703,19 +761,83 @@ export function ReportForm({ reportId }: ReportFormProps) {
         {/* Seção 3 - Setores */}
         <section className="rounded-2xl border border-border p-6">
           <h2 className="mb-4 text-lg font-medium text-foreground">Setores</h2>
-          <SelectionField
-            label=""
-            selectionMode="multiple"
-            searchable
-            searchPlaceholder="Buscar setor..."
-            value={selectedSetores}
-            onChange={(value) => setSelectedSetores(value as string[])}
-            options={setorOptions}
-            placeholder={
-              loadingSetores ? "Carregando setores..." : "Selecione os setores"
-            }
-            disabled={loadingSetores}
-          />
+          <div className="flex flex-col gap-4">
+            <SelectionField
+              label="Adicionar setor"
+              searchable
+              searchPlaceholder="Buscar setor..."
+              value={setorPickerValue}
+              onChange={(value) => {
+                const nextValue = typeof value === "string" ? value : "";
+                if (nextValue) {
+                  addSetor(nextValue);
+                } else {
+                  setSetorPickerValue("");
+                }
+              }}
+              options={availableSetorOptions}
+              placeholder={
+                loadingSetores
+                  ? "Carregando setores..."
+                  : setores.length === 0
+                    ? "Nenhum setor cadastrado"
+                    : availableSetorOptions.length === 0
+                      ? "Todos os setores já foram adicionados"
+                      : "Selecione um setor para adicionar"
+              }
+              disabled={
+                loadingSetores ||
+                setores.length === 0 ||
+                availableSetorOptions.length === 0
+              }
+            />
+
+            {selectedSetores.length > 0 ? (
+              <div className="flex flex-col gap-3">
+                <p className="text-sm font-medium text-foreground">
+                  Setores selecionados
+                </p>
+                {selectedSetores.map((setor) => (
+                  <div
+                    key={setor.setorId}
+                    className="rounded-lg border border-border p-4"
+                  >
+                    <div className="mb-3 flex items-start justify-between gap-3">
+                      <p className="font-medium text-foreground">{setor.nome}</p>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="shrink-0"
+                        onClick={() => removeSetor(setor.setorId)}
+                        aria-label={`Remover setor ${setor.nome}`}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                    <div className="flex flex-col gap-2">
+                      <Label htmlFor={`setor-obs-${setor.setorId}`}>
+                        Observação (opcional)
+                      </Label>
+                      <Textarea
+                        id={`setor-obs-${setor.setorId}`}
+                        value={setor.observacao}
+                        onChange={(e) =>
+                          updateSetorObservacao(setor.setorId, e.target.value)
+                        }
+                        placeholder="Descreva o que foi realizado neste setor..."
+                        rows={3}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                Nenhum setor selecionado. Use o campo acima para adicionar.
+              </p>
+            )}
+          </div>
         </section>
 
         {/* Seção 4 - Checklists */}
@@ -893,10 +1015,6 @@ export function ReportForm({ reportId }: ReportFormProps) {
                 Detalhamento dos Serviços
               </p>
               <p className="text-sm">
-                <span className="font-medium">Setores:</span>{" "}
-                {setoresSelecionadosNomes.join(", ") || "-"}
-              </p>
-              <p className="text-sm">
                 <span className="font-medium">Checklists:</span>{" "}
                 {checklistsSelecionadosNomes.join(", ") || "-"}
               </p>
@@ -904,6 +1022,24 @@ export function ReportForm({ reportId }: ReportFormProps) {
                 {observacoesPreview || "Sem detalhamento dos serviços preenchido."}
               </p>
             </div>
+
+            {selectedSetores.length > 0 ? (
+              <div className="rounded-lg border border-border p-3">
+                <p className="mb-2 text-xs uppercase tracking-wide text-muted-foreground">
+                  Detalhes dos Setores
+                </p>
+                <div className="space-y-3">
+                  {selectedSetores.map((setor) => (
+                    <div key={setor.setorId} className="text-sm">
+                      <p className="font-medium">{setor.nome}</p>
+                      <p className="text-muted-foreground">
+                        {setor.observacao.trim() || "Sem observação informada."}
+                      </p>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ) : null}
 
             <div className="rounded-lg border border-border p-3">
               <p className="mb-2 text-xs uppercase tracking-wide text-muted-foreground">

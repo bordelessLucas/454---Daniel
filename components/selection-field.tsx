@@ -3,6 +3,7 @@ import type { KeyboardEvent } from "react";
 import { Check, ChevronDown } from "lucide-react";
 
 import { cn } from "@/lib/utils";
+import { Badge } from "@/components/Badge";
 import { Checkbox } from "@/components/Checkbox";
 import { Label } from "@/components/Label";
 
@@ -13,6 +14,8 @@ type SelectionOption = {
   label: string;
   /** Texto extra usado só na filtragem quando `searchable` está ativo. */
   searchText?: string;
+  /** Badge opcional exibido à direita do rótulo (ex.: role Admin). */
+  badge?: string;
 };
 
 interface SelectionFieldProps {
@@ -210,7 +213,12 @@ export function SelectionField({
                           {isSelected ? <Check className="h-4 w-4" /> : null}
                         </span>
                       )}
-                      <span className="text-left">{option.label}</span>
+                      <span className="flex-1 text-left">{option.label}</span>
+                      {option.badge ? (
+                        <Badge variant="secondary" className="shrink-0 text-xs">
+                          {option.badge}
+                        </Badge>
+                      ) : null}
                     </div>
                   );
                 })
