@@ -11,6 +11,7 @@ import {
   LogOut,
   User,
   BarChart3,
+  ScrollText,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { useSystemLogo } from "@/hooks/use-system-logo";
@@ -54,6 +55,7 @@ const adminNav = [
     icon: Briefcase,
   },
   { label: "Configurações", href: "/dashboard/configuracoes", icon: Settings },
+  { label: "Auditoria", href: "/dashboard/auditoria", icon: ScrollText },
 ];
 
 export function AppSidebar() {

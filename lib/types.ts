@@ -336,3 +336,74 @@ export interface ReagendarDataVisitaPayload {
   dataVisita: string;
   horaVisita?: string;
 }
+
+// Activity logs (auditoria)
+export type ActivityAction =
+  | "CREATE"
+  | "UPDATE"
+  | "DELETE"
+  | "LOGIN"
+  | "RESET_PASSWORD"
+  | "CHANGE_PASSWORD"
+  | "UPLOAD";
+
+export type ActivityEntity =
+  | "USER"
+  | "CLIENTE"
+  | "RELATORIO"
+  | "CHECKLIST"
+  | "SETOR"
+  | "RAMO_ATIVIDADE"
+  | "CONFIGURACAO"
+  | "AUTH";
+
+export interface ActivityLogMetadata {
+  method?: string;
+  path?: string;
+  role?: string;
+  username?: string;
+  targetUsername?: string;
+  adminUsername?: string;
+}
+
+export interface ActivityLogUsuario {
+  id: number;
+  nome: string;
+  username: string;
+  role: UserRole;
+}
+
+export interface ActivityLog {
+  id: number;
+  usuarioId: number;
+  acao: ActivityAction;
+  entidade: ActivityEntity;
+  entidadeId: number | null;
+  descricao: string | null;
+  metadata: ActivityLogMetadata | null;
+  ipAddress: string | null;
+  timestamp: string;
+  usuario: ActivityLogUsuario;
+}
+
+export interface ActivityLogsPagination {
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+}
+
+export interface ActivityLogsResponse {
+  data: ActivityLog[];
+  pagination: ActivityLogsPagination;
+}
+
+export interface ActivityLogFilters {
+  usuarioId?: number;
+  entidade?: ActivityEntity;
+  acao?: ActivityAction;
+  from?: string;
+  to?: string;
+  page?: number;
+  limit?: number;
+}

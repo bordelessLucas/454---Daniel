@@ -1,7 +1,9 @@
 import React from "react";
 import { Navigate } from "react-router-dom";
+import { ShieldOff } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import type { UserRole } from "@/lib/types";
+import { EmptyState } from "@/components/empty-state";
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
@@ -29,7 +31,15 @@ export function ProtectedRoute({
   if (requiredRole) {
     const roles = Array.isArray(requiredRole) ? requiredRole : [requiredRole];
     if (!roles.includes(user.role)) {
-      return <Navigate to="/dashboard/relatorios" replace />;
+      return (
+        <div className="flex h-[calc(100vh-4rem)] items-center justify-center">
+          <EmptyState
+            icon={ShieldOff}
+            title="Acesso negado"
+            description="Você não tem permissão para acessar esta página."
+          />
+        </div>
+      );
     }
   }
 

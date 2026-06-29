@@ -13,6 +13,7 @@ import SetoresPage from "./pages/dashboard/SetoresPage";
 import RamosAtividadePage from "./pages/dashboard/RamosAtividadePage";
 import ChecklistsPage from "./pages/dashboard/ChecklistsPage";
 import ConfiguracoesPage from "./pages/dashboard/ConfiguracoesPage";
+import ActivityLogsPage from "./pages/dashboard/ActivityLogsPage";
 import RelatoriosGerenciaisPage from "./pages/relatorios/RelatoriosGerenciaisPage";
 import AgendaPage from "./pages/agenda/AgendaPage";
 
@@ -115,6 +116,14 @@ export default function App() {
           element={
             <ProtectedRoute requiredRole="ADMIN">
               <ConfiguracoesPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="auditoria"
+          element={
+            <ProtectedRoute requiredRole="ADMIN">
+              <ActivityLogsPage />
             </ProtectedRoute>
           }
         />
