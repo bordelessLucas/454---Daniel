@@ -3,11 +3,13 @@ import { Navigate, Route, Routes } from "react-router-dom";
 import { ProtectedRoute } from "@/components/ProtectedRoute";
 import LoginPage from "./pages/LoginPage";
 import DashboardLayout from "./layouts/DashboardLayout";
+import DashboardPage from "./pages/dashboard/DashboardPage";
 import RelatoriosPage from "./pages/dashboard/RelatoriosPage";
 import RelatorioNovoPage from "./pages/dashboard/RelatorioNovoPage";
 import RelatorioDetalhePage from "./pages/dashboard/RelatorioDetalhePage";
 import RelatorioEditarPage from "./pages/dashboard/RelatorioEditarPage";
 import ClientesPage from "./pages/dashboard/ClientesPage";
+import ClienteDetalhePage from "./pages/dashboard/ClienteDetalhePage";
 import UsuariosPage from "./pages/dashboard/UsuariosPage";
 import SetoresPage from "./pages/dashboard/SetoresPage";
 import RamosAtividadePage from "./pages/dashboard/RamosAtividadePage";
@@ -22,7 +24,14 @@ export default function App() {
     <Routes>
       <Route path="/" element={<LoginPage />} />
       <Route path="/dashboard" element={<DashboardLayout />}>
-        <Route index element={<Navigate to="relatorios" replace />} />
+        <Route
+          index
+          element={
+            <ProtectedRoute>
+              <DashboardPage />
+            </ProtectedRoute>
+          }
+        />
         <Route
           path="relatorios"
           element={
@@ -68,6 +77,14 @@ export default function App() {
           element={
             <ProtectedRoute>
               <AgendaPage />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="clientes/:id"
+          element={
+            <ProtectedRoute>
+              <ClienteDetalhePage />
             </ProtectedRoute>
           }
         />

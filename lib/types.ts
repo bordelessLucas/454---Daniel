@@ -407,3 +407,70 @@ export interface ActivityLogFilters {
   page?: number;
   limit?: number;
 }
+
+// Dashboard KPIs
+export interface Unidade {
+  id: number;
+  nome: string;
+}
+
+export interface DashboardKpisFilters {
+  dataInicio: string;
+  dataFim: string;
+  unidadeId?: number;
+  tecnicoId?: number;
+  clienteId?: number;
+  setorId?: number;
+}
+
+export interface DashboardVisitasSla {
+  realizadas: number;
+  esperadas: number;
+  percentual: number;
+}
+
+export interface DashboardContratoRisco {
+  clienteId: number;
+  clienteNome: string;
+  visitasRealizadas: number;
+  visitasEsperadas: number;
+  percentualConcluido: number;
+}
+
+export interface DashboardProdutividadeTecnico {
+  tecnicoId: number;
+  tecnicoNome: string;
+  totalHoras: string;
+}
+
+export interface DashboardTopCliente {
+  clienteId: number;
+  clienteNome: string;
+  totalVisitas: number;
+}
+
+export interface DashboardProximoAgendamento {
+  relatorioId: number;
+  clienteNome: string;
+  dataVisita: string;
+}
+
+export interface DashboardAdminKpis {
+  visitasSla: DashboardVisitasSla;
+  totalHoras: string;
+  contratosEmRisco: DashboardContratoRisco[];
+  produtividadeTecnicos: DashboardProdutividadeTecnico[];
+  topClientes: DashboardTopCliente[];
+}
+
+export interface DashboardTecnicoKpis {
+  minhasVisitas: number;
+  minhasHoras: string;
+  proximosAgendamentos: DashboardProximoAgendamento[];
+}
+
+export interface DashboardKpisResponse {
+  role: UserRole;
+  admin?: DashboardAdminKpis;
+  tecnico?: DashboardTecnicoKpis;
+}

@@ -1,5 +1,6 @@
 import { Link, useLocation } from "react-router-dom";
 import {
+  LayoutDashboard,
   FileText,
   Users,
   Calendar,
@@ -32,6 +33,7 @@ import {
 } from "@/components/ui/sidebar";
 
 const mainNav = [
+  { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard, exact: true },
   { label: "Relatórios", href: "/dashboard/relatorios", icon: FileText },
   { label: "Agenda", href: "/dashboard/agenda", icon: Calendar },
   { label: "Clientes", href: "/dashboard/clientes", icon: Users },
@@ -70,7 +72,7 @@ export function AppSidebar() {
   return (
     <Sidebar collapsible="icon">
       <SidebarHeader className="p-4">
-        <Link to="/dashboard/relatorios" className="flex items-center gap-3">
+        <Link to="/dashboard" className="flex items-center gap-3">
           <div className={hasCustomLogo ? "min-w-0 flex-1" : undefined}>
             <img
               src={logoSrc}
@@ -118,10 +120,15 @@ export function AppSidebar() {
                   <SidebarMenuButton
                     asChild
                     isActive={
-                      item.href === "/dashboard/relatorios"
-                        ? pathname.startsWith(item.href) &&
-                          !pathname.startsWith("/dashboard/relatorios/gerenciais")
-                        : pathname.startsWith(item.href)
+                      "exact" in item && item.exact
+                        ? pathname === item.href ||
+                          pathname === `${item.href}/`
+                        : item.href === "/dashboard/relatorios"
+                          ? pathname.startsWith(item.href) &&
+                            !pathname.startsWith(
+                              "/dashboard/relatorios/gerenciais",
+                            )
+                          : pathname.startsWith(item.href)
                     }
                     tooltip={item.label}
                     className={

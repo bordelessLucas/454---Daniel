@@ -33,7 +33,7 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (user) {
-      navigate("/dashboard/relatorios", { replace: true });
+      navigate("/dashboard", { replace: true });
     }
   }, [user, navigate]);
 
@@ -50,7 +50,7 @@ export default function LoginPage() {
     try {
       const result = await login(username, password);
       if (result.success) {
-        navigate("/dashboard/relatorios", { replace: true });
+        navigate("/dashboard", { replace: true });
       } else {
         setError(result.error ?? "Usuário ou senha inválidos.");
       }

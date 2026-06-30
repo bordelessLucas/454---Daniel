@@ -34,7 +34,7 @@ function useChart() {
   return context
 }
 
-const ChartContainer = React.forwardRef<HTMLDivElement, React.ComponentProps<'div'> & { config: ChartConfig; children: React.ComponentProps<typeof RechartsPrimitive.ResponsiveContainer>['children']; }>(
+const ChartContainer = React.forwardRef<
   HTMLDivElement,
   React.ComponentProps<'div'> & {
     config: ChartConfig

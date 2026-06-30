@@ -73,3 +73,7 @@ export async function deleteClient(id: number): Promise<void> {
     method: "DELETE",
   });
 }
+
+export async function getClient(id: number): Promise<Client> {
+  return apiRequest<Client>(`/clientes/${id}`);
+}
