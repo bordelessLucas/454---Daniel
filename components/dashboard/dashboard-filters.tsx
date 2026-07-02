@@ -31,7 +31,7 @@ export function DashboardFilters({
   isApplying,
 }: DashboardFiltersProps) {
   const { isAdmin } = useAuth();
-  const { unidades, loading: loadingUnidades } = useUnidades();
+  const { unidades, loading: loadingUnidades } = useUnidades(isAdmin);
   const { tecnicos, loading: loadingTecnicos } = useTecnicos();
   const { clientes, loading: loadingClientes } = useClientes();
   const { setores, loading: loadingSetores } = useSetores();
@@ -94,6 +94,21 @@ export function DashboardFilters({
           />
         </div>
 
+        <SelectionField
+          label="Setor"
+          placeholder="Todos os setores"
+          value={draft.setorId}
+          onChange={(value) =>
+            onDraftChange({
+              ...draft,
+              setorId: typeof value === "string" ? value : "",
+            })
+          }
+          options={setorOptions}
+          disabled={loadingSetores}
+          searchable
+        />
+
         {isAdmin ? (
           <>
             <SelectionField
@@ -136,20 +151,6 @@ export function DashboardFilters({
               }
               options={clienteOptions}
               disabled={loadingClientes}
-              searchable
-            />
-            <SelectionField
-              label="Setor"
-              placeholder="Todos os setores"
-              value={draft.setorId}
-              onChange={(value) =>
-                onDraftChange({
-                  ...draft,
-                  setorId: typeof value === "string" ? value : "",
-                })
-              }
-              options={setorOptions}
-              disabled={loadingSetores}
               searchable
             />
           </>

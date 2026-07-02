@@ -46,8 +46,8 @@ export interface Contract {
   id: number;
   clienteId: number;
   numeroContrato: string;
-  dataInicio: string;
-  dataFim: string;
+  dataInicio: string | null;
+  dataFim: string | null;
   valorMensal: number;
   descricaoServicos: string;
   condicoes: string | null;
@@ -84,6 +84,11 @@ export interface ApiUser {
   email: string;
   role: "ADMIN" | "TECNICO";
   clienteId: number | null;
+  unidadeId?: number | null;
+  unidade?: {
+    id: number;
+    nome: string;
+  } | null;
   ativo: boolean;
   createdAt: string;
   updatedAt: string;
@@ -256,42 +261,54 @@ export type GerencialTipo =
 
 export type GerencialFormato = "json" | "xlsx";
 
-export type GerencialSlaStatus = "dentro" | "fora" | "ok" | "atencao";
+export type GerencialSlaStatus = "DENTRO" | "ABAIXO" | "SEM_META";
 
 export interface GerencialResumoClienteRow {
   clienteId: number;
   clienteNome: string;
-  totalRelatorios: number;
-  totalHoras: string;
+  totalVisitas: number;
+  totalHoras: number;
+  totalSetoresVisitados: number;
+  periodo: string;
 }
 
 export interface GerencialProdutividadeTecnicoRow {
-  tecnicoId: number;
   tecnicoNome: string;
-  totalRelatorios: number;
-  totalHoras: string;
-  mediaHorasPorRelatorio?: string | null;
+  totalVisitas: number;
+  totalHoras: number;
+  clientesAtendidos: number;
+  periodo: string;
 }
 
 export interface GerencialSlaContratoRow {
-  clienteId: number;
+  contratoId: number;
   clienteNome: string;
-  numeroContrato: string;
   visitasRealizadas: number;
-  visitasPrevistas: number;
-  percentualSla: number;
-  statusSla: GerencialSlaStatus;
+  visitasEsperadas: number;
+  slaPercentual: number;
+  slaStatus: GerencialSlaStatus;
+  periodo: string;
 }
 
-export type GerencialJsonData =
-  | GerencialResumoClienteRow[]
-  | GerencialProdutividadeTecnicoRow[]
-  | GerencialSlaContratoRow[];
+export type GerencialJsonRow =
+  | GerencialResumoClienteRow
+  | GerencialProdutividadeTecnicoRow
+  | GerencialSlaContratoRow;
+
+export type GerencialJsonData = GerencialJsonRow[];
+
+export interface GerencialJsonResponse {
+  tipo: GerencialTipo;
+  itens: GerencialJsonData;
+}
 
 export interface GerencialQueryParams {
   tipo: GerencialTipo;
   periodo: string;
-  formato: GerencialFormato;
+  formato?: GerencialFormato;
+  clienteId?: number;
+  tecnicoId?: number;
+  unidadeId?: number;
 }
 
 // Agenda / Calendário
@@ -415,8 +432,8 @@ export interface Unidade {
 }
 
 export interface DashboardKpisFilters {
-  dataInicio: string;
-  dataFim: string;
+  dataInicio?: string;
+  dataFim?: string;
   unidadeId?: number;
   tecnicoId?: number;
   clienteId?: number;
@@ -427,6 +444,11 @@ export interface DashboardVisitasSla {
   realizadas: number;
   esperadas: number;
   percentual: number;
+}
+
+export interface DashboardVisitasTecnico {
+  realizadas: number;
+  agendadas: number;
 }
 
 export interface DashboardContratoRisco {
@@ -458,19 +480,23 @@ export interface DashboardProximoAgendamento {
 export interface DashboardAdminKpis {
   visitasSla: DashboardVisitasSla;
   totalHoras: string;
-  contratosEmRisco: DashboardContratoRisco[];
+  contratosSlaRisco: DashboardContratoRisco[];
   produtividadeTecnicos: DashboardProdutividadeTecnico[];
   topClientes: DashboardTopCliente[];
 }
 
 export interface DashboardTecnicoKpis {
-  minhasVisitas: number;
-  minhasHoras: string;
-  proximosAgendamentos: DashboardProximoAgendamento[];
+  visitas: DashboardVisitasTecnico;
+  totalHoras: string;
+  topClientes: DashboardTopCliente[];
 }
 
-export interface DashboardKpisResponse {
-  role: UserRole;
-  admin?: DashboardAdminKpis;
-  tecnico?: DashboardTecnicoKpis;
+export type DashboardKpisApiResponse =
+  | DashboardAdminKpis
+  | DashboardTecnicoKpis;
+
+export function isDashboardAdminKpis(
+  data: DashboardKpisApiResponse,
+): data is DashboardAdminKpis {
+  return "visitasSla" in data;
 }

@@ -3,6 +3,7 @@ import { useSearchParams } from "react-router-dom";
 import { AlertCircle } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { useDashboardKpis } from "@/hooks/use-dashboard-kpis";
+import { useProximosAgendamentos } from "@/hooks/use-proximos-agendamentos";
 import { PageHeader } from "@/components/page-header";
 import { EmptyState } from "@/components/empty-state";
 import {
@@ -14,71 +15,71 @@ import { TecnicoDashboardKpis } from "@/components/dashboard/tecnico-dashboard-k
 import {
   areDraftsEqual,
   draftFromSearchParams,
-  filtersFromSearchParams,
+  filtersFromDraft,
   searchParamsFromDraft,
 } from "@/lib/dashboard-filters-url";
-import { getDefaultDashboardDateRange } from "@/lib/dashboard-datetime";
+import { isDashboardAdminKpis } from "@/lib/types";
+import type { DashboardKpisFilters } from "@/lib/types";
 
-const FILTER_DEBOUNCE_MS = 400;
+function hasAppliedFiltersInUrl(searchParams: URLSearchParams): boolean {
+  return (
+    searchParams.has("dataInicio") ||
+    searchParams.has("dataFim") ||
+    searchParams.has("unidadeId") ||
+    searchParams.has("tecnicoId") ||
+    searchParams.has("clienteId") ||
+    searchParams.has("setorId")
+  );
+}
 
 export default function DashboardPage() {
-  const { user, isAdmin } = useAuth();
+  const { isAdmin } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const [draft, setDraft] = useState<DashboardFilterDraft>(() =>
     draftFromSearchParams(searchParams),
   );
-
-  const appliedFilters = useMemo(
-    () => filtersFromSearchParams(searchParams),
-    [searchParams],
+  const [appliedFilters, setAppliedFilters] = useState<DashboardKpisFilters | null>(
+    () =>
+      hasAppliedFiltersInUrl(searchParams)
+        ? filtersFromDraft(draftFromSearchParams(searchParams), { isAdmin })
+        : null,
   );
 
   const { data, isLoading, error } = useDashboardKpis(appliedFilters);
+  const {
+    items: proximosAgendamentos,
+    isLoading: isLoadingAgendamentos,
+  } = useProximosAgendamentos(!isAdmin);
 
   useEffect(() => {
     const fromUrl = draftFromSearchParams(searchParams);
     setDraft((current) => (areDraftsEqual(current, fromUrl) ? current : fromUrl));
   }, [searchParams]);
 
-  useEffect(() => {
-    if (searchParams.get("dataInicio") && searchParams.get("dataFim")) {
-      return;
-    }
-
-    const defaults = getDefaultDashboardDateRange();
-    const params = searchParamsFromDraft({
-      ...draftFromSearchParams(searchParams),
-      dataInicio: defaults.dataInicio,
-      dataFim: defaults.dataFim,
-    });
-    setSearchParams(params, { replace: true });
-  }, [searchParams, setSearchParams]);
-
   const applyDraft = useCallback(
     (nextDraft: DashboardFilterDraft) => {
+      const nextFilters = filtersFromDraft(nextDraft, { isAdmin });
+      setAppliedFilters(nextFilters);
       setSearchParams(searchParamsFromDraft(nextDraft), { replace: true });
     },
-    [setSearchParams],
+    [isAdmin, setSearchParams],
   );
-
-  useEffect(() => {
-    const timer = window.setTimeout(() => {
-      const fromUrl = draftFromSearchParams(searchParams);
-      if (!areDraftsEqual(draft, fromUrl)) {
-        applyDraft(draft);
-      }
-    }, FILTER_DEBOUNCE_MS);
-
-    return () => window.clearTimeout(timer);
-  }, [draft, searchParams, applyDraft]);
 
   function handleApplyFilters() {
     applyDraft(draft);
   }
 
-  const showAdminKpis = isAdmin && (data?.role === "ADMIN" || !data);
-  const adminData = data?.admin;
-  const tecnicoData = data?.tecnico;
+  const showAdminKpis = data != null ? isDashboardAdminKpis(data) : isAdmin;
+
+  const adminData = useMemo(
+    () => (data && isDashboardAdminKpis(data) ? data : undefined),
+    [data],
+  );
+
+  const tecnicoData = useMemo(
+    () => (data && !isDashboardAdminKpis(data) ? data : undefined),
+    [data],
+  );
 
   return (
     <div className="space-y-6">
@@ -107,14 +108,13 @@ export default function DashboardPage() {
       ) : showAdminKpis ? (
         <AdminDashboardKpis data={adminData} isLoading={isLoading} />
       ) : (
-        <TecnicoDashboardKpis data={tecnicoData} isLoading={isLoading} />
+        <TecnicoDashboardKpis
+          data={tecnicoData}
+          proximosAgendamentos={proximosAgendamentos}
+          isLoading={isLoading}
+          isLoadingAgendamentos={isLoadingAgendamentos}
+        />
       )}
-
-      {!isLoading && !error && data && user && data.role !== user.role ? (
-        <p className="text-sm text-muted-foreground">
-          Exibindo indicadores para o perfil {data.role}.
-        </p>
-      ) : null}
     </div>
   );
 }

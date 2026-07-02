@@ -39,7 +39,7 @@ const mainNav = [
   { label: "Clientes", href: "/dashboard/clientes", icon: Users },
 ];
 
-const adminRelatoriosNav = [
+const gerenciaisNav = [
   {
     label: "Gerenciais",
     href: "/dashboard/relatorios/gerenciais",
@@ -148,8 +148,7 @@ export function AppSidebar() {
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
-              {isAdmin &&
-                adminRelatoriosNav.map((item) => (
+              {gerenciaisNav.map((item) => (
                   <SidebarMenuItem key={item.href}>
                     <SidebarMenuButton
                       asChild

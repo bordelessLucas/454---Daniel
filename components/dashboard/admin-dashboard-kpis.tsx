@@ -4,6 +4,7 @@ import { VisitasSlaCard } from "@/components/dashboard/visitas-sla-card";
 import { ContratosRiscoCard } from "@/components/dashboard/contratos-risco-card";
 import { ProdutividadeTecnicosChart } from "@/components/dashboard/produtividade-tecnicos-chart";
 import { TopClientesChart } from "@/components/dashboard/top-clientes-chart";
+import { decimalHorasToHHmm } from "@/lib/dashboard-hours";
 import type { DashboardAdminKpis } from "@/lib/types";
 
 interface AdminDashboardKpisProps {
@@ -17,11 +18,14 @@ export function AdminDashboardKpis({ data, isLoading }: AdminDashboardKpisProps)
       <VisitasSlaCard data={data?.visitasSla} isLoading={isLoading} />
       <StatCard
         title="Total de Horas Apontadas"
-        value={data?.totalHoras ?? "00:00"}
+        value={decimalHorasToHHmm(data?.totalHoras ?? "0")}
         icon={Clock}
         isLoading={isLoading}
       />
-      <ContratosRiscoCard rows={data?.contratosEmRisco} isLoading={isLoading} />
+      <ContratosRiscoCard
+        rows={data?.contratosSlaRisco}
+        isLoading={isLoading}
+      />
       <ProdutividadeTecnicosChart
         rows={data?.produtividadeTecnicos}
         isLoading={isLoading}

@@ -22,24 +22,27 @@ interface GerencialTableProps {
 }
 
 const SLA_STATUS_LABELS: Record<GerencialSlaStatus, string> = {
-  dentro: "Dentro do SLA",
-  fora: "Fora do SLA",
-  ok: "OK",
-  atencao: "Atenção",
+  DENTRO: "Dentro do SLA",
+  ABAIXO: "Abaixo do SLA",
+  SEM_META: "Sem meta",
 };
 
 function isSlaStatusPositive(status: GerencialSlaStatus): boolean {
-  return status === "dentro" || status === "ok";
+  return status === "DENTRO";
 }
 
 function SlaStatusBadge({ status }: { status: GerencialSlaStatus }) {
   const positive = isSlaStatusPositive(status);
+  const neutral = status === "SEM_META";
+
   return (
     <Badge
       className={
-        positive
-          ? "border-transparent bg-emerald-600 text-white dark:bg-emerald-700"
-          : "border-transparent bg-red-600 text-white dark:bg-red-700"
+        neutral
+          ? "border-transparent bg-muted text-muted-foreground"
+          : positive
+            ? "border-transparent bg-emerald-600 text-white dark:bg-emerald-700"
+            : "border-transparent bg-red-600 text-white dark:bg-red-700"
       }
     >
       {SLA_STATUS_LABELS[status] ?? status}
@@ -54,22 +57,35 @@ function formatPercent(value: number): string {
   })}%`;
 }
 
+function formatHoras(value: number): string {
+  return value.toLocaleString("pt-BR", {
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 2,
+  });
+}
+
 function ResumoClienteTable({ rows }: { rows: GerencialResumoClienteRow[] }) {
   return (
     <Table>
       <TableHeader>
         <TableRow>
           <TableHead>Cliente</TableHead>
-          <TableHead className="text-right">Total de Relatórios</TableHead>
+          <TableHead className="text-right">Total de Visitas</TableHead>
           <TableHead className="text-right">Total de Horas</TableHead>
+          <TableHead className="text-right">Setores Visitados</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
         {rows.map((row) => (
-          <TableRow key={row.clienteId}>
+          <TableRow key={`${row.clienteId}-${row.periodo}`}>
             <TableCell className="font-medium">{row.clienteNome}</TableCell>
-            <TableCell className="text-right">{row.totalRelatorios}</TableCell>
-            <TableCell className="text-right">{row.totalHoras}</TableCell>
+            <TableCell className="text-right">{row.totalVisitas}</TableCell>
+            <TableCell className="text-right">
+              {formatHoras(row.totalHoras)}
+            </TableCell>
+            <TableCell className="text-right">
+              {row.totalSetoresVisitados}
+            </TableCell>
           </TableRow>
         ))}
       </TableBody>
@@ -87,20 +103,20 @@ function ProdutividadeTecnicoTable({
       <TableHeader>
         <TableRow>
           <TableHead>Técnico</TableHead>
-          <TableHead className="text-right">Total de Relatórios</TableHead>
+          <TableHead className="text-right">Total de Visitas</TableHead>
           <TableHead className="text-right">Total de Horas</TableHead>
-          <TableHead className="text-right">Média por Relatório</TableHead>
+          <TableHead className="text-right">Clientes Atendidos</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
         {rows.map((row) => (
-          <TableRow key={row.tecnicoId}>
+          <TableRow key={`${row.tecnicoNome}-${row.periodo}`}>
             <TableCell className="font-medium">{row.tecnicoNome}</TableCell>
-            <TableCell className="text-right">{row.totalRelatorios}</TableCell>
-            <TableCell className="text-right">{row.totalHoras}</TableCell>
+            <TableCell className="text-right">{row.totalVisitas}</TableCell>
             <TableCell className="text-right">
-              {row.mediaHorasPorRelatorio ?? "—"}
+              {formatHoras(row.totalHoras)}
             </TableCell>
+            <TableCell className="text-right">{row.clientesAtendidos}</TableCell>
           </TableRow>
         ))}
       </TableBody>
@@ -116,23 +132,23 @@ function SlaContratosTable({ rows }: { rows: GerencialSlaContratoRow[] }) {
           <TableHead>Cliente</TableHead>
           <TableHead>Contrato</TableHead>
           <TableHead className="text-right">Visitas Realizadas</TableHead>
-          <TableHead className="text-right">Visitas Previstas</TableHead>
+          <TableHead className="text-right">Visitas Esperadas</TableHead>
           <TableHead className="text-right">% SLA</TableHead>
           <TableHead>Status SLA</TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
         {rows.map((row) => (
-          <TableRow key={`${row.clienteId}-${row.numeroContrato}`}>
+          <TableRow key={`${row.contratoId}-${row.periodo}`}>
             <TableCell className="font-medium">{row.clienteNome}</TableCell>
-            <TableCell>{row.numeroContrato}</TableCell>
+            <TableCell>#{row.contratoId}</TableCell>
             <TableCell className="text-right">{row.visitasRealizadas}</TableCell>
-            <TableCell className="text-right">{row.visitasPrevistas}</TableCell>
+            <TableCell className="text-right">{row.visitasEsperadas}</TableCell>
             <TableCell className="text-right">
-              {formatPercent(row.percentualSla)}
+              {formatPercent(row.slaPercentual)}
             </TableCell>
             <TableCell>
-              <SlaStatusBadge status={row.statusSla} />
+              <SlaStatusBadge status={row.slaStatus} />
             </TableCell>
           </TableRow>
         ))}

@@ -1,20 +1,22 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { fetchDashboardKpis } from "@/lib/dashboard-service";
-import type { DashboardKpisFilters, DashboardKpisResponse } from "@/lib/types";
+import type { DashboardKpisApiResponse, DashboardKpisFilters } from "@/lib/types";
+
+function filtersKey(filters: DashboardKpisFilters | null): string {
+  if (!filters) {
+    return "__default__";
+  }
+  return JSON.stringify(filters);
+}
 
 export function useDashboardKpis(filters: DashboardKpisFilters | null) {
-  const [data, setData] = useState<DashboardKpisResponse | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
+  const [data, setData] = useState<DashboardKpisApiResponse | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (!filters?.dataInicio || !filters?.dataFim) {
-      setData(null);
-      setError(null);
-      setIsLoading(false);
-      return;
-    }
+  const serializedFilters = useMemo(() => filtersKey(filters), [filters]);
 
+  useEffect(() => {
     let cancelled = false;
 
     async function load() {
@@ -22,7 +24,7 @@ export function useDashboardKpis(filters: DashboardKpisFilters | null) {
       setError(null);
 
       try {
-        const response = await fetchDashboardKpis(filters!);
+        const response = await fetchDashboardKpis(filters);
         if (!cancelled) {
           setData(response);
         }
@@ -45,14 +47,7 @@ export function useDashboardKpis(filters: DashboardKpisFilters | null) {
     return () => {
       cancelled = true;
     };
-  }, [
-    filters?.dataInicio,
-    filters?.dataFim,
-    filters?.unidadeId,
-    filters?.tecnicoId,
-    filters?.clienteId,
-    filters?.setorId,
-  ]);
+  }, [serializedFilters, filters]);
 
   return { data, isLoading, error };
 }

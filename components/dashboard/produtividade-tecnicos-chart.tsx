@@ -7,6 +7,7 @@ import {
   ChartTooltipContent,
   type ChartConfig,
 } from "@/components/ui/chart";
+import { decimalHorasToHHmm, decimalHorasToNumber } from "@/lib/dashboard-hours";
 import type { DashboardProdutividadeTecnico } from "@/lib/types";
 
 const chartConfig = {
@@ -17,10 +18,7 @@ const chartConfig = {
 } satisfies ChartConfig;
 
 function parseHorasToNumber(totalHoras: string): number {
-  const [hoursPart, minutesPart] = totalHoras.split(":");
-  const hours = Number(hoursPart) || 0;
-  const minutes = Number(minutesPart) || 0;
-  return hours + minutes / 60;
+  return decimalHorasToNumber(totalHoras);
 }
 
 interface ProdutividadeTecnicosChartProps {
@@ -41,7 +39,7 @@ export function ProdutividadeTecnicosChart({
     .map((row) => ({
       nome: row.tecnicoNome,
       horas: parseHorasToNumber(row.totalHoras),
-      horasLabel: row.totalHoras,
+      horasLabel: decimalHorasToHHmm(row.totalHoras),
     }));
 
   return (

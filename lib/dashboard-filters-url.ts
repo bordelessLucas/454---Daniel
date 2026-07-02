@@ -24,18 +24,46 @@ export function draftFromSearchParams(
   };
 }
 
+export function filtersFromDraft(
+  draft: DashboardFilterDraft,
+  options?: { isAdmin?: boolean },
+): DashboardKpisFilters {
+  const filters: DashboardKpisFilters = {};
+
+  if (draft.dataInicio && draft.dataFim) {
+    filters.dataInicio = draft.dataInicio;
+    filters.dataFim = draft.dataFim;
+  }
+
+  if (options?.isAdmin) {
+    const unidadeId = parseOptionalId(draft.unidadeId || null);
+    const tecnicoId = parseOptionalId(draft.tecnicoId || null);
+    const clienteId = parseOptionalId(draft.clienteId || null);
+
+    if (unidadeId != null) {
+      filters.unidadeId = unidadeId;
+    }
+    if (tecnicoId != null) {
+      filters.tecnicoId = tecnicoId;
+    }
+    if (clienteId != null) {
+      filters.clienteId = clienteId;
+    }
+  }
+
+  const setorId = parseOptionalId(draft.setorId || null);
+  if (setorId != null) {
+    filters.setorId = setorId;
+  }
+
+  return filters;
+}
+
 export function filtersFromSearchParams(
   searchParams: URLSearchParams,
+  options?: { isAdmin?: boolean },
 ): DashboardKpisFilters {
-  const draft = draftFromSearchParams(searchParams);
-  return {
-    dataInicio: draft.dataInicio,
-    dataFim: draft.dataFim,
-    unidadeId: parseOptionalId(draft.unidadeId || null),
-    tecnicoId: parseOptionalId(draft.tecnicoId || null),
-    clienteId: parseOptionalId(draft.clienteId || null),
-    setorId: parseOptionalId(draft.setorId || null),
-  };
+  return filtersFromDraft(draftFromSearchParams(searchParams), options);
 }
 
 export function searchParamsFromDraft(

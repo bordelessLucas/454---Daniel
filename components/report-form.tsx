@@ -49,6 +49,13 @@ const MODALIDADES_SEM_CONTRATO = [
   "Sem contrato - remoto",
 ];
 
+function parseContractDate(value: string | null | undefined): Date | null {
+  if (!value) {
+    return null;
+  }
+  return parseLocalDate(value.slice(0, 10));
+}
+
 export function ReportForm({ reportId }: ReportFormProps) {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -152,8 +159,8 @@ export function ReportForm({ reportId }: ReportFormProps) {
 
     return clienteSelecionado.contratos.filter((contrato) => {
       if (!contrato.ativo) return false;
-      const contractStart = parseLocalDate(contrato.dataInicio.slice(0, 10));
-      const contractEnd = parseLocalDate(contrato.dataFim.slice(0, 10));
+      const contractStart = parseContractDate(contrato.dataInicio);
+      const contractEnd = parseContractDate(contrato.dataFim);
       if (!contractStart || !contractEnd) {
         return false;
       }
@@ -170,8 +177,8 @@ export function ReportForm({ reportId }: ReportFormProps) {
     return clienteSelecionado.contratos.some((contrato) => {
       if (!contrato.ativo) return false;
 
-      const contractStart = parseLocalDate(contrato.dataInicio.slice(0, 10));
-      const contractEnd = parseLocalDate(contrato.dataFim.slice(0, 10));
+      const contractStart = parseContractDate(contrato.dataInicio);
+      const contractEnd = parseContractDate(contrato.dataFim);
 
       if (!contractStart || !contractEnd) {
         return false;

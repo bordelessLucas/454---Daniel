@@ -51,7 +51,7 @@ export default function App() {
         <Route
           path="relatorios/gerenciais"
           element={
-            <ProtectedRoute requiredRole="ADMIN">
+            <ProtectedRoute>
               <RelatoriosGerenciaisPage />
             </ProtectedRoute>
           }

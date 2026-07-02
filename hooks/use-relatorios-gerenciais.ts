@@ -1,47 +1,28 @@
 import { useCallback, useState } from "react";
-import { apiRequest, apiRequestBlob } from "@/lib/api-client";
+import { ApiError } from "@/lib/api-client";
+import {
+  downloadRelatorioGerencialXlsx,
+  fetchRelatorioGerencial,
+} from "@/lib/relatorios-service";
 import type {
   GerencialJsonData,
   GerencialQueryParams,
   GerencialTipo,
 } from "@/lib/types";
-import { downloadBlobFile } from "@/lib/utils";
 
-function buildGerencialEndpoint(params: GerencialQueryParams): string {
-  const search = new URLSearchParams({
-    tipo: params.tipo,
-    periodo: params.periodo,
-    formato: params.formato,
-  });
-  return `/relatorios/gerencial?${search.toString()}`;
-}
-
-function buildXlsxFilename(tipo: GerencialTipo, periodo: string): string {
-  return `relatorio-gerencial-${tipo}-${periodo}.xlsx`;
-}
-
-function normalizeGerencialResponse(
-  payload: unknown,
-): GerencialJsonData | null {
-  if (Array.isArray(payload)) {
-    return payload as GerencialJsonData;
+function extractApiErrorMessage(err: unknown): string {
+  if (err instanceof ApiError) {
+    return err.message;
   }
-
-  if (payload && typeof payload === "object") {
-    const candidate = payload as { data?: unknown; rows?: unknown };
-    if (Array.isArray(candidate.data)) {
-      return candidate.data as GerencialJsonData;
-    }
-    if (Array.isArray(candidate.rows)) {
-      return candidate.rows as GerencialJsonData;
-    }
+  if (err instanceof Error) {
+    return err.message;
   }
-
-  return null;
+  return "Erro ao processar relatório gerencial.";
 }
 
 export function useRelatoriosGerenciais() {
   const [data, setData] = useState<GerencialJsonData | null>(null);
+  const [responseTipo, setResponseTipo] = useState<GerencialTipo | null>(null);
   const [loading, setLoading] = useState(false);
   const [exporting, setExporting] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -51,19 +32,15 @@ export function useRelatoriosGerenciais() {
     setError(null);
 
     try {
-      const payload = await apiRequest<unknown>(
-        buildGerencialEndpoint({ ...params, formato: "json" }),
-      );
-      const normalized = normalizeGerencialResponse(payload);
-      setData(normalized ?? []);
-      return normalized ?? [];
+      const response = await fetchRelatorioGerencial(params);
+      setData(response.itens);
+      setResponseTipo(response.tipo);
+      return response;
     } catch (err) {
-      const message =
-        err instanceof Error
-          ? err.message
-          : "Erro ao gerar relatório gerencial.";
+      const message = extractApiErrorMessage(err);
       setError(message);
       setData(null);
+      setResponseTipo(null);
       throw err;
     } finally {
       setLoading(false);
@@ -75,24 +52,9 @@ export function useRelatoriosGerenciais() {
     setError(null);
 
     try {
-      const { blob, filename } = await apiRequestBlob(
-        buildGerencialEndpoint({ ...params, formato: "xlsx" }),
-        {
-          method: "GET",
-          headers: {
-            Accept:
-              "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-          },
-        },
-      );
-
-      downloadBlobFile(
-        blob,
-        filename ?? buildXlsxFilename(params.tipo, params.periodo),
-      );
+      await downloadRelatorioGerencialXlsx(params);
     } catch (err) {
-      const message =
-        err instanceof Error ? err.message : "Erro ao exportar relatório.";
+      const message = extractApiErrorMessage(err);
       setError(message);
       throw err;
     } finally {
@@ -102,11 +64,13 @@ export function useRelatoriosGerenciais() {
 
   const reset = useCallback(() => {
     setData(null);
+    setResponseTipo(null);
     setError(null);
   }, []);
 
   return {
     data,
+    responseTipo,
     loading,
     exporting,
     error,
