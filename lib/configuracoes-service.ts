@@ -1,10 +1,12 @@
 import { apiRequest, apiRequestFormData } from "./api-client";
 import { hasConfiguredLogo } from "./configuracao-logo";
-import type { ApiConfiguracoes, ApiConfiguracoesPdf } from "./types";
+import type {
+  ApiConfiguracoes,
+  ApiConfiguracoesPdf,
+  SalvarHorarioPayload,
+} from "./types";
 
-export type UpdateConfiguracoesPayload = {
-  dataInicio?: string;
-  dataFim?: string;
+export type UpdateConfiguracoesPayload = Partial<SalvarHorarioPayload> & {
   textoRodapeRelatorio?: string | null;
 };
 
@@ -39,6 +41,13 @@ export async function updateConfiguracoes(
     method: "PUT",
     body: JSON.stringify(payload),
   });
+}
+
+export async function salvarHorarioLogin(
+  horaInicio: string,
+  horaFim: string,
+): Promise<ApiConfiguracoes> {
+  return updateConfiguracoes({ horaInicio, horaFim });
 }
 
 /**

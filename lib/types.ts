@@ -131,17 +131,28 @@ export interface Sector {
 
 // Configurações API
 export interface ApiConfiguracoes {
-  id: number;
+  id: number | null;
+  /** HH:mm — preferencial para inputs type="time". */
+  horaInicio: string;
+  /** HH:mm — preferencial para inputs type="time". */
+  horaFim: string;
+  /** ISO âncora 1970 — não usar new Date() para exibir horário. */
   dataInicio: string;
+  /** ISO âncora 1970 — não usar new Date() para exibir horário. */
   dataFim: string;
-  createdAt: string;
-  updatedAt: string;
+  createdAt?: string;
+  updatedAt?: string;
   /** Texto do rodapé do relatório/PDF (coluna `texto_rodape_relatorio`). */
   textoRodapeRelatorio?: string | null;
   /** URL pública da logo do sistema (PDF, sidebar, etc.). */
   logoUrl?: string | null;
   /** Data URL da logo (opcional; prioridade sobre logoUrl no preview). */
   logoDataUrl?: string | null;
+}
+
+export interface SalvarHorarioPayload {
+  horaInicio: string;
+  horaFim: string;
 }
 
 /** Configurações públicas para PDF/sidebar (sem horário de login). */

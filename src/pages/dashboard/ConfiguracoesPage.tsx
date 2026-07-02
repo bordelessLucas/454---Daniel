@@ -10,6 +10,10 @@ import {
   uploadConfiguracaoLogo,
 } from "@/lib/configuracoes-service";
 import {
+  horarioFromConfig,
+  isHorarioAtualDentroDoIntervalo,
+} from "@/lib/configuracao-horario";
+import {
   notifySystemLogoUpdated,
   useSystemLogo,
 } from "@/hooks/use-system-logo";
@@ -48,28 +52,19 @@ export default function ConfiguracoesPage() {
     async function load() {
       try {
         const data = await getConfiguracoes();
-        if (!data) {
-          return;
+        if (data) {
+          const horario = horarioFromConfig(data);
+          setStartTime(horario.inicio);
+          setEndTime(horario.fim);
+          setTextoRodapeRelatorio(data.textoRodapeRelatorio ?? "");
+          setHasLogo(hasConfiguredLogo(data));
         }
-
-        setStartTime(
-          new Date(data.dataInicio).toLocaleTimeString("pt-BR", {
-            hour: "2-digit",
-            minute: "2-digit",
-            hour12: false,
-          }),
-        );
-        setEndTime(
-          new Date(data.dataFim).toLocaleTimeString("pt-BR", {
-            hour: "2-digit",
-            minute: "2-digit",
-            hour12: false,
-          }),
-        );
-        setTextoRodapeRelatorio(data.textoRodapeRelatorio ?? "");
-        setHasLogo(hasConfiguredLogo(data));
-      } catch {
-        toast.error("Erro ao carregar configuracoes.");
+      } catch (error) {
+        const message =
+          error instanceof ApiError
+            ? error.message
+            : "Erro ao carregar configuracoes.";
+        toast.error(message);
       } finally {
         setLoading(false);
       }
@@ -78,17 +73,28 @@ export default function ConfiguracoesPage() {
   }, []);
 
   async function handleSave() {
+    if (!startTime || !endTime) {
+      toast.error("Informe o horario de inicio e fim.");
+      return;
+    }
+
     setSaving(true);
     try {
-      const hoje = new Date().toISOString().split("T")[0];
-      await updateConfiguracoes({
-        dataInicio: `${hoje}T${startTime}:00`,
-        dataFim: `${hoje}T${endTime}:00`,
+      const updated = await updateConfiguracoes({
+        horaInicio: startTime,
+        horaFim: endTime,
         textoRodapeRelatorio: textoRodapeRelatorio.trim() || null,
       });
+      const horario = horarioFromConfig(updated);
+      setStartTime(horario.inicio);
+      setEndTime(horario.fim);
       toast.success("Configuracoes salvas com sucesso.");
-    } catch {
-      toast.error("Erro ao salvar configuracoes.");
+    } catch (error) {
+      const message =
+        error instanceof ApiError
+          ? error.message
+          : "Erro ao salvar configuracoes.";
+      toast.error(message);
     } finally {
       setSaving(false);
     }
@@ -141,11 +147,7 @@ export default function ConfiguracoesPage() {
     if (!startTime || !endTime) {
       return false;
     }
-    const now = new Date();
-    const currentMinutes = now.getHours() * 60 + now.getMinutes();
-    const [sH, sM] = startTime.split(":").map(Number);
-    const [eH, eM] = endTime.split(":").map(Number);
-    return currentMinutes < sH * 60 + sM || currentMinutes > eH * 60 + eM;
+    return !isHorarioAtualDentroDoIntervalo(startTime, endTime);
   }
 
   return (
