@@ -339,9 +339,8 @@ export default function UsuariosPage() {
           if (!open) setEditing(null);
         }}
         title={editing ? "Editar Usuário" : "Novo Usuário"}
-        className="sm:max-w-md"
       >
-        <form onSubmit={handleSave} className="mt-4 flex flex-col gap-4">
+        <form onSubmit={handleSave} className="flex flex-col gap-5">
           {!editing && (
             <div className="flex flex-col gap-2">
               <Label htmlFor="user-username">Username</Label>
@@ -464,12 +463,9 @@ export default function UsuariosPage() {
           }
         }}
         title={`Alterar Senha - ${changingPasswordFor?.nome}`}
-        className="sm:max-w-md"
+        size="sm"
       >
-        <form
-          onSubmit={handleChangePassword}
-          className="mt-4 flex flex-col gap-4"
-        >
+        <form onSubmit={handleChangePassword} className="flex flex-col gap-5">
           <div className="flex flex-col gap-2">
             <Label htmlFor="new-password">Nova Senha</Label>
             <Input

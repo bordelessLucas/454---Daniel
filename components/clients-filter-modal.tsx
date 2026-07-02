@@ -1,4 +1,4 @@
-import { Modal } from "./Modal";
+import { Modal, ModalFooter } from "./Modal";
 import { Button } from "./Button";
 import { Label } from "./Label";
 import { Input } from "./Input";
@@ -39,11 +39,13 @@ export function ClientsFilterModal({
   };
 
   return (
-    <Modal open={open} onOpenChange={onOpenChange} title="Filtrar Clientes">
-      <p className="mb-4 text-sm text-muted-foreground">
-        Aplique filtros para refinar sua busca
-      </p>
-      <div className="space-y-4">
+    <Modal
+      open={open}
+      onOpenChange={onOpenChange}
+      title="Filtrar Clientes"
+      description="Aplique filtros para refinar sua busca"
+    >
+      <div className="space-y-5">
         <div className="space-y-2">
           <Label htmlFor="filter-nome-fantasia">Nome Fantasia</Label>
           <Input
@@ -89,12 +91,12 @@ export function ClientsFilterModal({
           </Select>
         </div>
 
-        <div className="flex justify-end gap-2 pt-4">
+        <ModalFooter className="mt-2">
           <Button variant="outline" onClick={handleReset}>
             Limpar Filtros
           </Button>
           <Button onClick={handleApply}>Aplicar Filtros</Button>
-        </div>
+        </ModalFooter>
       </div>
     </Modal>
   );

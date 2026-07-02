@@ -16,7 +16,7 @@ export {
   TableRow,
 } from "./Table";
 export { Select } from "./Select";
-export { Modal } from "./Modal";
+export { Modal, ModalFooter } from "./Modal";
 export { Avatar, AvatarFallback } from "./Avatar";
 export { Toaster } from "./Toaster";
 export { SelectionField } from "./selection-field";

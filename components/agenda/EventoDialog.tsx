@@ -5,6 +5,7 @@ import type { CalendarioEvento, RelatorioAgendaStatus } from "@/lib/types";
 import { Badge, Button } from "@/components/index";
 import {
   Dialog,
+  DialogBody,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -64,43 +65,51 @@ export function EventoDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent>
         <DialogHeader>
           <DialogTitle>{evento.cliente.nomeFantasia}</DialogTitle>
           <DialogDescription>Detalhes do agendamento / visita</DialogDescription>
         </DialogHeader>
 
-        <dl className="space-y-3 text-sm">
-          <div className="flex justify-between gap-4">
-            <dt className="text-muted-foreground">Cliente</dt>
-            <dd className="text-right font-medium">{evento.cliente.nomeFantasia}</dd>
-          </div>
-          <div className="flex justify-between gap-4">
-            <dt className="text-muted-foreground">Técnicos</dt>
-            <dd className="text-right">{tecnicosLabel}</dd>
-          </div>
-          <div className="flex justify-between gap-4">
-            <dt className="text-muted-foreground">Data / hora</dt>
-            <dd className="text-right">{formatDateTime(evento.start)}</dd>
-          </div>
-          <div className="flex items-center justify-between gap-4">
-            <dt className="text-muted-foreground">Status</dt>
-            <dd>
-              <Badge className={STATUS_BADGE_CLASS[evento.status]}>
-                {STATUS_LABELS[evento.status]}
-              </Badge>
-            </dd>
-          </div>
-          {evento.modalidadeServico ? (
+        <DialogBody>
+          <dl className="space-y-4 text-sm">
             <div className="flex justify-between gap-4">
-              <dt className="text-muted-foreground">Modalidade</dt>
-              <dd className="text-right">{evento.modalidadeServico}</dd>
+              <dt className="text-muted-foreground">Cliente</dt>
+              <dd className="text-right font-medium">
+                {evento.cliente.nomeFantasia}
+              </dd>
             </div>
-          ) : null}
-        </dl>
+            <div className="flex justify-between gap-4">
+              <dt className="text-muted-foreground">Técnicos</dt>
+              <dd className="text-right">{tecnicosLabel}</dd>
+            </div>
+            <div className="flex justify-between gap-4">
+              <dt className="text-muted-foreground">Data / hora</dt>
+              <dd className="text-right">{formatDateTime(evento.start)}</dd>
+            </div>
+            <div className="flex items-center justify-between gap-4">
+              <dt className="text-muted-foreground">Status</dt>
+              <dd>
+                <Badge className={STATUS_BADGE_CLASS[evento.status]}>
+                  {STATUS_LABELS[evento.status]}
+                </Badge>
+              </dd>
+            </div>
+            {evento.modalidadeServico ? (
+              <div className="flex justify-between gap-4">
+                <dt className="text-muted-foreground">Modalidade</dt>
+                <dd className="text-right">{evento.modalidadeServico}</dd>
+              </div>
+            ) : null}
+          </dl>
+        </DialogBody>
 
-        <DialogFooter className="gap-2 sm:gap-0">
-          <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>
+        <DialogFooter className="gap-2 sm:gap-3">
+          <Button
+            type="button"
+            variant="outline"
+            onClick={() => onOpenChange(false)}
+          >
             Fechar
           </Button>
           {canEdit ? (

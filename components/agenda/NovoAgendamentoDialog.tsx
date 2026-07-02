@@ -11,6 +11,7 @@ import {
 import { Button, Input, Label, SelectionField } from "@/components/index";
 import {
   Dialog,
+  DialogBody,
   DialogContent,
   DialogDescription,
   DialogFooter,
@@ -138,7 +139,7 @@ export function NovoAgendamentoDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent>
         <DialogHeader>
           <DialogTitle>Novo Agendamento</DialogTitle>
           <DialogDescription>
@@ -146,7 +147,7 @@ export function NovoAgendamentoDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4">
+        <DialogBody className="space-y-5">
           <div className="space-y-2">
             <Label htmlFor="agendamento-data-hora">Data e hora</Label>
             <Input
@@ -186,7 +187,7 @@ export function NovoAgendamentoDialog({
             }
             disabled={saving || isLoadingOptions}
           />
-        </div>
+        </DialogBody>
 
         <DialogFooter>
           <Button

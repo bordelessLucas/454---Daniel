@@ -262,9 +262,9 @@ export default function ChecklistsPage() {
           }
         }}
         title={editing ? "Editar Checklist" : "Novo Checklist"}
-        className="sm:max-w-md"
+        size="lg"
       >
-        <form onSubmit={handleSave} className="mt-4 flex flex-col gap-4">
+        <form onSubmit={handleSave} className="flex flex-col gap-5">
           <div className="flex flex-col gap-2">
             <Label htmlFor="checklist-name">Nome</Label>
             <Input

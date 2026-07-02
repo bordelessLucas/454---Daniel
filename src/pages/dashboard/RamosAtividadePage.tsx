@@ -225,9 +225,8 @@ export default function RamosAtividadePage() {
           if (!open) setEditing(null);
         }}
         title={editing ? "Editar Ramo de Atividade" : "Novo Ramo de Atividade"}
-        className="sm:max-w-md"
       >
-        <form onSubmit={handleSave} className="mt-4 flex flex-col gap-4">
+        <form onSubmit={handleSave} className="flex flex-col gap-5">
           <div className="flex flex-col gap-2">
             <Label htmlFor="ramo-name">Nome do Ramo de Atividade</Label>
             <Input

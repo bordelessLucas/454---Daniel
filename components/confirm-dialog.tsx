@@ -1,6 +1,6 @@
 "use client";
 
-import { Button, Modal } from "@/components/index";
+import { Button, Modal, ModalFooter } from "@/components/index";
 
 interface ConfirmDialogProps {
   open: boolean;
@@ -22,9 +22,14 @@ export function ConfirmDialog({
   cancelLabel = "Cancelar",
 }: ConfirmDialogProps) {
   return (
-    <Modal open={open} onOpenChange={onOpenChange} title={title}>
-      <div className="mt-2 text-sm text-muted-foreground">{description}</div>
-      <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+    <Modal
+      open={open}
+      onOpenChange={onOpenChange}
+      title={title}
+      description={description}
+      size="sm"
+    >
+      <ModalFooter>
         <Button
           type="button"
           variant="outline"
@@ -42,7 +47,7 @@ export function ConfirmDialog({
         >
           {confirmLabel}
         </Button>
-      </div>
+      </ModalFooter>
     </Modal>
   );
 }

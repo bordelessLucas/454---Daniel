@@ -1,9 +1,11 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import type { Client, Contact, Contract, RamoAtividade } from "@/lib/types";
+import { useState, useEffect, useRef, useCallback } from "react";
+import type { Client, Contact, Contract } from "@/lib/types";
 import { createClient, updateClient } from "@/lib/clients-service";
 import { useRamosAtividade } from "@/hooks/use-ramos-atividade";
+import { formatCnpjInput, isCnpjComplete, sanitizeCnpj } from "@/lib/cnpj-utils";
+import { lookupCnpj } from "@/lib/cnpj-lookup-service";
 import { Button } from "./Button";
 import { Input } from "./Input";
 import { Label } from "./Label";
@@ -27,6 +29,7 @@ import {
   FileText,
   AlertCircle,
   Loader2,
+  Search,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -65,9 +68,85 @@ export function ClientModal({
   const [editingContact, setEditingContact] = useState<Contact | null>(null);
   const [editingContract, setEditingContract] = useState<Contract | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLookingUpCnpj, setIsLookingUpCnpj] = useState(false);
+  const lastLookedUpCnpj = useRef<string | null>(null);
 
   // Buscar ramos de atividade da API
   const { ramos: ramosAtividade, loading: loadingRamos } = useRamosAtividade();
+
+  const applyCnpjLookup = useCallback((data: Awaited<ReturnType<typeof lookupCnpj>>) => {
+    setForm((prev) => ({
+      ...prev,
+      razaoSocial: data.razaoSocial || prev.razaoSocial,
+      nomeFantasia: data.nomeFantasia || prev.nomeFantasia,
+      cnpj: data.cnpj,
+      endereco: data.endereco || prev.endereco,
+      cep: data.cep || prev.cep,
+      cidade: data.cidade || prev.cidade,
+      estado: data.estado || prev.estado,
+      telefone: data.telefone || prev.telefone,
+      email: data.email || prev.email,
+    }));
+  }, []);
+
+  const fetchCnpjData = useCallback(
+    async (cnpjValue: string, options?: { silent?: boolean }) => {
+      const digits = sanitizeCnpj(cnpjValue);
+
+      if (!isCnpjComplete(cnpjValue)) {
+        if (!options?.silent) {
+          toast.error("Informe um CNPJ completo para buscar os dados.");
+        }
+        return;
+      }
+
+      if (lastLookedUpCnpj.current === digits) {
+        return;
+      }
+
+      setIsLookingUpCnpj(true);
+      try {
+        const data = await lookupCnpj(cnpjValue);
+        lastLookedUpCnpj.current = digits;
+        applyCnpjLookup(data);
+
+        if (!data.isAtiva) {
+          toast.warning(
+            `Empresa com situação cadastral: ${data.situacaoCadastral}. Verifique os dados antes de salvar.`,
+          );
+        } else if (!options?.silent) {
+          toast.success("Dados da empresa preenchidos automaticamente.");
+        }
+      } catch (error) {
+        lastLookedUpCnpj.current = null;
+        const message =
+          error instanceof Error
+            ? error.message
+            : "Erro ao consultar CNPJ.";
+        toast.error(message);
+      } finally {
+        setIsLookingUpCnpj(false);
+      }
+    },
+    [applyCnpjLookup],
+  );
+
+  const handleCnpjChange = (value: string) => {
+    const formatted = formatCnpjInput(value);
+    const digits = sanitizeCnpj(formatted);
+
+    if (lastLookedUpCnpj.current && lastLookedUpCnpj.current !== digits) {
+      lastLookedUpCnpj.current = null;
+    }
+
+    setForm((prev) => ({ ...prev, cnpj: formatted }));
+  };
+
+  const handleCnpjBlur = () => {
+    if (!client && isCnpjComplete(form.cnpj)) {
+      void fetchCnpjData(form.cnpj, { silent: true });
+    }
+  };
 
   const formatContractDateForApi = (value: string): string => {
     if (!value) return value;
@@ -102,6 +181,7 @@ export function ClientModal({
       setForm(emptyForm);
       setContatos([]);
       setContratos([]);
+      lastLookedUpCnpj.current = null;
     }
   }, [client, open]);
 
@@ -263,7 +343,7 @@ export function ClientModal({
         open={open}
         onOpenChange={onOpenChange}
         title={client ? "Editar Cliente" : "Novo Cliente"}
-        className="max-w-4xl max-h-[90vh] overflow-y-auto"
+        size="lg"
       >
         <form onSubmit={handleSubmit} className="space-y-6">
           {/* Informações Básicas */}
@@ -305,13 +385,40 @@ export function ClientModal({
                 <Label htmlFor="cnpj">
                   CNPJ <span className="text-destructive">*</span>
                 </Label>
-                <Input
-                  id="cnpj"
-                  value={form.cnpj}
-                  onChange={(e) => setForm({ ...form, cnpj: e.target.value })}
-                  placeholder="00.000.000/0000-00"
-                  required
-                />
+                <div className="flex gap-2">
+                  <Input
+                    id="cnpj"
+                    value={form.cnpj}
+                    onChange={(e) => handleCnpjChange(e.target.value)}
+                    onBlur={handleCnpjBlur}
+                    placeholder="00.000.000/0000-00"
+                    inputMode="numeric"
+                    maxLength={18}
+                    required
+                    disabled={isLookingUpCnpj}
+                    className="flex-1"
+                  />
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    className="shrink-0"
+                    onClick={() => void fetchCnpjData(form.cnpj)}
+                    disabled={isLookingUpCnpj || !isCnpjComplete(form.cnpj)}
+                    aria-label="Buscar dados pelo CNPJ"
+                    title="Buscar dados da empresa"
+                  >
+                    {isLookingUpCnpj ? (
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                    ) : (
+                      <Search className="h-4 w-4" />
+                    )}
+                  </Button>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Digite o CNPJ e clique em buscar ou saia do campo para
+                  preencher automaticamente.
+                </p>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="ramoAtividadeId">

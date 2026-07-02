@@ -228,9 +228,8 @@ export default function SetoresPage() {
           if (!open) setEditing(null);
         }}
         title={editing ? "Editar Setor" : "Novo Setor"}
-        className="sm:max-w-md"
       >
-        <form onSubmit={handleSave} className="mt-4 flex flex-col gap-4">
+        <form onSubmit={handleSave} className="flex flex-col gap-5">
           <div className="flex flex-col gap-2">
             <Label htmlFor="sector-name">Nome do Setor</Label>
             <Input
