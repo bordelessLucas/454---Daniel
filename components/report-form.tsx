@@ -72,7 +72,6 @@ export function ReportForm({ reportId }: ReportFormProps) {
   const [dataVisita, setDataVisita] = useState("");
   const [clienteId, setClienteId] = useState<number | null>(null);
   const [contatoId, setContatoId] = useState<number | null>(null);
-  const [contatoCargo, setContatoCargo] = useState("");
   const [modalidadeServico, setModalidadeServico] = useState<string>(
     "Sem contrato - remoto",
   );
@@ -93,7 +92,6 @@ export function ReportForm({ reportId }: ReportFormProps) {
       setDataVisita(resolveDataVisitaInput(relatorio));
       setClienteId(relatorio.clienteId);
       setContatoId(relatorio.contatoId ?? null);
-      setContatoCargo(relatorio.contatoCargo ?? relatorio.contato?.cargo ?? "");
       setModalidadeServico(
         relatorio.modalidadeServico || "Sem contrato - remoto",
       );
@@ -142,7 +140,6 @@ export function ReportForm({ reportId }: ReportFormProps) {
   useEffect(() => {
     if (!isEditing) {
       setContatoId(null);
-      setContatoCargo("");
     }
   }, [clienteId]);
 
@@ -236,17 +233,6 @@ export function ReportForm({ reportId }: ReportFormProps) {
       setModalidadeServico(allowed[0]);
     }
   }, [clienteSelecionado, clienteTemContratoVigente, modalidadeServico]);
-
-  useEffect(() => {
-    if (!contatoSelecionado) {
-      if (!contatoId) {
-        setContatoCargo("");
-      }
-      return;
-    }
-
-    setContatoCargo(contatoSelecionado.cargo ?? "");
-  }, [contatoSelecionado, contatoId]);
 
   useEffect(() => {
     if (!clienteSelecionado) {
@@ -443,7 +429,6 @@ export function ReportForm({ reportId }: ReportFormProps) {
     const payload = {
       clienteId,
       contatoId: contatoId ?? undefined,
-      contatoCargo: contatoCargo.trim() || undefined,
       dataVisita: normalizeDataVisitaForApi(dataVisita),
       modalidadeServico,
       numeroContrato: exibirContrato ? numeroContrato || undefined : undefined,
@@ -689,35 +674,9 @@ export function ReportForm({ reportId }: ReportFormProps) {
                       }`}
                     >
                       {contato.nome}
-                      {contato.cargo && (
-                        <span className="ml-1 text-xs opacity-70">
-                          ({contato.cargo})
-                        </span>
-                      )}
                     </button>
                   ))}
                 </div>
-                <div className="mt-2 flex flex-col gap-2">
-                  <Label htmlFor="contato-cargo">Função/Cargo</Label>
-                  <Input
-                    id="contato-cargo"
-                    value={contatoCargo}
-                    onChange={(e) => setContatoCargo(e.target.value)}
-                    placeholder="Informe o cargo do contato"
-                  />
-                </div>
-              </div>
-            )}
-
-            {clienteSelecionado && clienteSelecionado.contatos.length === 0 && (
-              <div className="flex flex-col gap-2 sm:col-span-2">
-                <Label htmlFor="contato-cargo">Função/Cargo</Label>
-                <Input
-                  id="contato-cargo"
-                  value={contatoCargo}
-                  onChange={(e) => setContatoCargo(e.target.value)}
-                  placeholder="Informe o cargo do contato"
-                />
               </div>
             )}
 
@@ -997,8 +956,6 @@ export function ReportForm({ reportId }: ReportFormProps) {
               <p className="text-sm">
                 <span className="font-medium">Contato:</span>{" "}
                 {contatoSelecionado?.nome || "-"}{" "}
-                <span className="font-medium">Função/Cargo:</span>{" "}
-                {contatoCargo || "-"}{" "}
                 <span className="font-medium">Cidade:</span>{" "}
                 {[localizacaoCidade, localizacaoEstado]
                   .filter(Boolean)
