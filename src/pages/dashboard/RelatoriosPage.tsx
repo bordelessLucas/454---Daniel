@@ -5,6 +5,7 @@ import { formatDataVisitaBr } from "@/lib/relatorio-datetime";
 import type { ApiReport } from "@/lib/types";
 import { ApiError, apiRequest } from "@/lib/api-client";
 import { downloadRelatorioPdf } from "@/lib/relatorio-pdf-download";
+import { enviarRelatorioPorEmail } from "@/lib/relatorio-enviar-email";
 import { downloadBlobFile } from "@/lib/utils";
 import { formatRelatorioTitulo } from "@/lib/relatorio-naming";
 import { ConfirmDialog } from "@/components/confirm-dialog";
@@ -35,6 +36,7 @@ import {
   FileText,
   Filter,
   Loader2,
+  Mail,
   Search,
 } from "lucide-react";
 import { toast } from "sonner";
@@ -46,6 +48,9 @@ export default function RelatoriosPage() {
   const { user } = useAuth();
   const [deleteId, setDeleteId] = useState<number | null>(null);
   const [downloadingIds, setDownloadingIds] = useState<Set<number>>(new Set());
+  const [sendingEmailIds, setSendingEmailIds] = useState<Set<number>>(
+    new Set(),
+  );
   const [filterModalOpen, setFilterModalOpen] = useState(false);
   const [filters, setFilters] = useState<ReportsFilters>({
     clientId: "all",
@@ -189,6 +194,32 @@ export default function RelatoriosPage() {
     }
   }
 
+  async function handleEnviarEmail(report: ApiReport) {
+    const reportId = report.id;
+    if (sendingEmailIds.has(reportId)) {
+      return;
+    }
+
+    setSendingEmailIds((prev) => new Set(prev).add(reportId));
+
+    try {
+      await enviarRelatorioPorEmail(reportId);
+      toast.success("E-mail enviado com sucesso para o cliente.");
+    } catch (error) {
+      const message =
+        error instanceof ApiError
+          ? error.message
+          : "Erro ao enviar e-mail do relatório.";
+      toast.error(message);
+    } finally {
+      setSendingEmailIds((prev) => {
+        const next = new Set(prev);
+        next.delete(reportId);
+        return next;
+      });
+    }
+  }
+
   function formatDate(dateStr: string, dataVisitaHhmm?: string | null) {
     return formatDataVisitaBr(dateStr, dataVisitaHhmm) || dateStr;
   }
@@ -299,7 +330,7 @@ export default function RelatoriosPage() {
                   <TableHead>Criado por</TableHead>
                   <TableHead>Contato</TableHead>
                   <TableHead className="w-28">Impresso</TableHead>
-                  <TableHead className="w-32 text-right">Acoes</TableHead>
+                  <TableHead className="w-40 text-right">Acoes</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -365,6 +396,21 @@ export default function RelatoriosPage() {
                             <Loader2 className="h-4 w-4 animate-spin" />
                           ) : (
                             <FileDown className="h-4 w-4" />
+                          )}
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8"
+                          onClick={() => handleEnviarEmail(report)}
+                          disabled={sendingEmailIds.has(report.id)}
+                          aria-label="Enviar por E-mail"
+                          title="Enviar por E-mail"
+                        >
+                          {sendingEmailIds.has(report.id) ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Mail className="h-4 w-4" />
                           )}
                         </Button>
                         <Button

@@ -3,9 +3,10 @@ import { useNavigate, useParams } from "react-router-dom";
 import { useRelatorio } from "@/hooks/use-relatorio";
 import { useChecklists } from "@/hooks/use-checklists";
 import { Badge, Button } from "@/components/index";
-import { ArrowLeft, Pencil, FileDown, Loader2 } from "lucide-react";
+import { ArrowLeft, Pencil, FileDown, Loader2, Mail } from "lucide-react";
 import { ApiError } from "@/lib/api-client";
 import { downloadRelatorioPdf } from "@/lib/relatorio-pdf-download";
+import { enviarRelatorioPorEmail } from "@/lib/relatorio-enviar-email";
 import { downloadBlobFile } from "@/lib/utils";
 import { formatRelatorioTitulo } from "@/lib/relatorio-naming";
 import { toast } from "sonner";
@@ -26,6 +27,7 @@ export default function RelatorioDetalhePage() {
   const { relatorio: report, loading, error } = useRelatorio(id);
   const { checklists } = useChecklists();
   const [downloadingPdf, setDownloadingPdf] = useState(false);
+  const [sendingEmail, setSendingEmail] = useState(false);
   const [isPrinted, setIsPrinted] = useState(false);
 
   const checklistsById = useMemo(
@@ -66,6 +68,27 @@ export default function RelatorioDetalhePage() {
       toast.error(getPdfErrorMessage(downloadError));
     } finally {
       setDownloadingPdf(false);
+    }
+  }
+
+  async function handleEnviarEmail() {
+    if (!report || sendingEmail) {
+      return;
+    }
+
+    setSendingEmail(true);
+
+    try {
+      await enviarRelatorioPorEmail(report.id);
+      toast.success("E-mail enviado com sucesso para o cliente.");
+    } catch (sendError) {
+      toast.error(
+        sendError instanceof ApiError
+          ? sendError.message
+          : "Erro ao enviar e-mail do relatório.",
+      );
+    } finally {
+      setSendingEmail(false);
     }
   }
 
@@ -151,7 +174,7 @@ export default function RelatorioDetalhePage() {
             variant="outline"
             size="sm"
             onClick={handleDownloadPdf}
-            disabled={downloadingPdf}
+            disabled={downloadingPdf || sendingEmail}
           >
             {downloadingPdf ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -159,6 +182,19 @@ export default function RelatorioDetalhePage() {
               <FileDown className="mr-2 h-4 w-4" />
             )}
             {downloadingPdf ? "Baixando..." : "Gerar PDF"}
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleEnviarEmail}
+            disabled={sendingEmail || downloadingPdf}
+          >
+            {sendingEmail ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <Mail className="mr-2 h-4 w-4" />
+            )}
+            {sendingEmail ? "Enviando..." : "Enviar por E-mail"}
           </Button>
         </div>
       </div>
