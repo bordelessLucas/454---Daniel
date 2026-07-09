@@ -12,6 +12,7 @@ import {
 } from "@/components/dashboard/dashboard-filters";
 import { AdminDashboardKpis } from "@/components/dashboard/admin-dashboard-kpis";
 import { TecnicoDashboardKpis } from "@/components/dashboard/tecnico-dashboard-kpis";
+import { QuickActions } from "@/components/dashboard/quick-actions";
 import {
   areDraftsEqual,
   draftFromSearchParams,
@@ -33,7 +34,7 @@ function hasAppliedFiltersInUrl(searchParams: URLSearchParams): boolean {
 }
 
 export default function DashboardPage() {
-  const { isAdmin } = useAuth();
+  const { isAdmin, user } = useAuth();
   const [searchParams, setSearchParams] = useSearchParams();
   const [draft, setDraft] = useState<DashboardFilterDraft>(() =>
     draftFromSearchParams(searchParams),
@@ -91,6 +92,8 @@ export default function DashboardPage() {
             : "Resumo das suas visitas e agendamentos."
         }
       />
+
+      {user ? <QuickActions role={user.role} /> : null}
 
       <DashboardFilters
         draft={draft}

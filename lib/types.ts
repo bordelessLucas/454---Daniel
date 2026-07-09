@@ -149,7 +149,20 @@ export interface ApiConfiguracoes {
   logoUrl?: string | null;
   /** Data URL da logo (opcional; prioridade sobre logoUrl no preview). */
   logoDataUrl?: string | null;
+  /** Paleta HSL derivada da logo para o tema visual. */
+  themePalette?: BrandThemePalette | null;
 }
+
+export type BrandThemeModeTokens = {
+  primary: string;
+  primaryForeground: string;
+  ring: string;
+};
+
+export type BrandThemePalette = {
+  light: BrandThemeModeTokens;
+  dark: BrandThemeModeTokens;
+};
 
 export interface SalvarHorarioPayload {
   horaInicio: string;
@@ -162,6 +175,7 @@ export interface ApiConfiguracoesPdf {
   /** Data URL da logo (opcional; prioridade sobre logoUrl no preview). */
   logoDataUrl?: string | null;
   textoRodapeRelatorio?: string | null;
+  themePalette?: BrandThemePalette | null;
 }
 
 export type AuditAction = "CREATE" | "UPDATE" | "DELETE";

@@ -17,6 +17,8 @@ import {
   notifySystemLogoUpdated,
   useSystemLogo,
 } from "@/hooks/use-system-logo";
+import { extractPaletteFromImage } from "@/lib/extract-logo-colors";
+import { notifyBrandThemeUpdated } from "@/lib/brand-theme";
 import { useAuth } from "@/lib/auth-context";
 import { PageHeader } from "@/components/page-header";
 import {
@@ -126,12 +128,14 @@ export default function ConfiguracoesPage() {
 
     setUploadingLogo(true);
     try {
-      const updated = await uploadConfiguracaoLogo(file);
+      const themePalette = await extractPaletteFromImage(file);
+      const updated = await uploadConfiguracaoLogo(file, themePalette);
       const previewVersion = Date.now();
       setLocalPreviewSrc(resolveLogoDisplaySrc(updated, previewVersion));
       setHasLogo(hasConfiguredLogo(updated));
       notifySystemLogoUpdated(updated);
-      toast.success("Logo atualizada com sucesso.");
+      notifyBrandThemeUpdated(themePalette);
+      toast.success("Logo e identidade visual atualizadas com sucesso.");
     } catch (error) {
       const message =
         error instanceof ApiError
@@ -167,9 +171,10 @@ export default function ConfiguracoesPage() {
           </CardHeader>
           <CardContent className="flex flex-col gap-4">
             <p className="text-sm text-muted-foreground">
-              Exibida na barra lateral. Nos PDFs gerados no servidor, o backend
-              usa o arquivo salvo em Configuracoes (nao e enviado no download).
-              Formatos de imagem, ate 2 MB.
+              Exibida na barra lateral. Ao enviar uma nova logo, o sistema também
+              ajusta automaticamente as cores da interface para combinar com a
+              marca. Nos PDFs gerados no servidor, o backend usa o arquivo salvo
+              em Configuracoes. Formatos de imagem, ate 2 MB.
             </p>
             <p className="text-xs font-medium text-foreground">
               {hasLogo ? "Logo configurada" : "Nenhuma logo configurada"}

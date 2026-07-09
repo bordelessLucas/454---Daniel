@@ -3,11 +3,13 @@ import { hasConfiguredLogo } from "./configuracao-logo";
 import type {
   ApiConfiguracoes,
   ApiConfiguracoesPdf,
+  BrandThemePalette,
   SalvarHorarioPayload,
 } from "./types";
 
 export type UpdateConfiguracoesPayload = Partial<SalvarHorarioPayload> & {
   textoRodapeRelatorio?: string | null;
+  themePalette?: BrandThemePalette | null;
 };
 
 function toPdfConfig(
@@ -21,6 +23,7 @@ function toPdfConfig(
     logoUrl: data.logoUrl ?? null,
     logoDataUrl: data.logoDataUrl ?? null,
     textoRodapeRelatorio: data.textoRodapeRelatorio ?? null,
+    themePalette: data.themePalette ?? null,
   };
 }
 
@@ -57,9 +60,13 @@ export async function salvarHorarioLogin(
  */
 export async function uploadConfiguracaoLogo(
   file: File,
+  themePalette?: BrandThemePalette,
 ): Promise<ApiConfiguracoesPdf> {
   const formData = new FormData();
   formData.append("logo", file);
+  if (themePalette) {
+    formData.append("themePalette", JSON.stringify(themePalette));
+  }
 
   const updated = await apiRequestFormData<ApiConfiguracoes>(
     "/configuracoes/logo",

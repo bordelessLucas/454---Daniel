@@ -4,6 +4,7 @@ import { BrowserRouter } from "react-router-dom";
 import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/index";
 import { AuthProvider } from "@/lib/auth-context";
+import { BrandThemeProvider } from "@/components/brand-theme-provider";
 import { warnMisconfiguredApiUrl } from "@/lib/validate-env";
 import App from "./App";
 import "./globals.css";
@@ -19,9 +20,11 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
       disableTransitionOnChange
     >
       <AuthProvider>
-        <BrowserRouter>
-          <App />
-        </BrowserRouter>
+        <BrandThemeProvider>
+          <BrowserRouter>
+            <App />
+          </BrowserRouter>
+        </BrandThemeProvider>
         <Toaster richColors position="top-right" />
       </AuthProvider>
     </ThemeProvider>
