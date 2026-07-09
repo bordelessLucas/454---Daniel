@@ -1,8 +1,10 @@
 "use client";
 
-import { useState, useEffect, useRef, useCallback } from "react";
-import type { Client, Contact, Contract } from "@/lib/types";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import type { Client, Contact, Contract, Unidade } from "@/lib/types";
 import { createClient, updateClient } from "@/lib/clients-service";
+import { useAuth } from "@/lib/auth-context";
+import { useClientes } from "@/hooks/use-clientes";
 import { useRamosAtividade } from "@/hooks/use-ramos-atividade";
 import { formatCnpjInput, isCnpjComplete, sanitizeCnpj } from "@/lib/cnpj-utils";
 import { lookupCnpj } from "@/lib/cnpj-lookup-service";
@@ -40,6 +42,27 @@ interface ClientModalProps {
   onSave?: (client: Client) => void;
 }
 
+const DEV_UNIDADES: Unidade[] = [{ id: 1, nome: "Unidade 1" }];
+
+function extractUnidadesFromClientes(clientes: Client[]): Unidade[] {
+  const map = new Map<number, Unidade>();
+
+  for (const cliente of clientes) {
+    if (cliente.unidadeId == null || cliente.unidadeId <= 0) {
+      continue;
+    }
+
+    if (!map.has(cliente.unidadeId)) {
+      map.set(cliente.unidadeId, {
+        id: cliente.unidadeId,
+        nome: `Unidade ${cliente.unidadeId}`,
+      });
+    }
+  }
+
+  return [...map.values()].sort((a, b) => a.id - b.id);
+}
+
 const emptyForm = {
   razaoSocial: "",
   nomeFantasia: "",
@@ -52,6 +75,7 @@ const emptyForm = {
   cidade: "",
   telefone: "",
   email: "",
+  unidadeId: "",
 };
 
 export function ClientModal({
@@ -71,8 +95,22 @@ export function ClientModal({
   const [isLookingUpCnpj, setIsLookingUpCnpj] = useState(false);
   const lastLookedUpCnpj = useRef<string | null>(null);
 
-  // Buscar ramos de atividade da API
+  const { user, isAdmin } = useAuth();
+  const { clientes, loading: loadingClientes } = useClientes();
   const { ramos: ramosAtividade, loading: loadingRamos } = useRamosAtividade();
+
+  const unidadeOptions = useMemo(() => {
+    const fromClientes = extractUnidadesFromClientes(clientes);
+    if (fromClientes.length > 0) {
+      return fromClientes;
+    }
+    if (import.meta.env.DEV) {
+      return DEV_UNIDADES;
+    }
+    return [];
+  }, [clientes]);
+
+  const showUnidadeField = !client && isAdmin;
 
   const applyCnpjLookup = useCallback((data: Awaited<ReturnType<typeof lookupCnpj>>) => {
     setForm((prev) => ({
@@ -174,6 +212,7 @@ export function ClientModal({
         cidade: client.cidade,
         telefone: client.telefone || "",
         email: client.email || "",
+        unidadeId: client.unidadeId?.toString() ?? "",
       });
       setContatos(client.contatos || []);
       setContratos(client.contratos || []);
@@ -196,6 +235,11 @@ export function ClientModal({
 
     if (contratos.length === 0) {
       toast.error("Adicione pelo menos um contrato");
+      return;
+    }
+
+    if (!client && user?.role === "ADMIN" && !form.unidadeId) {
+      toast.error("Selecione a unidade");
       return;
     }
 
@@ -242,6 +286,9 @@ export function ClientModal({
         // Criar novo cliente (enviar apenas o primeiro contato e contrato)
         const createPayload = {
           ...payload,
+          ...(user?.role === "ADMIN" && form.unidadeId
+            ? { unidadeId: parseInt(form.unidadeId, 10) }
+            : {}),
           contato: {
             nome: contatos[0].nome,
             cargo: contatos[0].cargo || undefined,
@@ -379,6 +426,32 @@ export function ClientModal({
                 />
               </div>
             </div>
+
+            {showUnidadeField ? (
+              <div className="space-y-2">
+                <Label htmlFor="unidadeId">
+                  Unidade <span className="text-destructive">*</span>
+                </Label>
+                <Select
+                  id="unidadeId"
+                  value={form.unidadeId}
+                  onChange={(e) =>
+                    setForm({ ...form, unidadeId: e.target.value })
+                  }
+                  disabled={loadingClientes}
+                  required
+                >
+                  <option value="">
+                    {loadingClientes ? "Carregando..." : "Selecione a unidade"}
+                  </option>
+                  {unidadeOptions.map((unidade) => (
+                    <option key={unidade.id} value={unidade.id.toString()}>
+                      {unidade.nome}
+                    </option>
+                  ))}
+                </Select>
+              </div>
+            ) : null}
 
             <div className="grid grid-cols-3 gap-4">
               <div className="space-y-2">

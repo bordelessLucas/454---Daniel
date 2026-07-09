@@ -69,6 +69,7 @@ export interface Client {
   telefone: string | null;
   email: string | null;
   ramoAtividadeId: number;
+  unidadeId?: number;
   ativo: boolean;
   createdAt: string;
   updatedAt: string;
