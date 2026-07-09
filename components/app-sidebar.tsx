@@ -17,6 +17,7 @@ import {
 import { useAuth } from "@/lib/auth-context";
 import { useSystemLogo } from "@/hooks/use-system-logo";
 import { Separator } from "@/components/index";
+import { cn } from "@/lib/utils";
 import {
   Sidebar,
   SidebarContent,
@@ -70,8 +71,8 @@ export function AppSidebar() {
   const showBrandText = !hasCustomLogo;
 
   return (
-    <Sidebar collapsible="icon">
-      <SidebarHeader className="p-4">
+    <Sidebar collapsible="icon" className="shadow-[inset_-1px_0_0_0_hsl(var(--primary)/0.08)]">
+      <SidebarHeader className="border-b border-primary/10 bg-brand-surface/40 p-4">
         <Link to="/dashboard" className="flex items-center gap-3">
           <div className={hasCustomLogo ? "min-w-0 flex-1" : undefined}>
             <img
@@ -109,7 +110,10 @@ export function AppSidebar() {
       <SidebarContent>
         <SidebarGroup>
           <SidebarGroupLabel
-            className={state === "collapsed" ? "sr-only" : undefined}
+            className={cn(
+              state === "collapsed" ? "sr-only" : undefined,
+              "text-primary/80",
+            )}
           >
             Navegação
           </SidebarGroupLabel>
@@ -178,7 +182,10 @@ export function AppSidebar() {
         {isAdmin && (
           <SidebarGroup>
             <SidebarGroupLabel
-              className={state === "collapsed" ? "sr-only" : undefined}
+              className={cn(
+                state === "collapsed" ? "sr-only" : undefined,
+                "text-primary/80",
+              )}
             >
               Administração
             </SidebarGroupLabel>

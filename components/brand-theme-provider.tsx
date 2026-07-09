@@ -34,15 +34,15 @@ export function BrandThemeProvider({ children }: { children: React.ReactNode }) 
     try {
       const config = await getConfiguracoesPdf();
 
-      if (isBrandThemePalette(config.themePalette)) {
-        setPalette(config.themePalette);
-        return;
-      }
-
       if (hasConfiguredLogo(config)) {
         const logoSrc = resolveLogoDisplaySrc(config);
         const derived = await extractPaletteFromImage(logoSrc);
         setPalette(derived);
+        return;
+      }
+
+      if (isBrandThemePalette(config.themePalette)) {
+        setPalette(config.themePalette);
         return;
       }
 

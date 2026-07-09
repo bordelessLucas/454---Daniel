@@ -5,7 +5,7 @@ import { cn } from "@/lib/utils";
 type BadgeVariant = "default" | "secondary" | "outline";
 
 const variantClasses: Record<BadgeVariant, string> = {
-  default: "border-transparent bg-blue-700 text-primary-foreground",
+  default: "border-transparent bg-primary text-primary-foreground",
   secondary: "border-transparent bg-muted text-muted-foreground",
   outline: "text-foreground",
 };

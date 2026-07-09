@@ -60,12 +60,10 @@ function isNeutralPixel({ r, g, b }: Rgb, alpha: number): boolean {
     return true;
   }
 
-  return saturation < 0.12;
+  return saturation < 0.1;
 }
 
-function loadImageSource(
-  source: File | string,
-): Promise<HTMLImageElement> {
+function loadImageSource(source: File | string): Promise<HTMLImageElement> {
   return new Promise((resolve, reject) => {
     const image = new Image();
     image.crossOrigin = "anonymous";
@@ -93,7 +91,7 @@ function loadImageSource(
 
 function extractDominantHue(image: HTMLImageElement): { h: number; s: number } {
   const canvas = document.createElement("canvas");
-  const size = 64;
+  const size = 72;
   canvas.width = size;
   canvas.height = size;
 
@@ -105,26 +103,42 @@ function extractDominantHue(image: HTMLImageElement): { h: number; s: number } {
   context.drawImage(image, 0, 0, size, size);
   const { data } = context.getImageData(0, 0, size, size);
 
-  const buckets = new Map<number, { weight: number; saturation: number }>();
+  const buckets = new Map<
+    number,
+    { weight: number; saturation: number; lightness: number }
+  >();
 
-  for (let index = 0; index < data.length; index += 4) {
-    const rgb: Rgb = {
-      r: data[index]!,
-      g: data[index + 1]!,
-      b: data[index + 2]!,
-    };
-    const alpha = data[index + 3]! / 255;
+  for (let y = 0; y < size; y += 1) {
+    for (let x = 0; x < size; x += 1) {
+      const index = (y * size + x) * 4;
+      const rgb: Rgb = {
+        r: data[index]!,
+        g: data[index + 1]!,
+        b: data[index + 2]!,
+      };
+      const alpha = data[index + 3]! / 255;
 
-    if (isNeutralPixel(rgb, alpha)) {
-      continue;
+      if (isNeutralPixel(rgb, alpha)) {
+        continue;
+      }
+
+      const { h, s, l } = rgbToHsl(rgb);
+      const bucket = Math.round(h / 8) * 8;
+      const centerBoost =
+        1 + (1 - Math.hypot(x - size / 2, y - size / 2) / (size * 0.7)) * 0.8;
+      const vividBoost = 1 + (s / 100) * 0.75;
+      const weight = centerBoost * vividBoost;
+
+      const current = buckets.get(bucket) ?? {
+        weight: 0,
+        saturation: 0,
+        lightness: 0,
+      };
+      current.weight += weight;
+      current.saturation += s * weight;
+      current.lightness += l * weight;
+      buckets.set(bucket, current);
     }
-
-    const { h, s } = rgbToHsl(rgb);
-    const bucket = Math.round(h / 10) * 10;
-    const current = buckets.get(bucket) ?? { weight: 0, saturation: 0 };
-    current.weight += 1;
-    current.saturation += s;
-    buckets.set(bucket, current);
   }
 
   if (buckets.size === 0) {
@@ -145,27 +159,32 @@ function extractDominantHue(image: HTMLImageElement): { h: number; s: number } {
 
   return {
     h: bestBucket,
-    s: clamp(bestSaturation, 35, 92),
+    s: clamp(bestSaturation, 45, 96),
   };
 }
 
 function buildPaletteFromHue(h: number, s: number): BrandThemePalette {
-  const lightPrimary = hslToCss(h, clamp(s * 0.55, 30, 55), 30);
-  const darkPrimary = hslToCss(h, clamp(s, 45, 92), 55);
-  const lightForeground = "0 0% 100%";
-  const darkForeground = "0 0% 100%";
+  const lightPrimary = hslToCss(h, clamp(s * 0.9, 55, 92), 46);
+  const darkPrimary = hslToCss(h, clamp(s, 60, 96), 62);
+  const foreground = "0 0% 100%";
+
+  const buildMode = (primary: string, mode: "light" | "dark") => {
+    const isLight = mode === "light";
+    return {
+      primary,
+      primaryForeground: foreground,
+      ring: primary,
+      accent: hslToCss(h, clamp(s * 0.45, 35, 70), isLight ? 95 : 18),
+      accentForeground: primary,
+      brandSurface: hslToCss(h, clamp(s * 0.55, 40, 78), isLight ? 94 : 20),
+      brandSurfaceForeground: primary,
+      chart1: hslToCss(h, clamp(s, 55, 90), isLight ? 50 : 60),
+    };
+  };
 
   return {
-    light: {
-      primary: lightPrimary,
-      primaryForeground: lightForeground,
-      ring: lightPrimary,
-    },
-    dark: {
-      primary: darkPrimary,
-      primaryForeground: darkForeground,
-      ring: darkPrimary,
-    },
+    light: buildMode(lightPrimary, "light"),
+    dark: buildMode(darkPrimary, "dark"),
   };
 }
 

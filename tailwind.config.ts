@@ -14,7 +14,11 @@ const config: Config = {
       fontFamily: {
         sans: ["var(--font-inter)", "system-ui", "sans-serif"],
       },
-      colors: {
+        colors: {
+        brand: {
+          surface: "hsl(var(--brand-surface))",
+          "surface-foreground": "hsl(var(--brand-surface-foreground))",
+        },
         background: "hsl(var(--background))",
         foreground: "hsl(var(--foreground))",
         card: {

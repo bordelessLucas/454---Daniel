@@ -20,7 +20,7 @@ export function Topbar() {
     : "U";
 
   return (
-    <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center border-b bg-background px-4">
+    <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center border-b border-primary/15 bg-background px-4">
       <SidebarTrigger className="-ml-1" />
       <Separator orientation="vertical" className="mx-3 h-5" />
       <div className="flex flex-1 items-center justify-end gap-3">
@@ -35,8 +35,8 @@ export function Topbar() {
           <Moon className="absolute h-4 w-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
         </Button>
         <div className="flex items-center gap-2">
-          <Avatar className="h-8 w-8">
-            <AvatarFallback className="text-foreground text-xs">
+          <Avatar className="h-8 w-8 ring-2 ring-primary/20">
+            <AvatarFallback className="bg-brand-surface text-brand-surface-foreground text-xs">
               {initials}
             </AvatarFallback>
           </Avatar>
@@ -44,7 +44,7 @@ export function Topbar() {
             <span className="text-sm font-medium leading-tight text-foreground">
               {user?.nome}
             </span>
-            <span className="text-xs text-muted-foreground">
+            <span className="text-xs font-medium text-primary">
               {user?.role}
             </span>
           </div>

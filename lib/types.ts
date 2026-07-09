@@ -157,6 +157,11 @@ export type BrandThemeModeTokens = {
   primary: string;
   primaryForeground: string;
   ring: string;
+  accent?: string;
+  accentForeground?: string;
+  brandSurface?: string;
+  brandSurfaceForeground?: string;
+  chart1?: string;
 };
 
 export type BrandThemePalette = {

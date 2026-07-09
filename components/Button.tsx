@@ -6,9 +6,9 @@ type ButtonVariant = "default" | "outline" | "ghost" | "destructive";
 type ButtonSize = "default" | "sm" | "icon";
 
 const variantClasses: Record<ButtonVariant, string> = {
-  default: "bg-blue-700 text-primary-foreground hover:bg-primary/90",
-  outline: "border border-input bg-background hover:bg-muted",
-  ghost: "hover:bg-muted",
+  default: "bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm",
+  outline: "border border-input bg-background hover:bg-accent hover:text-accent-foreground",
+  ghost: "hover:bg-accent hover:text-accent-foreground",
   destructive:
     "bg-destructive text-destructive-foreground hover:bg-destructive/90",
 };

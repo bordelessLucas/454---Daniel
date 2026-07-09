@@ -122,7 +122,7 @@ const Sidebar = React.forwardRef<
         <aside
           ref={ref}
           className={cn(
-            "fixed inset-y-0 left-0 z-50 w-72 translate-x-[-100%] border-r bg-background text-foreground transition-transform",
+            "fixed inset-y-0 left-0 z-50 w-72 translate-x-[-100%] border-r border-primary/15 bg-background text-foreground transition-transform",
             openMobile && "translate-x-0",
             className,
           )}
@@ -140,7 +140,7 @@ const Sidebar = React.forwardRef<
       data-state={state}
       data-collapsible={state === "collapsed" ? collapsible : ""}
       className={cn(
-        "sticky top-0 h-svh self-start border-r bg-background text-foreground transition-[width] duration-200",
+        "sticky top-0 h-svh self-start border-r border-primary/15 bg-background text-foreground transition-[width] duration-200",
         state === "collapsed" && collapsible === "icon" ? "w-16" : "w-72",
         className,
       )}
@@ -250,8 +250,8 @@ const SidebarMenuButton = React.forwardRef<
         className={cn(
           "flex w-full items-center gap-3 rounded-lg px-3 py-2 text-sm transition-colors",
           isActive
-            ? "bg-muted text-foreground"
-            : "text-muted-foreground hover:bg-muted/60 hover:text-foreground",
+            ? "bg-brand-surface font-medium text-brand-surface-foreground shadow-sm ring-1 ring-primary/25"
+            : "text-muted-foreground hover:bg-brand-surface/70 hover:text-brand-surface-foreground",
           className,
         )}
         title={tooltip}
