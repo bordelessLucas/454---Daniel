@@ -20,7 +20,7 @@ export function Topbar() {
     : "U";
 
   return (
-    <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center border-b border-primary/15 bg-background px-4">
+    <header className="standalone-safe-top sticky top-0 z-30 flex min-h-14 shrink-0 items-center border-b border-primary/15 bg-background px-4">
       <SidebarTrigger className="-ml-1" />
       <Separator orientation="vertical" className="mx-3 h-5" />
       <div className="flex flex-1 items-center justify-end gap-3">

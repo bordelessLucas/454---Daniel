@@ -5,6 +5,7 @@ import { ThemeProvider } from "@/components/theme-provider";
 import { Toaster } from "@/components/index";
 import { AuthProvider } from "@/lib/auth-context";
 import { BrandThemeProvider } from "@/components/brand-theme-provider";
+import { PwaProvider } from "@/components/pwa-provider";
 import { warnMisconfiguredApiUrl } from "@/lib/validate-env";
 import App from "./App";
 import "./globals.css";
@@ -21,9 +22,11 @@ ReactDOM.createRoot(document.getElementById("root")!).render(
     >
       <AuthProvider>
         <BrandThemeProvider>
-          <BrowserRouter>
-            <App />
-          </BrowserRouter>
+          <PwaProvider>
+            <BrowserRouter>
+              <App />
+            </BrowserRouter>
+          </PwaProvider>
         </BrandThemeProvider>
         <Toaster richColors position="top-right" />
       </AuthProvider>

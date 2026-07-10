@@ -62,7 +62,7 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-svh items-center justify-center bg-background p-4">
+    <div className="flex min-h-app items-center justify-center bg-background p-4 pb-safe pt-safe">
       <Card className="w-full max-w-sm border-border">
         <CardHeader className="items-center pb-2">
           <img src={logoSrc} alt="Logo" className="h-44 w-auto" />
