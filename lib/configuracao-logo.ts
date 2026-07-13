@@ -8,6 +8,8 @@ const LOGIN_LOGO_LIGHT = "/logoWhite.png";
 export type LogoConfigSource = {
   logoUrl?: string | null;
   logoDataUrl?: string | null;
+  logoDarkUrl?: string | null;
+  logoDarkDataUrl?: string | null;
 };
 
 function getApiBaseUrl(): string {
@@ -80,7 +82,12 @@ export function hasConfiguredLogo(
   source?: string | null | LogoConfigSource,
 ): boolean {
   if (source && typeof source === "object") {
-    return Boolean(source.logoDataUrl?.trim() || source.logoUrl?.trim());
+    return Boolean(
+      source.logoDataUrl?.trim() ||
+        source.logoUrl?.trim() ||
+        source.logoDarkDataUrl?.trim() ||
+        source.logoDarkUrl?.trim(),
+    );
   }
 
   return Boolean(source?.trim());
@@ -107,6 +114,35 @@ export function resolveLogoDisplaySrc(
   const needsCacheBust =
     isServerHostedLogoUrl(resolved) ||
     isServerHostedLogoUrl(config?.logoUrl ?? "");
+
+  if (needsCacheBust && cacheBuster !== undefined) {
+    return withLogoCacheBuster(resolved, cacheBuster);
+  }
+
+  return resolved;
+}
+
+/**
+ * Resolve a URL/data URL da logo escura para exibição (sidebar dark mode).
+ * Retorna null se não houver logo escura configurada, permitindo fallback para a light.
+ */
+export function resolveLogoDarkDisplaySrc(
+  config?: LogoConfigSource | null,
+  cacheBuster?: number | string,
+): string | null {
+  const dataUrl = config?.logoDarkDataUrl?.trim();
+  if (dataUrl && isDataUrl(dataUrl)) {
+    return dataUrl;
+  }
+
+  const url = config?.logoDarkUrl?.trim();
+  if (!url) {
+    return null;
+  }
+
+  const resolved = normalizeLogoAssetUrl(url);
+  const needsCacheBust =
+    isServerHostedLogoUrl(resolved) || isServerHostedLogoUrl(url);
 
   if (needsCacheBust && cacheBuster !== undefined) {
     return withLogoCacheBuster(resolved, cacheBuster);

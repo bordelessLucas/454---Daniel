@@ -14,6 +14,7 @@ import {
   BarChart3,
   ScrollText,
 } from "lucide-react";
+import { useTheme } from "next-themes";
 import { useAuth } from "@/lib/auth-context";
 import { useSystemLogo } from "@/hooks/use-system-logo";
 import { Separator } from "@/components/index";
@@ -66,9 +67,13 @@ export function AppSidebar() {
   const pathname = location.pathname;
   const { user, logout } = useAuth();
   const { state } = useSidebar();
-  const { logoSrc, hasCustomLogo } = useSystemLogo();
+  const { resolvedTheme } = useTheme();
+  const { logoSrc, logoDarkSrc, hasCustomLogo } = useSystemLogo();
   const isAdmin = user?.role === "ADMIN";
   const showBrandText = !hasCustomLogo;
+
+  const activeLogoSrc =
+    resolvedTheme === "dark" && logoDarkSrc ? logoDarkSrc : logoSrc;
 
   return (
     <Sidebar collapsible="icon" className="shadow-[inset_-1px_0_0_0_hsl(var(--primary)/0.08)]">
@@ -76,7 +81,7 @@ export function AppSidebar() {
         <Link to="/dashboard" className="flex items-center gap-3">
           <div className={hasCustomLogo ? "min-w-0 flex-1" : undefined}>
             <img
-              src={logoSrc}
+              src={activeLogoSrc}
               alt={showBrandText ? "Linq" : "Logo"}
               className={
                 state === "collapsed"

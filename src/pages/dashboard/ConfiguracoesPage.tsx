@@ -8,6 +8,7 @@ import {
   getConfiguracoes,
   updateConfiguracoes,
   uploadConfiguracaoLogo,
+  uploadConfiguracaoLogoDark,
 } from "@/lib/configuracoes-service";
 import {
   horarioFromConfig,
@@ -42,11 +43,19 @@ export default function ConfiguracoesPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploadingLogo, setUploadingLogo] = useState(false);
+  const [uploadingLogoDark, setUploadingLogoDark] = useState(false);
   const [hasLogo, setHasLogo] = useState(false);
+  const [hasLogoDark, setHasLogoDark] = useState(false);
   const [localPreviewSrc, setLocalPreviewSrc] = useState<string | null>(null);
+  const [localPreviewDarkSrc, setLocalPreviewDarkSrc] = useState<string | null>(
+    null,
+  );
   const logoInputRef = useRef<HTMLInputElement>(null);
-  const { logoSrc } = useSystemLogo();
+  const logoDarkInputRef = useRef<HTMLInputElement>(null);
+  const { logoSrc, logoDarkSrc } = useSystemLogo();
   const displayLogoSrc = localPreviewSrc ?? logoSrc;
+  const displayLogoDarkSrc =
+    localPreviewDarkSrc ?? logoDarkSrc ?? "/LogoBlack.png";
 
   const MAX_LOGO_BYTES = 2 * 1024 * 1024;
 
@@ -59,7 +68,8 @@ export default function ConfiguracoesPage() {
           setStartTime(horario.inicio);
           setEndTime(horario.fim);
           setTextoRodapeRelatorio(data.textoRodapeRelatorio ?? "");
-          setHasLogo(hasConfiguredLogo(data));
+          setHasLogo(Boolean(data.logoUrl || data.logoDataUrl));
+          setHasLogoDark(Boolean(data.logoDarkUrl || data.logoDarkDataUrl));
         }
       } catch (error) {
         const message =
@@ -147,6 +157,55 @@ export default function ConfiguracoesPage() {
     }
   }
 
+  async function handleLogoDarkFileChange(
+    event: React.ChangeEvent<HTMLInputElement>,
+  ) {
+    const file = event.target.files?.[0];
+    event.target.value = "";
+    if (!file) {
+      return;
+    }
+
+    if (!file.type.startsWith("image/")) {
+      toast.error("Envie apenas arquivos de imagem (PNG, JPG, SVG, etc.).");
+      return;
+    }
+
+    if (file.size > MAX_LOGO_BYTES) {
+      toast.error("A logo deve ter no maximo 2 MB.");
+      return;
+    }
+
+    if (!isAdmin) {
+      toast.error("Apenas administradores podem alterar a logo do sistema.");
+      return;
+    }
+
+    setUploadingLogoDark(true);
+    try {
+      const updated = await uploadConfiguracaoLogoDark(file);
+      const previewVersion = Date.now();
+      setLocalPreviewDarkSrc(
+        resolveLogoDisplaySrc(
+          {
+            logoDataUrl: updated.logoDarkDataUrl,
+            logoUrl: updated.logoDarkUrl,
+          },
+          previewVersion,
+        ),
+      );
+      setHasLogoDark(Boolean(updated.logoDarkUrl || updated.logoDarkDataUrl));
+      notifySystemLogoUpdated(updated);
+      toast.success("Logo (Modo Escuro) atualizada com sucesso.");
+    } catch (error) {
+      const message =
+        error instanceof ApiError ? error.message : "Erro ao enviar a logo.";
+      toast.error(message);
+    } finally {
+      setUploadingLogoDark(false);
+    }
+  }
+
   function isCurrentlyOutside() {
     if (!startTime || !endTime) {
       return false;
@@ -221,6 +280,71 @@ export default function ConfiguracoesPage() {
                     O upload e salvo imediatamente; nao e necessario clicar em
                     Salvar Configuracoes. Apos redeploy do backend, reenvie a
                     logo se ela sumir do PDF.
+                  </p>
+                )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="border-border">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-base">
+              <ImageIcon className="h-4 w-4" />
+              Logo do Sistema (Modo Escuro)
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="flex flex-col gap-4">
+            <p className="text-sm text-muted-foreground">
+              Exibida na barra lateral quando o tema escuro estiver ativo. Caso
+              não configurada, a logo principal será utilizada. Formatos de
+              imagem, até 2 MB.
+            </p>
+            <p className="text-xs font-medium text-foreground">
+              {hasLogoDark
+                ? "Logo escura configurada"
+                : "Nenhuma logo escura configurada"}
+            </p>
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+              <div className="flex h-24 w-40 shrink-0 items-center justify-center rounded-xl border border-border bg-muted/50 p-3">
+                <img
+                  src={displayLogoDarkSrc}
+                  alt="Logo escura atual do sistema"
+                  className="max-h-full max-w-full object-contain"
+                  onError={(event) => {
+                    const img = event.currentTarget;
+                    if (!img.src.endsWith("/LogoBlack.png")) {
+                      img.src = "/LogoBlack.png";
+                    }
+                  }}
+                />
+              </div>
+              <div className="flex flex-col gap-2">
+                <input
+                  ref={logoDarkInputRef}
+                  type="file"
+                  accept="image/png,image/jpeg,image/jpg,image/svg+xml,image/webp"
+                  className="sr-only"
+                  disabled={loading || uploadingLogoDark || !isAdmin}
+                  onChange={handleLogoDarkFileChange}
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-fit"
+                  disabled={loading || uploadingLogoDark || !isAdmin}
+                  onClick={() => logoDarkInputRef.current?.click()}
+                >
+                  <Upload className="mr-2 h-4 w-4" />
+                  {uploadingLogoDark ? "Enviando..." : "Trocar logo escura"}
+                </Button>
+                {!isAdmin ? (
+                  <p className="text-xs text-muted-foreground">
+                    Apenas administradores podem enviar uma nova logo.
+                  </p>
+                ) : (
+                  <p className="text-xs text-muted-foreground">
+                    O upload é salvo imediatamente.
                   </p>
                 )}
               </div>

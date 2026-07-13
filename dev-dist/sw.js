@@ -67,7 +67,7 @@ if (!self.define) {
     });
   };
 }
-define(['./workbox-b198645c'], (function (workbox) { 'use strict';
+define(['./workbox-cdaecb76'], (function (workbox) { 'use strict';
 
   self.addEventListener('message', event => {
     if (event.data && event.data.type === 'SKIP_WAITING') {
@@ -85,7 +85,7 @@ define(['./workbox-b198645c'], (function (workbox) { 'use strict';
     "revision": "3ca0b8505b4bec776b69afdba2768812"
   }, {
     "url": "/index.html",
-    "revision": "0.621p5ul1l2c"
+    "revision": "0.vivbf69en0s"
   }], {});
   workbox.cleanupOutdatedCaches();
   workbox.registerRoute(new workbox.NavigationRoute(workbox.createHandlerBoundToURL("/index.html"), {
@@ -102,13 +102,12 @@ define(['./workbox-b198645c'], (function (workbox) { 'use strict';
     })]
   }), 'GET');
   workbox.registerRoute(({
-    url
-  }) => url.origin === self.location.origin && url.pathname.startsWith("/api"), new workbox.NetworkFirst({
-    "cacheName": "api-cache",
-    "networkTimeoutSeconds": 8,
+    request
+  }) => request.destination === "font" || /\.(?:woff2?|ttf|otf)$/i.test(request.url), new workbox.CacheFirst({
+    "cacheName": "fonts-cache",
     plugins: [new workbox.ExpirationPlugin({
-      maxEntries: 50,
-      maxAgeSeconds: 300
+      maxEntries: 30,
+      maxAgeSeconds: 31536000
     })]
   }), 'GET');
 

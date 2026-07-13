@@ -149,6 +149,10 @@ export interface ApiConfiguracoes {
   logoUrl?: string | null;
   /** Data URL da logo (opcional; prioridade sobre logoUrl no preview). */
   logoDataUrl?: string | null;
+  /** URL pública da logo escura do sistema (sidebar dark mode). */
+  logoDarkUrl?: string | null;
+  /** Data URL da logo escura (opcional; prioridade sobre logoDarkUrl no preview). */
+  logoDarkDataUrl?: string | null;
   /** Paleta HSL derivada da logo para o tema visual. */
   themePalette?: BrandThemePalette | null;
 }
@@ -179,6 +183,10 @@ export interface ApiConfiguracoesPdf {
   logoUrl?: string | null;
   /** Data URL da logo (opcional; prioridade sobre logoUrl no preview). */
   logoDataUrl?: string | null;
+  /** URL pública da logo escura do sistema (sidebar dark mode). */
+  logoDarkUrl?: string | null;
+  /** Data URL da logo escura (opcional; prioridade sobre logoDarkUrl no preview). */
+  logoDarkDataUrl?: string | null;
   textoRodapeRelatorio?: string | null;
   themePalette?: BrandThemePalette | null;
 }

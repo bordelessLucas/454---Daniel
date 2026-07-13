@@ -406,10 +406,13 @@ export default function UsuariosPage() {
             </Select>
           </div>
           <div className="flex flex-col gap-2">
-            <Label htmlFor="user-cliente">Cliente Associado (opcional)</Label>
+            <Label htmlFor="user-cliente">
+              Cliente Associado {form.role === "TECNICO" ? "(obrigatório)" : "(opcional)"}
+            </Label>
             <Select
               id="user-cliente"
               value={form.clienteId?.toString() || ""}
+              required={form.role === "TECNICO"}
               onChange={(e) =>
                 setForm((f) => ({
                   ...f,

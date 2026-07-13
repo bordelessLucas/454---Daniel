@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import {
   hasConfiguredLogo,
   resolveLogoDisplaySrc,
+  resolveLogoDarkDisplaySrc,
   type LogoConfigSource,
 } from "@/lib/configuracao-logo";
 import { getConfiguracoesPdf } from "@/lib/configuracoes-service";
@@ -69,6 +70,7 @@ export function useSystemLogo() {
   }, [reload]);
 
   const logoSrc = resolveLogoDisplaySrc(logoConfig, version);
+  const logoDarkSrc = resolveLogoDarkDisplaySrc(logoConfig, version);
 
-  return { logoSrc, hasCustomLogo, loading, reload, logoConfig };
+  return { logoSrc, logoDarkSrc, hasCustomLogo, loading, reload, logoConfig };
 }

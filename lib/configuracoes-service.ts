@@ -22,6 +22,8 @@ function toPdfConfig(
   return {
     logoUrl: data.logoUrl ?? null,
     logoDataUrl: data.logoDataUrl ?? null,
+    logoDarkUrl: data.logoDarkUrl ?? null,
+    logoDarkDataUrl: data.logoDarkDataUrl ?? null,
     textoRodapeRelatorio: data.textoRodapeRelatorio ?? null,
     themePalette: data.themePalette ?? null,
   };
@@ -79,5 +81,31 @@ export async function uploadConfiguracaoLogo(
   }
 
   // Backend pode retornar 204/corpo vazio ou omitir logoUrl — recarrega do endpoint público.
+  return getConfiguracoesPdf();
+}
+
+/**
+ * Envia nova logo para o tema escuro. Requer perfil ADMIN.
+ */
+export async function uploadConfiguracaoLogoDark(
+  file: File,
+  themePalette?: BrandThemePalette,
+): Promise<ApiConfiguracoesPdf> {
+  const formData = new FormData();
+  formData.append("logo", file);
+  if (themePalette) {
+    formData.append("themePalette", JSON.stringify(themePalette));
+  }
+
+  const updated = await apiRequestFormData<ApiConfiguracoes>(
+    "/configuracoes/logo-dark",
+    formData,
+  );
+
+  const normalized = toPdfConfig(updated);
+  if (normalized && hasConfiguredLogo(normalized)) {
+    return normalized;
+  }
+
   return getConfiguracoesPdf();
 }
