@@ -2,9 +2,11 @@ import { apiRequest, apiRequestBlob } from "@/lib/api-client";
 import { downloadBlobFile } from "@/lib/utils";
 import type {
   ApiAuditLog,
+  AlterarStatusRelatorioResponse,
   GerencialJsonResponse,
   GerencialQueryParams,
   GerencialTipo,
+  RelatorioAgendaStatus,
 } from "@/lib/types";
 
 function buildGerencialEndpoint(params: GerencialQueryParams): string {
@@ -71,4 +73,17 @@ export async function fetchRelatorioAuditLogs(
   reportId: number,
 ): Promise<ApiAuditLog[]> {
   return apiRequest<ApiAuditLog[]>(`/relatorios/${reportId}/audit-logs`);
+}
+
+export async function alterarStatusRelatorio(
+  relatorioId: number,
+  status: RelatorioAgendaStatus,
+): Promise<AlterarStatusRelatorioResponse> {
+  return apiRequest<AlterarStatusRelatorioResponse>(
+    `/relatorios/${relatorioId}/status`,
+    {
+      method: "PATCH",
+      body: JSON.stringify({ status }),
+    },
+  );
 }

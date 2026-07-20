@@ -62,7 +62,8 @@ function normalizeTecnicos(raw: Record<string, unknown>): CalendarioEventoTecnic
 export function resolveAgendaStatus(
   raw: Record<string, unknown>,
 ): RelatorioAgendaStatus {
-  const candidates = [raw.statusAgenda, raw.status, raw.situacao];
+  // Preferir `status` (campo atual do workflow); `statusAgenda` é alias legado.
+  const candidates = [raw.status, raw.statusAgenda, raw.situacao];
   for (const candidate of candidates) {
     if (
       candidate === "AGENDADO" ||
@@ -170,7 +171,11 @@ export function normalizeCalendarioEvento(
       ...fromExtended,
       id,
       start: fromExtended.start || start,
-      status: fromExtended.status ?? resolveAgendaStatus(raw),
+      // Top-level da resposta prevalece sobre cópia aninhada (pode estar stale).
+      status: resolveAgendaStatus({
+        ...fromExtended,
+        ...raw,
+      }),
     };
   }
 

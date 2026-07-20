@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { ApiReport } from "@/lib/types";
+import { ApiReport, RelatorioAgendaStatus } from "@/lib/types";
 import { apiRequest } from "@/lib/api-client";
 
 interface RelatoriosFilters {
@@ -8,6 +8,8 @@ interface RelatoriosFilters {
   dataInicio?: string;
   dataFim?: string;
   impresso?: boolean;
+  /** Um ou mais status de agenda enviados como `?status=`. */
+  status?: RelatorioAgendaStatus | RelatorioAgendaStatus[];
   refetchTrigger?: number;
 }
 
@@ -15,6 +17,10 @@ export function useRelatorios(filters?: RelatoriosFilters) {
   const [relatorios, setRelatorios] = useState<ApiReport[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const statusKey = Array.isArray(filters?.status)
+    ? filters.status.join(",")
+    : (filters?.status ?? "");
 
   useEffect(() => {
     async function fetchRelatorios() {
@@ -38,6 +44,14 @@ export function useRelatorios(filters?: RelatoriosFilters) {
         if (filters?.impresso !== undefined) {
           params.append("impresso", String(filters.impresso));
         }
+        if (filters?.status !== undefined) {
+          const statuses = Array.isArray(filters.status)
+            ? filters.status
+            : [filters.status];
+          if (statuses.length > 0) {
+            params.append("status", statuses.join(","));
+          }
+        }
 
         const queryString = params.toString();
         const url = `/relatorios${queryString ? `?${queryString}` : ""}`;
@@ -60,6 +74,7 @@ export function useRelatorios(filters?: RelatoriosFilters) {
     filters?.dataInicio,
     filters?.dataFim,
     filters?.impresso,
+    statusKey,
     filters?.refetchTrigger,
   ]);
 

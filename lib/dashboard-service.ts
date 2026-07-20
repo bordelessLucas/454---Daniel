@@ -41,15 +41,27 @@ export async function fetchDashboardKpis(
   );
 }
 
-export async function fetchProximosAgendamentos(): Promise<
-  DashboardProximoAgendamento[]
-> {
+export interface FetchProximosAgendamentosOptions {
+  /** Filtra por técnico (obrigatório no dashboard do técnico). */
+  tecnicoId?: number;
+  /** Limite de itens após ordenação (default 8). */
+  limit?: number;
+}
+
+export async function fetchProximosAgendamentos(
+  options: FetchProximosAgendamentosOptions = {},
+): Promise<DashboardProximoAgendamento[]> {
+  const { tecnicoId, limit = 8 } = options;
   const today = new Date();
   const dataInicio = toDateInput(today);
   const dataFim = toDateInput(addDays(today, 30));
   const now = Date.now();
 
-  const eventos = await fetchCalendarioEventos({ dataInicio, dataFim });
+  const eventos = await fetchCalendarioEventos({
+    dataInicio,
+    dataFim,
+    tecnicoId,
+  });
 
   return eventos
     .filter(
@@ -61,9 +73,11 @@ export async function fetchProximosAgendamentos(): Promise<
       (a, b) =>
         new Date(a.start).getTime() - new Date(b.start).getTime(),
     )
+    .slice(0, limit)
     .map((evento) => ({
       relatorioId: evento.id,
       clienteNome: evento.cliente.nomeFantasia,
       dataVisita: evento.start,
+      tecnicos: evento.tecnicos.map((tecnico) => tecnico.nome),
     }));
 }

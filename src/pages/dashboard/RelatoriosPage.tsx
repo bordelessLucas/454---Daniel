@@ -42,6 +42,14 @@ import {
 import { toast } from "sonner";
 import { useAuth } from "@/lib/auth-context";
 import { userCanEditRelatorio } from "@/lib/relatorio-permissions";
+import {
+  getRelatorioAgendaStatus,
+  isRelatorioConteudoEditavel,
+  RELATORIO_AGENDA_STATUS_LABELS,
+} from "@/lib/relatorio-status";
+import type { RelatorioAgendaStatus } from "@/lib/types";
+import { RelatorioStatusBadge } from "@/components/relatorio-status-badge";
+import { cn } from "@/lib/utils";
 
 export default function RelatoriosPage() {
   const navigate = useNavigate();
@@ -58,10 +66,11 @@ export default function RelatoriosPage() {
     dateEnd: "",
     createdById: "all",
     printed: "all",
+    agendaStatus: "all",
   });
   const [searchCliente, setSearchCliente] = useState("");
   const [searchData, setSearchData] = useState("");
-  const [searchStatus, setSearchStatus] = useState<
+  const [searchPrinted, setSearchPrinted] = useState<
     "all" | "printed" | "not_printed"
   >("all");
 
@@ -74,6 +83,8 @@ export default function RelatoriosPage() {
     dataInicio: filters.dateStart || undefined,
     dataFim: filters.dateEnd || undefined,
     impresso: filters.printed !== "all" ? filters.printed === "yes" : undefined,
+    status:
+      filters.agendaStatus !== "all" ? filters.agendaStatus : undefined,
   };
 
   const [refetchTrigger, setRefetchTrigger] = useState(0);
@@ -119,13 +130,13 @@ export default function RelatoriosPage() {
       const dataMatch = searchData === "" || reportDate === searchData;
 
       const statusMatch =
-        searchStatus === "all" ||
-        (searchStatus === "printed" && report.impresso) ||
-        (searchStatus === "not_printed" && !report.impresso);
+        searchPrinted === "all" ||
+        (searchPrinted === "printed" && report.impresso) ||
+        (searchPrinted === "not_printed" && !report.impresso);
 
       return clienteMatch && dataMatch && statusMatch;
     });
-  }, [relatorios, searchCliente, searchData, searchStatus]);
+  }, [relatorios, searchCliente, searchData, searchPrinted]);
 
   async function handleDelete() {
     if (!deleteId) return;
@@ -152,8 +163,12 @@ export default function RelatoriosPage() {
           ? "Relatorio marcado como impresso."
           : "Relatorio desmarcado como impresso.",
       );
-    } catch {
-      toast.error("Erro ao atualizar relatorio.");
+    } catch (error) {
+      toast.error(
+        error instanceof ApiError
+          ? error.message
+          : "Erro ao atualizar relatorio.",
+      );
     }
   }
 
@@ -229,10 +244,23 @@ export default function RelatoriosPage() {
     filters.dateStart !== "" ||
     filters.dateEnd !== "" ||
     filters.createdById !== "all" ||
-    filters.printed !== "all";
+    filters.printed !== "all" ||
+    filters.agendaStatus !== "all";
 
   const hasSearchFilters =
-    searchCliente.trim() !== "" || searchData !== "" || searchStatus !== "all";
+    searchCliente.trim() !== "" ||
+    searchData !== "" ||
+    searchPrinted !== "all";
+
+  const agendaStatusChips: Array<{
+    value: "all" | RelatorioAgendaStatus;
+    label: string;
+  }> = [
+    { value: "all", label: "Todos" },
+    { value: "AGENDADO", label: RELATORIO_AGENDA_STATUS_LABELS.AGENDADO },
+    { value: "FINALIZADO", label: RELATORIO_AGENDA_STATUS_LABELS.FINALIZADO },
+    { value: "CANCELADO", label: RELATORIO_AGENDA_STATUS_LABELS.CANCELADO },
+  ];
 
   return (
     <>
@@ -266,6 +294,26 @@ export default function RelatoriosPage() {
         </Button>
       </div>
 
+      <div className="mb-4 flex flex-wrap gap-2">
+        {agendaStatusChips.map((chip) => (
+          <Button
+            key={chip.value}
+            type="button"
+            size="sm"
+            variant={filters.agendaStatus === chip.value ? "default" : "outline"}
+            className={cn(
+              "rounded-full",
+              filters.agendaStatus === chip.value ? "" : "bg-transparent",
+            )}
+            onClick={() =>
+              setFilters((prev) => ({ ...prev, agendaStatus: chip.value }))
+            }
+          >
+            {chip.label}
+          </Button>
+        ))}
+      </div>
+
       <div className="mb-4 grid gap-3 rounded-2xl border border-border p-4 md:grid-cols-3">
         <div className="relative">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -282,16 +330,16 @@ export default function RelatoriosPage() {
           onChange={(e) => setSearchData(e.target.value)}
         />
         <Select
-          value={searchStatus}
+          value={searchPrinted}
           onChange={(e) =>
-            setSearchStatus(
+            setSearchPrinted(
               e.target.value as "all" | "printed" | "not_printed",
             )
           }
         >
-          <option value="all">Todos os status</option>
+          <option value="all">Impressão: todos</option>
           <option value="printed">Impresso</option>
-          <option value="not_printed">Nao impresso</option>
+          <option value="not_printed">Não impresso</option>
         </Select>
       </div>
 
@@ -327,6 +375,7 @@ export default function RelatoriosPage() {
                   <TableHead className="min-w-[180px]">Relatório</TableHead>
                   <TableHead>Data</TableHead>
                   <TableHead>Cliente</TableHead>
+                  <TableHead>Status</TableHead>
                   <TableHead>Criado por</TableHead>
                   <TableHead>Contato</TableHead>
                   <TableHead className="w-28">Impresso</TableHead>
@@ -334,7 +383,13 @@ export default function RelatoriosPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredRelatorios.map((report) => (
+                {filteredRelatorios.map((report) => {
+                  const agendaStatus = getRelatorioAgendaStatus(report);
+                  const canEdit =
+                    userCanEditRelatorio(user, report.criadoPorId) &&
+                    isRelatorioConteudoEditavel(agendaStatus);
+
+                  return (
                   <TableRow key={report.id}>
                     <TableCell className="text-sm font-medium">
                       {formatRelatorioTitulo(report.id)}
@@ -345,11 +400,15 @@ export default function RelatoriosPage() {
                     <TableCell className="font-medium">
                       {report.cliente.nomeFantasia}
                     </TableCell>
+                    <TableCell>
+                      <RelatorioStatusBadge status={agendaStatus} />
+                    </TableCell>
                     <TableCell>{report.criadoPor.nome}</TableCell>
                     <TableCell>{report.contato?.nome || "-"}</TableCell>
                     <TableCell>
                       <Switch
                         checked={report.impresso}
+                        disabled={agendaStatus === "CANCELADO"}
                         onCheckedChange={() =>
                           handleTogglePrinted(report.id, report.impresso)
                         }
@@ -369,7 +428,7 @@ export default function RelatoriosPage() {
                         >
                           <Eye className="h-4 w-4" />
                         </Button>
-                        {userCanEditRelatorio(user, report.criadoPorId) ? (
+                        {canEdit ? (
                           <Button
                             variant="ghost"
                             size="icon"
@@ -425,7 +484,8 @@ export default function RelatoriosPage() {
                       </div>
                     </TableCell>
                   </TableRow>
-                ))}
+                  );
+                })}
               </TableBody>
             </Table>
           </div>

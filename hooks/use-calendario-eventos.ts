@@ -6,7 +6,7 @@ import {
 } from "@/lib/calendario-service";
 import type { CalendarioEvento, RelatorioAgendaStatus } from "@/lib/types";
 
-const STATUS_COLORS: Record<
+export const CALENDARIO_STATUS_COLORS: Record<
   RelatorioAgendaStatus,
   { backgroundColor: string; borderColor: string }
 > = {
@@ -15,9 +15,9 @@ const STATUS_COLORS: Record<
   CANCELADO: { backgroundColor: "#ef4444", borderColor: "#dc2626" },
 };
 
-function mapEventoToFullCalendar(evento: CalendarioEvento): EventInput {
+export function mapEventoToFullCalendar(evento: CalendarioEvento): EventInput {
   const colors =
-    STATUS_COLORS[evento.status] ?? STATUS_COLORS.AGENDADO;
+    CALENDARIO_STATUS_COLORS[evento.status] ?? CALENDARIO_STATUS_COLORS.AGENDADO;
   const title =
     evento.title?.trim() || evento.cliente.nomeFantasia || "Visita";
 

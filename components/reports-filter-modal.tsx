@@ -3,6 +3,10 @@ import { Button } from "./Button";
 import { Label } from "./Label";
 import { Select } from "./Select";
 import { Input } from "./Input";
+import type { RelatorioAgendaStatus } from "@/lib/types";
+import { RELATORIO_AGENDA_STATUS_LABELS } from "@/lib/relatorio-status";
+
+export type ReportsAgendaStatusFilter = "all" | RelatorioAgendaStatus;
 
 export interface ReportsFilters {
   clientId: string;
@@ -10,6 +14,7 @@ export interface ReportsFilters {
   dateEnd: string;
   createdById: string;
   printed: "all" | "yes" | "no";
+  agendaStatus: ReportsAgendaStatusFilter;
 }
 
 interface ReportsFilterModalProps {
@@ -36,6 +41,7 @@ export function ReportsFilterModal({
       dateEnd: "",
       createdById: "all",
       printed: "all",
+      agendaStatus: "all",
     });
   };
 
@@ -107,6 +113,29 @@ export function ReportsFilterModal({
             {users.map((user) => (
               <option key={user.id} value={user.id}>
                 {user.name}
+              </option>
+            ))}
+          </Select>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="filter-agenda-status">Status da visita</Label>
+          <Select
+            id="filter-agenda-status"
+            value={filters.agendaStatus}
+            onChange={(e) =>
+              onFiltersChange({
+                ...filters,
+                agendaStatus: e.target.value as ReportsAgendaStatusFilter,
+              })
+            }
+          >
+            <option value="all">Todos</option>
+            {(
+              Object.keys(RELATORIO_AGENDA_STATUS_LABELS) as RelatorioAgendaStatus[]
+            ).map((status) => (
+              <option key={status} value={status}>
+                {RELATORIO_AGENDA_STATUS_LABELS[status]}
               </option>
             ))}
           </Select>

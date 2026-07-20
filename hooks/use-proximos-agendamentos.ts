@@ -2,7 +2,19 @@ import { useEffect, useState } from "react";
 import { fetchProximosAgendamentos } from "@/lib/dashboard-service";
 import type { DashboardProximoAgendamento } from "@/lib/types";
 
-export function useProximosAgendamentos(enabled = true) {
+interface UseProximosAgendamentosOptions {
+  enabled?: boolean;
+  tecnicoId?: number;
+  limit?: number;
+}
+
+export function useProximosAgendamentos(
+  options: UseProximosAgendamentosOptions | boolean = true,
+) {
+  const normalized =
+    typeof options === "boolean" ? { enabled: options } : options;
+  const { enabled = true, tecnicoId, limit } = normalized;
+
   const [items, setItems] = useState<DashboardProximoAgendamento[]>([]);
   const [isLoading, setIsLoading] = useState(enabled);
   const [error, setError] = useState<string | null>(null);
@@ -22,7 +34,7 @@ export function useProximosAgendamentos(enabled = true) {
       setError(null);
 
       try {
-        const response = await fetchProximosAgendamentos();
+        const response = await fetchProximosAgendamentos({ tecnicoId, limit });
         if (!cancelled) {
           setItems(response);
         }
@@ -47,7 +59,7 @@ export function useProximosAgendamentos(enabled = true) {
     return () => {
       cancelled = true;
     };
-  }, [enabled]);
+  }, [enabled, tecnicoId, limit]);
 
   return { items, isLoading, error };
 }

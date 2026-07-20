@@ -1,8 +1,19 @@
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/lib/auth-context";
 import { userCanEditRelatorio } from "@/lib/relatorio-permissions";
-import type { CalendarioEvento, RelatorioAgendaStatus } from "@/lib/types";
-import { Badge, Button } from "@/components/index";
+import {
+  getRelatorioAgendaStatus,
+  isRelatorioConteudoEditavel,
+} from "@/lib/relatorio-status";
+import type {
+  AlterarStatusRelatorioResponse,
+  CalendarioEvento,
+  RelatorioAgendaStatus,
+} from "@/lib/types";
+import { Button } from "@/components/index";
+import { RelatorioStatusBadge } from "@/components/relatorio-status-badge";
+import { RelatorioStatusActions } from "@/components/relatorio-status-actions";
 import {
   Dialog,
   DialogBody,
@@ -12,18 +23,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-
-const STATUS_LABELS: Record<RelatorioAgendaStatus, string> = {
-  AGENDADO: "Agendado",
-  FINALIZADO: "Finalizado",
-  CANCELADO: "Cancelado",
-};
-
-const STATUS_BADGE_CLASS: Record<RelatorioAgendaStatus, string> = {
-  AGENDADO: "border-transparent bg-blue-600 text-white",
-  FINALIZADO: "border-transparent bg-emerald-600 text-white",
-  CANCELADO: "border-transparent bg-red-600 text-white",
-};
 
 function formatDateTime(iso: string): string {
   const date = new Date(iso);
@@ -43,28 +42,56 @@ interface EventoDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   evento: CalendarioEvento | null;
+  onStatusChanged?: (response: AlterarStatusRelatorioResponse) => void;
 }
 
 export function EventoDialog({
   open,
   onOpenChange,
   evento,
+  onStatusChanged,
 }: EventoDialogProps) {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const [localStatus, setLocalStatus] = useState<RelatorioAgendaStatus | null>(
+    null,
+  );
+
+  useEffect(() => {
+    setLocalStatus(null);
+  }, [evento?.id]);
 
   if (!evento) {
     return null;
   }
 
-  const canEdit = userCanEditRelatorio(user, evento.criadoPorId);
+  const status = localStatus ?? evento.status;
+  const canManageStatus = userCanEditRelatorio(user, evento.criadoPorId);
+  const canEditContent =
+    canManageStatus && isRelatorioConteudoEditavel(status);
   const tecnicosLabel =
     evento.tecnicos.length > 0
       ? evento.tecnicos.map((t) => t.nome).join(", ")
       : "—";
 
+  function handleOpenChange(nextOpen: boolean) {
+    if (!nextOpen) {
+      setLocalStatus(null);
+    }
+    onOpenChange(nextOpen);
+  }
+
+  function handleStatusChanged(response: AlterarStatusRelatorioResponse) {
+    const nextStatus =
+      response.statusAtual ??
+      response.status ??
+      getRelatorioAgendaStatus(response);
+    setLocalStatus(nextStatus);
+    onStatusChanged?.(response);
+  }
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogContent>
         <DialogHeader>
           <DialogTitle>{evento.cliente.nomeFantasia}</DialogTitle>
@@ -90,9 +117,7 @@ export function EventoDialog({
             <div className="flex items-center justify-between gap-4">
               <dt className="text-muted-foreground">Status</dt>
               <dd>
-                <Badge className={STATUS_BADGE_CLASS[evento.status]}>
-                  {STATUS_LABELS[evento.status]}
-                </Badge>
+                <RelatorioStatusBadge status={status} />
               </dd>
             </div>
             {evento.modalidadeServico ? (
@@ -102,22 +127,40 @@ export function EventoDialog({
               </div>
             ) : null}
           </dl>
+
+          {canManageStatus ? (
+            <div className="mt-6 border-t border-border pt-4">
+              <p className="mb-3 text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                Workflow
+              </p>
+              <RelatorioStatusActions
+                relatorioId={evento.id}
+                status={status}
+                onStatusChanged={handleStatusChanged}
+              />
+              {status === "CANCELADO" ? (
+                <p className="mt-3 text-xs text-muted-foreground">
+                  Relatório cancelado — reabra para editar o conteúdo.
+                </p>
+              ) : null}
+            </div>
+          ) : null}
         </DialogBody>
 
         <DialogFooter className="gap-2 sm:gap-3">
           <Button
             type="button"
             variant="outline"
-            onClick={() => onOpenChange(false)}
+            onClick={() => handleOpenChange(false)}
           >
             Fechar
           </Button>
-          {canEdit ? (
+          {canEditContent ? (
             <Button
               type="button"
               variant="outline"
               onClick={() => {
-                onOpenChange(false);
+                handleOpenChange(false);
                 navigate(`/dashboard/relatorios/${evento.id}/editar`);
               }}
             >
@@ -127,7 +170,7 @@ export function EventoDialog({
           <Button
             type="button"
             onClick={() => {
-              onOpenChange(false);
+              handleOpenChange(false);
               navigate(`/dashboard/relatorios/${evento.id}`);
             }}
           >

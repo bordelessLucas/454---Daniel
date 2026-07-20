@@ -7,6 +7,10 @@ import { useChecklists } from "@/hooks/use-checklists";
 import { useRelatorio } from "@/hooks/use-relatorio";
 import { useAuth } from "@/lib/auth-context";
 import { userCanEditRelatorio } from "@/lib/relatorio-permissions";
+import {
+  getRelatorioAgendaStatus,
+  isRelatorioConteudoEditavel,
+} from "@/lib/relatorio-status";
 import { formatRelatorioTitulo } from "@/lib/relatorio-naming";
 import { sanitizeTipTapHtmlForSave } from "@/lib/sanitize-tip-tap-html";
 import { apiRequest } from "@/lib/api-client";
@@ -126,12 +130,22 @@ export function ReportForm({ reportId }: ReportFormProps) {
     if (!isEditing || loadingRelatorio || !relatorio || !user) {
       return;
     }
-    if (userCanEditRelatorio(user, relatorio.criadoPorId)) {
+    if (
+      userCanEditRelatorio(user, relatorio.criadoPorId) &&
+      isRelatorioConteudoEditavel(getRelatorioAgendaStatus(relatorio))
+    ) {
       return;
     }
     if (!editAccessDeniedToast.current) {
       editAccessDeniedToast.current = true;
-      toast.error("Você só pode editar relatórios criados por você.");
+      const cancelado =
+        getRelatorioAgendaStatus(relatorio) === "CANCELADO" &&
+        userCanEditRelatorio(user, relatorio.criadoPorId);
+      toast.error(
+        cancelado
+          ? "Relatório cancelado não pode ser editado. Reabra o status antes."
+          : "Você só pode editar relatórios criados por você.",
+      );
     }
     navigate(`/dashboard/relatorios/${relatorio.id}`, { replace: true });
   }, [isEditing, loadingRelatorio, relatorio, user, navigate]);
@@ -484,7 +498,8 @@ export function ReportForm({ reportId }: ReportFormProps) {
     !loadingRelatorio &&
     relatorio &&
     user &&
-    !userCanEditRelatorio(user, relatorio.criadoPorId)
+    (!userCanEditRelatorio(user, relatorio.criadoPorId) ||
+      !isRelatorioConteudoEditavel(getRelatorioAgendaStatus(relatorio)))
   ) {
     return (
       <div className="flex items-center justify-center py-16">

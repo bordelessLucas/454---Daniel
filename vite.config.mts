@@ -63,6 +63,9 @@ export default defineConfig({
         ],
       },
       workbox: {
+        // Evita a minificação do SW via terser, que trava o build no Vite 6
+        // (bug de concorrência: "Unfinished hook action(s) on exit: (terser) renderChunk").
+        mode: "development",
         globPatterns: ["**/*.{js,css,html,ico,png,svg,woff,woff2,webp}"],
         navigateFallback: "/index.html",
         navigateFallbackDenylist: [/^\/api/],
@@ -99,9 +102,6 @@ export default defineConfig({
       },
     }),
   ],
-  optimizeDeps: {
-    include: ["@react-pdf/renderer"],
-  },
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "."),

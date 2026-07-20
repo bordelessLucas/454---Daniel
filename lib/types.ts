@@ -288,6 +288,9 @@ export interface ApiReport {
   setores: ReportSetor[];
   horarios: ReportHorario[];
   checklists: ReportChecklist[];
+  /** Status do workflow de agenda (preferencial no backend atual). */
+  status?: RelatorioAgendaStatus;
+  /** Alias legado / calendário — preferir `status` quando ambos existirem. */
   statusAgenda?: RelatorioAgendaStatus;
   horaVisita?: string | null;
 }
@@ -391,6 +394,17 @@ export interface AgendamentoPayload {
 export interface ReagendarDataVisitaPayload {
   dataVisita: string;
   horaVisita?: string;
+}
+
+export interface AlterarStatusRelatorioPayload {
+  status: RelatorioAgendaStatus;
+}
+
+export interface AlterarStatusRelatorioResponse extends ApiReport {
+  status: RelatorioAgendaStatus;
+  statusAnterior: RelatorioAgendaStatus;
+  statusAtual: RelatorioAgendaStatus;
+  transicoesPermitidas: RelatorioAgendaStatus[];
 }
 
 // Activity logs (auditoria)
@@ -514,6 +528,8 @@ export interface DashboardProximoAgendamento {
   relatorioId: number;
   clienteNome: string;
   dataVisita: string;
+  /** Nomes dos técnicos vinculados à visita. */
+  tecnicos: string[];
 }
 
 export interface DashboardAdminKpis {

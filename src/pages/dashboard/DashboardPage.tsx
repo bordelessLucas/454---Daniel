@@ -47,10 +47,16 @@ export default function DashboardPage() {
   );
 
   const { data, isLoading, error } = useDashboardKpis(appliedFilters);
+
+  const proximosTecnicoId = isAdmin ? appliedFilters?.tecnicoId : user?.id;
+
   const {
     items: proximosAgendamentos,
     isLoading: isLoadingAgendamentos,
-  } = useProximosAgendamentos(!isAdmin);
+  } = useProximosAgendamentos({
+    enabled: Boolean(user),
+    tecnicoId: proximosTecnicoId,
+  });
 
   useEffect(() => {
     const fromUrl = draftFromSearchParams(searchParams);
@@ -109,7 +115,12 @@ export default function DashboardPage() {
           description={error}
         />
       ) : showAdminKpis ? (
-        <AdminDashboardKpis data={adminData} isLoading={isLoading} />
+        <AdminDashboardKpis
+          data={adminData}
+          proximosAgendamentos={proximosAgendamentos}
+          isLoading={isLoading}
+          isLoadingAgendamentos={isLoadingAgendamentos}
+        />
       ) : (
         <TecnicoDashboardKpis
           data={tecnicoData}

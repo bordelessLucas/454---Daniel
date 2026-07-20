@@ -4,6 +4,7 @@ import type {
   DateSelectArg,
   EventClickArg,
   EventDropArg,
+  EventInput,
   EventSourceFunc,
 } from "@fullcalendar/core";
 import dayGridPlugin from "@fullcalendar/daygrid";
@@ -12,11 +13,15 @@ import interactionPlugin from "@fullcalendar/interaction";
 import listPlugin from "@fullcalendar/list";
 import ptBrLocale from "@fullcalendar/core/locales/pt-br";
 import { toast } from "sonner";
-import { useCalendarioEventos } from "@/hooks/use-calendario-eventos";
+import {
+  mapEventoToFullCalendar,
+  useCalendarioEventos,
+} from "@/hooks/use-calendario-eventos";
 import { useReagendarRelatorio } from "@/hooks/use-reagendar-relatorio";
 import { toApiDateOnly } from "@/lib/relatorio-datetime";
+import { getRelatorioAgendaStatus } from "@/lib/relatorio-status";
 import { useIsMobile } from "@/hooks/use-mobile";
-import type { CalendarioEvento } from "@/lib/types";
+import type { CalendarioEvento, RelatorioAgendaStatus } from "@/lib/types";
 import { EventoDialog } from "@/components/agenda/EventoDialog";
 import { NovoAgendamentoDialog } from "@/components/agenda/NovoAgendamentoDialog";
 import "@/src/styles/calendar-overrides.css";
@@ -29,6 +34,36 @@ interface VisitCalendarProps {
   onAgendamentoCreated?: () => void;
 }
 
+function applyStatusOverrides(
+  events: EventInput[],
+  overrides: Record<number, RelatorioAgendaStatus>,
+): EventInput[] {
+  if (Object.keys(overrides).length === 0) {
+    return events;
+  }
+
+  return events.map((eventInput) => {
+    const id = Number(eventInput.id);
+    const override = overrides[id];
+    if (!override) {
+      return eventInput;
+    }
+
+    const evento = eventInput.extendedProps?.evento as
+      | CalendarioEvento
+      | undefined;
+    if (!evento) {
+      return eventInput;
+    }
+
+    if (evento.status === override) {
+      return eventInput;
+    }
+
+    return mapEventoToFullCalendar({ ...evento, status: override });
+  });
+}
+
 export function VisitCalendar({
   tecnicoId,
   refreshKey = 0,
@@ -37,6 +72,7 @@ export function VisitCalendar({
   onAgendamentoCreated,
 }: VisitCalendarProps) {
   const calendarRef = useRef<FullCalendar>(null);
+  const statusOverridesRef = useRef<Record<number, RelatorioAgendaStatus>>({});
   const isMobile = useIsMobile();
   const { fetchEvents } = useCalendarioEventos(tecnicoId);
   const { reagendar } = useReagendarRelatorio();
@@ -67,7 +103,22 @@ export function VisitCalendar({
       setLoadError(null);
       try {
         const events = await fetchEvents(fetchInfo.startStr, fetchInfo.endStr);
-        successCallback(events);
+
+        // Limpa overrides só quando o servidor já refletiu o status.
+        for (const eventInput of events) {
+          const id = Number(eventInput.id);
+          const override = statusOverridesRef.current[id];
+          const evento = eventInput.extendedProps?.evento as
+            | CalendarioEvento
+            | undefined;
+          if (override && evento?.status === override) {
+            delete statusOverridesRef.current[id];
+          }
+        }
+
+        successCallback(
+          applyStatusOverrides(events, statusOverridesRef.current),
+        );
       } catch (error) {
         const message =
           error instanceof Error
@@ -90,7 +141,8 @@ export function VisitCalendar({
     if (!evento) {
       return;
     }
-    setSelectedEvento(evento);
+    const override = statusOverridesRef.current[evento.id];
+    setSelectedEvento(override ? { ...evento, status: override } : evento);
     setEventoDialogOpen(true);
   }
 
@@ -228,6 +280,24 @@ export function VisitCalendar({
         open={eventoDialogOpen}
         onOpenChange={setEventoDialogOpen}
         evento={selectedEvento}
+        onStatusChanged={(response) => {
+          if (!selectedEvento) {
+            refetchCalendar();
+            return;
+          }
+
+          const nextStatus =
+            response.statusAtual ??
+            response.status ??
+            getRelatorioAgendaStatus(response);
+
+          statusOverridesRef.current[selectedEvento.id] = nextStatus;
+          setSelectedEvento({
+            ...selectedEvento,
+            status: nextStatus,
+          });
+          refetchCalendar();
+        }}
       />
 
       <NovoAgendamentoDialog

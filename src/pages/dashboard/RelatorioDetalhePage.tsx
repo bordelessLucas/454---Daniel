@@ -14,17 +14,23 @@ import { RichTextReadonly } from "@/components/RichTextReadonly";
 import { useAuth } from "@/lib/auth-context";
 import { userCanEditRelatorio } from "@/lib/relatorio-permissions";
 import {
+  getRelatorioAgendaStatus,
+  isRelatorioConteudoEditavel,
+} from "@/lib/relatorio-status";
+import {
   formatDataVisitaBr,
   resolveHoraChegadaHhmm,
   resolveHoraSaidaHhmm,
 } from "@/lib/relatorio-datetime";
 import { RelatorioAuditLogSection } from "@/components/relatorio-audit-log-section";
+import { RelatorioStatusBadge } from "@/components/relatorio-status-badge";
+import { RelatorioStatusActions } from "@/components/relatorio-status-actions";
 
 export default function RelatorioDetalhePage() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { relatorio: report, loading, error } = useRelatorio(id);
+  const { relatorio: report, setRelatorio, loading, error } = useRelatorio(id);
   const { checklists } = useChecklists();
   const [downloadingPdf, setDownloadingPdf] = useState(false);
   const [sendingEmail, setSendingEmail] = useState(false);
@@ -138,10 +144,15 @@ export default function RelatorioDetalhePage() {
     }
   }
 
+  const agendaStatus = getRelatorioAgendaStatus(report);
+  const canManageStatus = userCanEditRelatorio(user, report.criadoPorId);
+  const canEditContent =
+    canManageStatus && isRelatorioConteudoEditavel(agendaStatus);
+
   return (
     <div className="mx-auto max-w-4xl">
-      <div className="mb-6 flex items-center justify-between">
-        <div className="flex items-center gap-3">
+      <div className="mb-6 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex flex-wrap items-center gap-3">
           <Button
             variant="ghost"
             size="icon"
@@ -153,12 +164,13 @@ export default function RelatorioDetalhePage() {
           <h1 className="text-2xl font-semibold tracking-tight text-foreground">
             {formatRelatorioTitulo(report.id)}
           </h1>
+          <RelatorioStatusBadge status={agendaStatus} />
           <Badge variant={isPrinted ? "default" : "secondary"}>
             {isPrinted ? "Impresso" : "Não Impresso"}
           </Badge>
         </div>
-        <div className="flex gap-2">
-          {userCanEditRelatorio(user, report.criadoPorId) ? (
+        <div className="flex flex-wrap gap-2">
+          {canEditContent ? (
             <Button
               variant="outline"
               size="sm"
@@ -198,6 +210,33 @@ export default function RelatorioDetalhePage() {
           </Button>
         </div>
       </div>
+
+      {canManageStatus ? (
+        <section className="mb-6 rounded-2xl border border-border p-4">
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+            <h2 className="text-sm font-medium text-foreground">
+              Workflow do status
+            </h2>
+            {agendaStatus === "CANCELADO" ? (
+              <p className="text-xs text-muted-foreground">
+                Reabra o relatório para liberar a edição do conteúdo.
+              </p>
+            ) : null}
+          </div>
+          <RelatorioStatusActions
+            relatorioId={report.id}
+            status={agendaStatus}
+            onStatusChanged={(response) => {
+              setRelatorio({
+                ...report,
+                ...response,
+                status: response.statusAtual ?? response.status,
+                statusAgenda: response.statusAtual ?? response.status,
+              });
+            }}
+          />
+        </section>
+      ) : null}
 
       <div className="flex flex-col gap-6">
         <section className="rounded-2xl border border-border p-6">
