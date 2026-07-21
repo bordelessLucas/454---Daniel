@@ -21,6 +21,7 @@ export interface CreateUserPayload {
   email: string;
   role: UserRole;
   clienteId?: number;
+  unidadeId?: number;
 }
 
 export type User = AuthUser;
@@ -445,7 +446,7 @@ export interface ActivityLogUsuario {
 
 export interface ActivityLog {
   id: number;
-  usuarioId: number;
+  usuarioId: number | null;
   acao: ActivityAction;
   entidade: ActivityEntity;
   entidadeId: number | null;
@@ -453,7 +454,7 @@ export interface ActivityLog {
   metadata: ActivityLogMetadata | null;
   ipAddress: string | null;
   timestamp: string;
-  usuario: ActivityLogUsuario;
+  usuario: ActivityLogUsuario | null;
 }
 
 export interface ActivityLogsPagination {

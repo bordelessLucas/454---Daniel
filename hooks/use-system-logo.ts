@@ -1,8 +1,12 @@
 import { useCallback, useEffect, useState } from "react";
+import { useTheme } from "next-themes";
 import {
   hasConfiguredLogo,
   resolveLogoDisplaySrc,
   resolveLogoDarkDisplaySrc,
+  resolveThemeAwareLogoSrc,
+  resolveDefaultLogoForMode,
+  resolveColorMode,
   type LogoConfigSource,
 } from "@/lib/configuracao-logo";
 import { getConfiguracoesPdf } from "@/lib/configuracoes-service";
@@ -18,6 +22,8 @@ export function notifySystemLogoUpdated(config?: LogoConfigSource | null): void 
 }
 
 export function useSystemLogo() {
+  const { resolvedTheme } = useTheme();
+  const [isThemeReady, setIsThemeReady] = useState(false);
   const [logoConfig, setLogoConfig] = useState<LogoConfigSource | null>(null);
   const [hasCustomLogo, setHasCustomLogo] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -25,6 +31,10 @@ export function useSystemLogo() {
 
   const reload = useCallback(() => {
     setVersion(Date.now());
+  }, []);
+
+  useEffect(() => {
+    setIsThemeReady(true);
   }, []);
 
   useEffect(() => {
@@ -69,8 +79,25 @@ export function useSystemLogo() {
     return () => window.removeEventListener(LOGO_UPDATED_EVENT, onUpdate);
   }, [reload]);
 
+  const colorMode = resolveColorMode(resolvedTheme, isThemeReady);
   const logoSrc = resolveLogoDisplaySrc(logoConfig, version);
   const logoDarkSrc = resolveLogoDarkDisplaySrc(logoConfig, version);
+  const activeLogoSrc = resolveThemeAwareLogoSrc(logoConfig, resolvedTheme, {
+    isMounted: isThemeReady,
+    cacheBuster: version,
+  });
+  const fallbackLogoSrc = resolveDefaultLogoForMode(colorMode);
 
-  return { logoSrc, logoDarkSrc, hasCustomLogo, loading, reload, logoConfig };
+  return {
+    logoSrc,
+    logoDarkSrc,
+    activeLogoSrc,
+    fallbackLogoSrc,
+    colorMode,
+    isThemeReady,
+    hasCustomLogo,
+    loading,
+    reload,
+    logoConfig,
+  };
 }

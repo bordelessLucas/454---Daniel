@@ -137,20 +137,30 @@ export function ActivityLogTable({ logs }: ActivityLogTableProps) {
                   </TableCell>
                   <TableCell>
                     <div className="min-w-[8rem]">
-                      <p className="font-medium text-foreground">
-                        {log.usuario.nome}
-                      </p>
-                      <p className="text-xs text-muted-foreground">
-                        @{log.usuario.username}
-                      </p>
+                      {log.usuario ? (
+                        <>
+                          <p className="font-medium text-foreground">
+                            {log.usuario.nome}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            @{log.usuario.username}
+                          </p>
+                        </>
+                      ) : (
+                        <p className="text-sm text-muted-foreground">Sistema</p>
+                      )}
                     </div>
                   </TableCell>
                   <TableCell>
-                    <Badge
-                      className={USER_ROLE_BADGE_CLASS[log.usuario.role]}
-                    >
-                      {USER_ROLE_LABELS[log.usuario.role]}
-                    </Badge>
+                    {log.usuario ? (
+                      <Badge
+                        className={USER_ROLE_BADGE_CLASS[log.usuario.role]}
+                      >
+                        {USER_ROLE_LABELS[log.usuario.role]}
+                      </Badge>
+                    ) : (
+                      <span className="text-sm text-muted-foreground">—</span>
+                    )}
                   </TableCell>
                   <TableCell>
                     <Badge className={ACTIVITY_ACTION_BADGE_CLASS[log.acao]}>

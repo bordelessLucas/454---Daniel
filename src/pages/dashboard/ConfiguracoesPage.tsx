@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from "react";
 import { ApiError } from "@/lib/api-client";
 import {
   hasConfiguredLogo,
+  resolveLogoDarkDisplaySrc,
   resolveLogoDisplaySrc,
 } from "@/lib/configuracao-logo";
 import {
@@ -186,13 +187,13 @@ export default function ConfiguracoesPage() {
       const updated = await uploadConfiguracaoLogoDark(file);
       const previewVersion = Date.now();
       setLocalPreviewDarkSrc(
-        resolveLogoDisplaySrc(
+        resolveLogoDarkDisplaySrc(
           {
-            logoDataUrl: updated.logoDarkDataUrl,
-            logoUrl: updated.logoDarkUrl,
+            logoDarkDataUrl: updated.logoDarkDataUrl,
+            logoDarkUrl: updated.logoDarkUrl,
           },
           previewVersion,
-        ),
+        ) ?? "/LogoBlack.png",
       );
       setHasLogoDark(Boolean(updated.logoDarkUrl || updated.logoDarkDataUrl));
       notifySystemLogoUpdated(updated);
@@ -225,29 +226,29 @@ export default function ConfiguracoesPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
               <ImageIcon className="h-4 w-4" />
-              Logo do Sistema
+              Logo do Sistema (Tema Claro)
             </CardTitle>
           </CardHeader>
           <CardContent className="flex flex-col gap-4">
             <p className="text-sm text-muted-foreground">
-              Exibida na barra lateral. Ao enviar uma nova logo, o sistema também
-              ajusta automaticamente as cores da interface para combinar com a
-              marca. Nos PDFs gerados no servidor, o backend usa o arquivo salvo
-              em Configuracoes. Formatos de imagem, ate 2 MB.
+              Usada no tema claro (fundo claro). Preferencialmente uma logo
+              escura/colorida com bom contraste. Ao enviar, o sistema também
+              ajusta as cores da interface. Nos PDFs, o backend usa este arquivo.
+              Formatos de imagem, ate 2 MB.
             </p>
             <p className="text-xs font-medium text-foreground">
-              {hasLogo ? "Logo configurada" : "Nenhuma logo configurada"}
+              {hasLogo ? "Logo clara configurada" : "Nenhuma logo clara configurada"}
             </p>
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-              <div className="flex h-24 w-40 shrink-0 items-center justify-center rounded-xl border border-border bg-muted/50 p-3">
+              <div className="flex h-24 w-40 shrink-0 items-center justify-center rounded-xl border border-border bg-white p-3">
                 <img
                   src={displayLogoSrc}
-                  alt="Logo atual do sistema"
+                  alt="Logo do tema claro"
                   className="max-h-full max-w-full object-contain"
                   onError={(event) => {
                     const img = event.currentTarget;
-                    if (!img.src.endsWith("/LogoIcon.png")) {
-                      img.src = "/LogoIcon.png";
+                    if (!img.src.includes("/logoWhite.png")) {
+                      img.src = "/logoWhite.png";
                     }
                   }}
                 />
@@ -291,29 +292,29 @@ export default function ConfiguracoesPage() {
           <CardHeader>
             <CardTitle className="flex items-center gap-2 text-base">
               <ImageIcon className="h-4 w-4" />
-              Logo do Sistema (Modo Escuro)
+              Logo do Sistema (Tema Escuro)
             </CardTitle>
           </CardHeader>
           <CardContent className="flex flex-col gap-4">
             <p className="text-sm text-muted-foreground">
-              Exibida na barra lateral quando o tema escuro estiver ativo. Caso
-              não configurada, a logo principal será utilizada. Formatos de
-              imagem, até 2 MB.
+              Usada no tema escuro (fundo escuro). Preferencialmente uma logo
+              clara/branca com bom contraste. Se não configurada, usa a logo
+              clara ou o asset branco padrão. Formatos de imagem, até 2 MB.
             </p>
             <p className="text-xs font-medium text-foreground">
               {hasLogoDark
-                ? "Logo escura configurada"
-                : "Nenhuma logo escura configurada"}
+                ? "Logo do tema escuro configurada"
+                : "Nenhuma logo do tema escuro configurada"}
             </p>
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-              <div className="flex h-24 w-40 shrink-0 items-center justify-center rounded-xl border border-border bg-muted/50 p-3">
+              <div className="flex h-24 w-40 shrink-0 items-center justify-center rounded-xl border border-border bg-zinc-900 p-3">
                 <img
                   src={displayLogoDarkSrc}
-                  alt="Logo escura atual do sistema"
+                  alt="Logo do tema escuro"
                   className="max-h-full max-w-full object-contain"
                   onError={(event) => {
                     const img = event.currentTarget;
-                    if (!img.src.endsWith("/LogoBlack.png")) {
+                    if (!img.src.includes("/LogoBlack.png")) {
                       img.src = "/LogoBlack.png";
                     }
                   }}
@@ -336,7 +337,7 @@ export default function ConfiguracoesPage() {
                   onClick={() => logoDarkInputRef.current?.click()}
                 >
                   <Upload className="mr-2 h-4 w-4" />
-                  {uploadingLogoDark ? "Enviando..." : "Trocar logo escura"}
+                  {uploadingLogoDark ? "Enviando..." : "Trocar logo do tema escuro"}
                 </Button>
                 {!isAdmin ? (
                   <p className="text-xs text-muted-foreground">
@@ -344,7 +345,8 @@ export default function ConfiguracoesPage() {
                   </p>
                 ) : (
                   <p className="text-xs text-muted-foreground">
-                    O upload é salvo imediatamente.
+                    O upload é salvo imediatamente. Use uma versão clara da
+                    marca para contraste no fundo escuro.
                   </p>
                 )}
               </div>

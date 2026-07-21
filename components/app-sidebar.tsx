@@ -4,7 +4,6 @@ import {
   FileText,
   Users,
   Calendar,
-  Wrench,
   ClipboardCheck,
   Layers,
   Briefcase,
@@ -14,9 +13,9 @@ import {
   BarChart3,
   ScrollText,
 } from "lucide-react";
-import { useTheme } from "next-themes";
 import { useAuth } from "@/lib/auth-context";
 import { useSystemLogo } from "@/hooks/use-system-logo";
+import { ThemedBrandLogo } from "@/components/themed-brand-logo";
 import { Separator } from "@/components/index";
 import { cn } from "@/lib/utils";
 import {
@@ -67,35 +66,26 @@ export function AppSidebar() {
   const pathname = location.pathname;
   const { user, logout } = useAuth();
   const { state } = useSidebar();
-  const { resolvedTheme } = useTheme();
-  const { logoSrc, logoDarkSrc, hasCustomLogo } = useSystemLogo();
+  const { logoConfig, hasCustomLogo, version } = useSystemLogo();
   const isAdmin = user?.role === "ADMIN";
-  const showBrandText = !hasCustomLogo;
-
-  const activeLogoSrc =
-    resolvedTheme === "dark" && logoDarkSrc ? logoDarkSrc : logoSrc;
+  const showBrandText = false;
 
   return (
     <Sidebar collapsible="icon" className="shadow-[inset_-1px_0_0_0_hsl(var(--primary)/0.08)]">
       <SidebarHeader className="border-b border-primary/10 bg-brand-surface/40 p-4">
         <Link to="/dashboard" className="flex items-center gap-3">
           <div className={hasCustomLogo ? "min-w-0 flex-1" : undefined}>
-            <img
-              src={activeLogoSrc}
+            <ThemedBrandLogo
+              config={logoConfig}
+              cacheBuster={version}
               alt={showBrandText ? "Linq" : "Logo"}
               className={
                 state === "collapsed"
                   ? "h-7 w-auto max-w-8 object-contain"
                   : hasCustomLogo
                     ? "h-10 max-w-[10rem] w-auto object-contain"
-                    : "h-10 w-auto"
+                    : "h-10 w-auto max-w-[10rem] object-contain"
               }
-              onError={(event) => {
-                const img = event.currentTarget;
-                if (!img.src.endsWith("/LogoIcon.png")) {
-                  img.src = "/LogoIcon.png";
-                }
-              }}
             />
           </div>
           {showBrandText ? (

@@ -35,6 +35,6 @@ export async function fetchActivityLogs(
 ): Promise<ActivityLogsResponse> {
   return apiRequest<ActivityLogsResponse>(
     `/admin/activity-logs${buildActivityLogsQuery(filters)}`,
-    { method: "GET" },
+    { method: "GET", redirectOnUnauthorized: false },
   );
 }

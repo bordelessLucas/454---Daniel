@@ -83,24 +83,34 @@ function buildHeaders(options: RequestInit): Record<string, string> {
   return headers;
 }
 
+export type ApiRequestOptions = RequestInit & {
+  /** Redireciona para login em 401. Padrão: true */
+  redirectOnUnauthorized?: boolean;
+};
+
 async function performRequest(
   endpoint: string,
-  options: RequestInit = {},
+  options: ApiRequestOptions = {},
 ): Promise<Response> {
-  const headers = buildHeaders(options);
+  const { redirectOnUnauthorized = true, ...fetchOptions } = options;
+  const headers = buildHeaders(fetchOptions);
 
   const response = await fetch(`${API_URL}${endpoint}`, {
-    ...options,
+    ...fetchOptions,
     headers,
-    credentials: options.credentials ?? "include",
+    credentials: fetchOptions.credentials ?? "include",
   });
 
   if (!response.ok) {
     const responseText = await response.text();
 
-    if (response.status === 401) {
+    if (response.status === 401 && redirectOnUnauthorized) {
       redirectToLogin();
-    } else if (response.status === 403 && isHorarioAccessDenied(responseText)) {
+    } else if (
+      response.status === 403 &&
+      redirectOnUnauthorized &&
+      isHorarioAccessDenied(responseText)
+    ) {
       redirectToLogin();
     }
 
@@ -137,7 +147,7 @@ function getFilenameFromContentDisposition(
 
 export async function apiRequest<T>(
   endpoint: string,
-  options: RequestInit = {},
+  options: ApiRequestOptions = {},
 ): Promise<T> {
   const response = await performRequest(endpoint, options);
 
@@ -152,7 +162,7 @@ export async function apiRequest<T>(
 export async function apiRequestFormData<T>(
   endpoint: string,
   formData: FormData,
-  options: Omit<RequestInit, "body"> = {},
+  options: Omit<ApiRequestOptions, "body"> = {},
 ): Promise<T> {
   const response = await performRequest(endpoint, {
     ...options,
@@ -169,7 +179,7 @@ export async function apiRequestFormData<T>(
 
 export async function apiRequestBlob(
   endpoint: string,
-  options: RequestInit = {},
+  options: ApiRequestOptions = {},
 ): Promise<BlobResponse> {
   const response = await performRequest(endpoint, options);
   const contentDisposition = response.headers.get("Content-Disposition");

@@ -1,9 +1,8 @@
 import React from "react";
 import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
-import { useTheme } from "next-themes";
 import { useAuth } from "@/lib/auth-context";
-import { resolveLoginLogoUrl } from "@/lib/configuracao-logo";
+import { ThemedBrandLogo } from "@/components/themed-brand-logo";
 import {
   Button,
   Card,
@@ -21,15 +20,7 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const { login, user } = useAuth();
-  const { resolvedTheme } = useTheme();
   const navigate = useNavigate();
-  const [isThemeReady, setIsThemeReady] = useState(false);
-
-  const logoSrc = resolveLoginLogoUrl(resolvedTheme, isThemeReady);
-
-  useEffect(() => {
-    setIsThemeReady(true);
-  }, []);
 
   useEffect(() => {
     if (user) {
@@ -65,7 +56,7 @@ export default function LoginPage() {
     <div className="flex min-h-app items-center justify-center bg-background p-4 pb-safe pt-safe">
       <Card className="w-full max-w-sm border-border">
         <CardHeader className="items-center pb-2">
-          <img src={logoSrc} alt="Logo" className="h-44 w-auto" />
+          <ThemedBrandLogo alt="Logo" className="h-44 w-auto" />
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">

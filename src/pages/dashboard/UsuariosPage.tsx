@@ -2,6 +2,7 @@ import { useState, useMemo } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { useUsuarios } from "@/hooks/use-usuarios";
 import { useClientes } from "@/hooks/use-clientes";
+import { useUnidades } from "@/hooks/use-unidades";
 import {
   createUsuario,
   updateUsuario,
@@ -32,9 +33,11 @@ import { toast } from "sonner";
 
 export default function UsuariosPage() {
   const { user } = useAuth();
+  const isAdmin = user?.role === "ADMIN";
   const [refetchTrigger, setRefetchTrigger] = useState(0);
   const { usuarios, loading, error } = useUsuarios(refetchTrigger);
   const { clientes } = useClientes();
+  const { unidades } = useUnidades(isAdmin, refetchTrigger);
 
   const [search, setSearch] = useState("");
   const [modalOpen, setModalOpen] = useState(false);
@@ -52,6 +55,7 @@ export default function UsuariosPage() {
     password: "",
     role: "TECNICO" as "ADMIN" | "TECNICO",
     clienteId: null as number | null,
+    unidadeId: null as number | null,
     ativo: true,
   });
 
@@ -66,9 +70,6 @@ export default function UsuariosPage() {
         (u.cliente && u.cliente.nomeFantasia.toLowerCase().includes(q)),
     );
   }, [usuarios, search]);
-
-  // Verificar se é admin
-  const isAdmin = user?.role === "ADMIN";
 
   if (!isAdmin) {
     return (
@@ -91,6 +92,7 @@ export default function UsuariosPage() {
       password: "",
       role: "TECNICO",
       clienteId: null,
+      unidadeId: null,
       ativo: true,
     });
     setModalOpen(true);
@@ -105,6 +107,7 @@ export default function UsuariosPage() {
       password: "",
       role: usuario.role,
       clienteId: usuario.clienteId,
+      unidadeId: usuario.unidadeId ?? null,
       ativo: usuario.ativo,
     });
     setModalOpen(true);
@@ -112,16 +115,26 @@ export default function UsuariosPage() {
 
   async function handleSave(e: React.FormEvent) {
     e.preventDefault();
+
+    if (
+      form.role === "TECNICO" &&
+      form.clienteId == null &&
+      form.unidadeId == null
+    ) {
+      toast.error("Técnico deve estar vinculado a um cliente ou a uma unidade.");
+      return;
+    }
+
     setSaving(true);
 
     try {
       if (editing) {
-        // Atualizar - senha NÃO pode ser atualizada aqui
         await updateUsuario(editing.id, {
           nome: form.nome,
           email: form.email,
           role: form.role,
           clienteId: form.clienteId,
+          unidadeId: form.unidadeId,
           ativo: form.ativo,
         });
         toast.success("Usuário atualizado com sucesso.");
@@ -135,6 +148,9 @@ export default function UsuariosPage() {
           role: form.role,
           ...(typeof form.clienteId === "number"
             ? { clienteId: form.clienteId }
+            : {}),
+          ...(typeof form.unidadeId === "number"
+            ? { unidadeId: form.unidadeId }
             : {}),
         });
         toast.success("Usuário criado com sucesso.");
@@ -407,12 +423,11 @@ export default function UsuariosPage() {
           </div>
           <div className="flex flex-col gap-2">
             <Label htmlFor="user-cliente">
-              Cliente Associado {form.role === "TECNICO" ? "(obrigatório)" : "(opcional)"}
+              Cliente Associado (opcional)
             </Label>
             <Select
               id="user-cliente"
               value={form.clienteId?.toString() || ""}
-              required={form.role === "TECNICO"}
               onChange={(e) =>
                 setForm((f) => ({
                   ...f,
@@ -428,6 +443,30 @@ export default function UsuariosPage() {
               ))}
             </Select>
           </div>
+          {form.role === "TECNICO" ? (
+            <div className="flex flex-col gap-2">
+              <Label htmlFor="user-unidade">
+                Unidade (obrigatório se não houver cliente)
+              </Label>
+              <Select
+                id="user-unidade"
+                value={form.unidadeId?.toString() || ""}
+                onChange={(e) =>
+                  setForm((f) => ({
+                    ...f,
+                    unidadeId: e.target.value ? Number(e.target.value) : null,
+                  }))
+                }
+              >
+                <option value="">Nenhuma</option>
+                {unidades.map((unidade) => (
+                  <option key={unidade.id} value={unidade.id}>
+                    {unidade.nome}
+                  </option>
+                ))}
+              </Select>
+            </div>
+          ) : null}
           {editing && (
             <div className="flex items-center justify-between">
               <Label htmlFor="user-ativo">Ativo</Label>
