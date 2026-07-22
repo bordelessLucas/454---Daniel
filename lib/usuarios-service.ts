@@ -6,7 +6,6 @@ interface UpdateUsuarioData {
   email?: string;
   role?: "ADMIN" | "TECNICO";
   clienteId?: number | null;
-  unidadeId?: number | null;
   ativo?: boolean;
 }
 
@@ -23,7 +22,6 @@ export async function createUsuario(data: CreateUserPayload): Promise<ApiUser> {
     email: data.email,
     role: data.role,
     ...(typeof data.clienteId === "number" ? { clienteId: data.clienteId } : {}),
-    ...(typeof data.unidadeId === "number" ? { unidadeId: data.unidadeId } : {}),
   };
 
   return apiRequest<ApiUser>("/users", {

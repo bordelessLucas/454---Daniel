@@ -21,7 +21,6 @@ export interface CreateUserPayload {
   email: string;
   role: UserRole;
   clienteId?: number;
-  unidadeId?: number;
 }
 
 export type User = AuthUser;
