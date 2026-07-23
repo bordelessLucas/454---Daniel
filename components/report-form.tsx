@@ -510,7 +510,7 @@ export function ReportForm({ reportId }: ReportFormProps) {
 
   return (
     <div className="mx-auto max-w-4xl">
-      <div className="sticky top-0 z-20 -mx-4 mb-6 flex items-center gap-3 border-b border-border bg-background/95 px-4 py-3 backdrop-blur">
+      <div className="sticky top-14 z-20 -mx-4 mb-6 flex items-center gap-3 border-b border-border bg-background/95 px-4 py-3 backdrop-blur md:-mx-6 md:px-6">
         <Button
           variant="ghost"
           size="icon"
@@ -519,14 +519,14 @@ export function ReportForm({ reportId }: ReportFormProps) {
         >
           <ArrowLeft className="h-4 w-4" />
         </Button>
-        <h1 className="text-2xl font-semibold tracking-tight text-foreground">
+        <h1 className="min-w-0 truncate text-xl font-semibold tracking-tight text-foreground sm:text-2xl">
           {isEditing ? "Editar Relatório" : "Novo Relatório"}
         </h1>
       </div>
 
       <div className="flex flex-col gap-8">
         {/* Seção 1 - Informações Gerais */}
-        <section className="rounded-2xl border border-border p-6">
+        <section className="rounded-2xl border border-border p-4 sm:p-6">
           <h2 className="mb-4 text-lg font-medium text-foreground">
             Informações Gerais
           </h2>
@@ -728,7 +728,7 @@ export function ReportForm({ reportId }: ReportFormProps) {
         </section>
 
         {/* Seção 2 - Detalhamento dos Serviços */}
-        <section className="rounded-2xl border border-border p-6">
+        <section className="rounded-2xl border border-border p-4 sm:p-6">
           <h2 className="mb-4 text-lg font-medium text-foreground">
             Detalhamento dos Serviços
           </h2>
@@ -740,7 +740,7 @@ export function ReportForm({ reportId }: ReportFormProps) {
         </section>
 
         {/* Seção 3 - Setores */}
-        <section className="rounded-2xl border border-border p-6">
+        <section className="rounded-2xl border border-border p-4 sm:p-6">
           <h2 className="mb-4 text-lg font-medium text-foreground">Setores</h2>
           <div className="flex flex-col gap-4">
             <SelectionField
@@ -822,7 +822,7 @@ export function ReportForm({ reportId }: ReportFormProps) {
         </section>
 
         {/* Seção 4 - Checklists */}
-        <section className="rounded-2xl border border-border p-6">
+        <section className="rounded-2xl border border-border p-4 sm:p-6">
           <h2 className="mb-4 text-lg font-medium text-foreground">
             Checklists
           </h2>
@@ -851,13 +851,14 @@ export function ReportForm({ reportId }: ReportFormProps) {
         </section>
 
         {/* Seção 5 - Horários */}
-        <section className="rounded-2xl border border-border p-6">
-          <div className="mb-4 flex items-center justify-between">
+        <section className="rounded-2xl border border-border p-4 sm:p-6">
+          <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <h2 className="text-lg font-medium text-foreground">Horários</h2>
             <Button
               type="button"
               variant="outline"
               size="sm"
+              className="w-full sm:w-auto"
               onClick={addHorario}
             >
               Adicionar Horário
@@ -867,9 +868,9 @@ export function ReportForm({ reportId }: ReportFormProps) {
             {horarios.map((horario) => (
               <div
                 key={horario.id}
-                className="flex items-center gap-2 rounded-lg border border-border p-3"
+                className="flex flex-col gap-2 rounded-lg border border-border p-3 sm:flex-row sm:items-end"
               >
-                <div className="grid flex-1 gap-2 sm:grid-cols-4">
+                <div className="grid min-w-0 flex-1 gap-2 sm:grid-cols-2 lg:grid-cols-4">
                   <div className="flex flex-col gap-1">
                     <Label className="text-xs">Período</Label>
                     <select
@@ -940,7 +941,7 @@ export function ReportForm({ reportId }: ReportFormProps) {
         </section>
 
         {/* Seção 6 - Resumo de Revisão (Preview PDF) */}
-        <section className="rounded-2xl border border-border p-6">
+        <section className="rounded-2xl border border-border p-4 sm:p-6">
           <h2 className="mb-2 text-lg font-medium text-foreground">
             Resumo de Revisão
           </h2>
@@ -1082,22 +1083,28 @@ export function ReportForm({ reportId }: ReportFormProps) {
         </section>
 
         {/* Ações */}
-        <div className="flex flex-wrap gap-3 pb-8">
-          <Button type="button" onClick={handleSubmit} disabled={saving}>
+        <div className="flex flex-col-reverse gap-3 pb-8 sm:flex-row sm:flex-wrap">
+          <Button
+            type="button"
+            variant="outline"
+            className="w-full sm:w-auto"
+            onClick={() => navigate(-1)}
+            disabled={saving}
+          >
+            Cancelar
+          </Button>
+          <Button
+            type="button"
+            className="w-full sm:w-auto"
+            onClick={handleSubmit}
+            disabled={saving}
+          >
             <CheckCircle2 className="mr-2 h-4 w-4" />
             {saving
               ? "Salvando..."
               : isEditing
                 ? "Salvar Alterações"
                 : "Criar Relatório"}
-          </Button>
-          <Button
-            type="button"
-            variant="outline"
-            onClick={() => navigate(-1)}
-            disabled={saving}
-          >
-            Cancelar
           </Button>
         </div>
       </div>

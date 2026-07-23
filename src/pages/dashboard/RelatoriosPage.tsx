@@ -275,11 +275,11 @@ export default function RelatoriosPage() {
         }
       />
 
-      <div className="mb-4 flex justify-end">
+      <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:justify-end">
         <Button
           variant="outline"
           onClick={() => setFilterModalOpen(true)}
-          className="gap-2"
+          className="w-full gap-2 sm:w-auto"
         >
           <Filter className="h-4 w-4" />
           Filtrar
@@ -369,15 +369,15 @@ export default function RelatoriosPage() {
         !loading &&
         !error && (
           <div className="rounded-2xl border border-border overflow-x-auto">
-            <Table className="min-w-[900px]">
+            <Table className="min-w-[640px] md:min-w-[900px]">
               <TableHeader>
                 <TableRow>
-                  <TableHead className="min-w-[180px]">Relatório</TableHead>
+                  <TableHead className="min-w-[140px]">Relatório</TableHead>
                   <TableHead>Data</TableHead>
                   <TableHead>Cliente</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead>Criado por</TableHead>
-                  <TableHead>Contato</TableHead>
+                  <TableHead className="hidden md:table-cell">Criado por</TableHead>
+                  <TableHead className="hidden lg:table-cell">Contato</TableHead>
                   <TableHead className="w-28">Impresso</TableHead>
                   <TableHead className="w-40 text-right">Acoes</TableHead>
                 </TableRow>
@@ -403,8 +403,8 @@ export default function RelatoriosPage() {
                     <TableCell>
                       <RelatorioStatusBadge status={agendaStatus} />
                     </TableCell>
-                    <TableCell>{report.criadoPor.nome}</TableCell>
-                    <TableCell>{report.contato?.nome || "-"}</TableCell>
+                    <TableCell className="hidden md:table-cell">{report.criadoPor.nome}</TableCell>
+                    <TableCell className="hidden lg:table-cell">{report.contato?.nome || "-"}</TableCell>
                     <TableCell>
                       <Switch
                         checked={report.impresso}

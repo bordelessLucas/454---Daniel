@@ -284,12 +284,13 @@ export default function ChecklistsPage() {
             />
           </div>
           <div className="flex flex-col gap-2">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
               <Label>Itens do checklist</Label>
               <Button
                 type="button"
                 variant="outline"
                 size="sm"
+                className="w-full sm:w-auto"
                 onClick={addChecklistItem}
               >
                 <Plus className="h-4 w-4" />
@@ -310,7 +311,7 @@ export default function ChecklistsPage() {
                     }
                   }}
                   onDragEnd={() => setDraggedItemId(null)}
-                  className="flex items-center gap-2 rounded-md border border-border bg-background p-2"
+                  className="flex min-w-0 items-center gap-2 rounded-md border border-border bg-background p-2"
                 >
                   <span
                     className="cursor-grab text-muted-foreground active:cursor-grabbing"
@@ -318,10 +319,11 @@ export default function ChecklistsPage() {
                   >
                     <GripVertical className="h-4 w-4" />
                   </span>
-                  <span className="w-6 text-center text-xs text-muted-foreground">
+                  <span className="w-6 shrink-0 text-center text-xs text-muted-foreground">
                     {index + 1}
                   </span>
                   <Input
+                    className="min-w-0 flex-1"
                     value={item.texto}
                     onChange={(e) => updateChecklistItem(item.id, e.target.value)}
                     placeholder="Descreva o item"
@@ -330,7 +332,7 @@ export default function ChecklistsPage() {
                     type="button"
                     variant="ghost"
                     size="icon"
-                    className="h-8 w-8 text-destructive hover:text-destructive"
+                    className="h-8 w-8 shrink-0 text-destructive hover:text-destructive"
                     onClick={() => removeChecklistItem(item.id)}
                     aria-label="Remover item"
                   >

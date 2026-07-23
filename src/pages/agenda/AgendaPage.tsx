@@ -30,12 +30,15 @@ export default function AgendaPage() {
   }, [isAdmin, user?.id, tecnicoFilter]);
 
   return (
-    <div className="flex h-[calc(100vh-7rem)] min-h-[32rem] flex-col gap-4">
+    <div className="flex min-h-[32rem] flex-col gap-4 md:h-[calc(100vh-7rem)]">
       <PageHeader
         title="Agenda de Visitas"
         description="Visualize, agende e reagende visitas técnicas no calendário."
         action={
-          <Button type="button" onClick={() => setNovoAgendamentoOpen(true)}>
+          <Button
+            type="button"
+            onClick={() => setNovoAgendamentoOpen(true)}
+          >
             <Plus className="mr-2 h-4 w-4" />
             Novo Agendamento
           </Button>

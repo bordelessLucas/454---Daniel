@@ -162,22 +162,30 @@ export function GerencialTable({ tipo, data }: GerencialTableProps) {
     return null;
   }
 
-  switch (tipo) {
-    case "resumo-cliente":
-      return (
-        <ResumoClienteTable rows={data as GerencialResumoClienteRow[]} />
-      );
-    case "produtividade-tecnico":
-      return (
-        <ProdutividadeTecnicoTable
-          rows={data as GerencialProdutividadeTecnicoRow[]}
-        />
-      );
-    case "sla-contratos":
-      return (
-        <SlaContratosTable rows={data as GerencialSlaContratoRow[]} />
-      );
-    default:
-      return null;
+  const table =
+    tipo === "resumo-cliente" ? (
+      <ResumoClienteTable rows={data as GerencialResumoClienteRow[]} />
+    ) : tipo === "produtividade-tecnico" ? (
+      <ProdutividadeTecnicoTable
+        rows={data as GerencialProdutividadeTecnicoRow[]}
+      />
+    ) : tipo === "sla-contratos" ? (
+      <SlaContratosTable rows={data as GerencialSlaContratoRow[]} />
+    ) : null;
+
+  if (!table) {
+    return null;
   }
+
+  return (
+    <div className="overflow-x-auto">
+      <div
+        className={
+          tipo === "sla-contratos" ? "min-w-[640px]" : "min-w-[480px]"
+        }
+      >
+        {table}
+      </div>
+    </div>
+  );
 }

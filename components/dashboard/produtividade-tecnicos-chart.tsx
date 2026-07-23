@@ -9,6 +9,7 @@ import {
 } from "@/components/ui/chart";
 import { decimalHorasToHHmm, decimalHorasToNumber } from "@/lib/dashboard-hours";
 import type { DashboardProdutividadeTecnico } from "@/lib/types";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 const chartConfig = {
   horas: {
@@ -21,6 +22,13 @@ function parseHorasToNumber(totalHoras: string): number {
   return decimalHorasToNumber(totalHoras);
 }
 
+function truncateLabel(value: string, maxLength: number): string {
+  if (value.length <= maxLength) {
+    return value;
+  }
+  return `${value.slice(0, maxLength - 1)}…`;
+}
+
 interface ProdutividadeTecnicosChartProps {
   rows?: DashboardProdutividadeTecnico[];
   isLoading?: boolean;
@@ -30,6 +38,10 @@ export function ProdutividadeTecnicosChart({
   rows = [],
   isLoading,
 }: ProdutividadeTecnicosChartProps) {
+  const isMobile = useIsMobile();
+  const labelMaxLength = isMobile ? 10 : 18;
+  const axisWidth = isMobile ? 72 : 120;
+
   const topFive = [...rows]
     .sort(
       (a, b) =>
@@ -37,7 +49,8 @@ export function ProdutividadeTecnicosChart({
     )
     .slice(0, 5)
     .map((row) => ({
-      nome: row.tecnicoNome,
+      nome: truncateLabel(row.tecnicoNome, labelMaxLength),
+      nomeCompleto: row.tecnicoNome,
       horas: parseHorasToNumber(row.totalHoras),
       horasLabel: decimalHorasToHHmm(row.totalHoras),
     }));
@@ -59,19 +72,23 @@ export function ProdutividadeTecnicosChart({
             <BarChart
               data={topFive}
               layout="vertical"
-              margin={{ left: 8, right: 16 }}
+              margin={{ left: 4, right: 12 }}
             >
               <XAxis type="number" hide />
               <YAxis
                 type="category"
                 dataKey="nome"
-                width={120}
+                width={axisWidth}
                 tickLine={false}
                 axisLine={false}
+                tick={{ fontSize: isMobile ? 11 : 12 }}
               />
               <ChartTooltip
                 content={
                   <ChartTooltipContent
+                    labelFormatter={(_, payload) =>
+                      String(payload?.[0]?.payload?.nomeCompleto ?? "")
+                    }
                     formatter={(_, __, item) => item.payload.horasLabel}
                   />
                 }

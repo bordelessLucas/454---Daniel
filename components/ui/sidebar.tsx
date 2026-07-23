@@ -122,7 +122,7 @@ const Sidebar = React.forwardRef<
         <aside
           ref={ref}
           className={cn(
-            "fixed inset-y-0 left-0 z-50 w-72 translate-x-[-100%] border-r border-primary/15 bg-background text-foreground transition-transform",
+            "fixed inset-y-0 left-0 z-50 flex h-svh w-72 flex-col translate-x-[-100%] border-r border-primary/15 bg-background text-foreground transition-transform",
             openMobile && "translate-x-0",
             className,
           )}
@@ -140,7 +140,7 @@ const Sidebar = React.forwardRef<
       data-state={state}
       data-collapsible={state === "collapsed" ? collapsible : ""}
       className={cn(
-        "sticky top-0 h-svh self-start border-r border-primary/15 bg-background text-foreground transition-[width] duration-200",
+        "sticky top-0 flex h-svh flex-col self-start border-r border-primary/15 bg-background text-foreground transition-[width] duration-200",
         state === "collapsed" && collapsible === "icon" ? "w-16" : "w-72",
         className,
       )}

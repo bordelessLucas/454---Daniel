@@ -85,7 +85,7 @@ export default function ClienteDetalhePage() {
         title={client.nomeFantasia}
         description={client.razaoSocial}
         action={
-          <div className="flex gap-2">
+          <>
             <Button variant="outline" onClick={() => navigate("/dashboard/clientes")}>
               <ArrowLeft className="mr-2 h-4 w-4" />
               Voltar
@@ -94,7 +94,7 @@ export default function ClienteDetalhePage() {
               <Pencil className="mr-2 h-4 w-4" />
               Editar
             </Button>
-          </div>
+          </>
         }
       />
 

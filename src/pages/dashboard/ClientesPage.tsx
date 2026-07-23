@@ -116,11 +116,11 @@ export default function ClientesPage() {
         }
       />
 
-      <div className="mb-4 flex justify-end">
+      <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:justify-end">
         <Button
           variant="outline"
           onClick={() => setFilterModalOpen(true)}
-          className="gap-2"
+          className="w-full gap-2 sm:w-auto"
         >
           <Filter className="h-4 w-4" />
           Filtrar

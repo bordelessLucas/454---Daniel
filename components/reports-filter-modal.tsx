@@ -75,7 +75,7 @@ export function ReportsFilterModal({
           </Select>
         </div>
 
-        <div className="grid grid-cols-2 gap-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
           <div className="space-y-2">
             <Label htmlFor="filter-date-start">Data Início</Label>
             <Input
@@ -159,7 +159,7 @@ export function ReportsFilterModal({
           </Select>
         </div>
 
-        <ModalFooter className="mt-2">
+        <ModalFooter className="mt-2 [&_button]:w-full sm:[&_button]:w-auto">
           <Button variant="outline" onClick={handleReset}>
             Limpar Filtros
           </Button>

@@ -33,7 +33,7 @@ const DialogContent = React.forwardRef<
     <DialogPrimitive.Content
       ref={ref}
       className={cn(
-        "fixed left-[50%] top-[50%] z-50 grid w-full max-w-2xl translate-x-[-50%] translate-y-[-50%] gap-0 overflow-hidden rounded-xl border border-border/60 bg-background shadow-2xl duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%]",
+        "fixed left-[50%] top-[50%] z-50 flex w-[calc(100%-2rem)] max-w-2xl max-h-[min(90dvh,920px)] translate-x-[-50%] translate-y-[-50%] flex-col gap-0 overflow-hidden rounded-xl border border-border/60 bg-background shadow-2xl duration-200 data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 data-[state=closed]:slide-out-to-left-1/2 data-[state=closed]:slide-out-to-top-[48%] data-[state=open]:slide-in-from-left-1/2 data-[state=open]:slide-in-from-top-[48%]",
         className,
       )}
       {...props}
@@ -55,7 +55,7 @@ function DialogHeader({
   return (
     <div
       className={cn(
-        "flex flex-col space-y-1.5 border-b border-border/60 bg-muted/20 px-6 py-5 text-center sm:px-8 sm:py-6 sm:text-left",
+        "flex shrink-0 flex-col space-y-1.5 border-b border-border/60 bg-muted/20 px-4 py-4 text-center sm:px-8 sm:py-6 sm:text-left",
         className,
       )}
       {...props}
@@ -68,7 +68,13 @@ function DialogBody({
   ...props
 }: React.HTMLAttributes<HTMLDivElement>) {
   return (
-    <div className={cn("px-6 py-5 sm:px-8 sm:py-6", className)} {...props} />
+    <div
+      className={cn(
+        "min-h-0 flex-1 overflow-y-auto overscroll-contain px-4 py-4 sm:px-8 sm:py-6",
+        className,
+      )}
+      {...props}
+    />
   );
 }
 
@@ -79,7 +85,7 @@ function DialogFooter({
   return (
     <div
       className={cn(
-        "flex flex-col-reverse gap-3 border-t border-border/60 px-6 py-5 sm:flex-row sm:justify-end sm:px-8 sm:py-6",
+        "flex shrink-0 flex-col-reverse gap-3 border-t border-border/60 px-4 py-4 sm:flex-row sm:justify-end sm:px-8 sm:py-6 [&_button]:w-full sm:[&_button]:w-auto",
         className,
       )}
       {...props}

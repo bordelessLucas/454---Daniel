@@ -193,32 +193,36 @@ export function PwaProvider({ children }: { children: React.ReactNode }) {
             "pb-[max(0.75rem,env(safe-area-inset-bottom))]",
           )}
         >
-          <div className="flex w-full max-w-md items-center gap-3 rounded-xl border border-border bg-card p-3 shadow-lg">
-            <RefreshCw className="h-5 w-5 shrink-0 text-primary" aria-hidden />
-            <div className="min-w-0 flex-1">
-              <p className="text-sm font-medium text-foreground">
-                Nova versão disponível
-              </p>
-              <p className="text-xs text-muted-foreground">
-                Atualize para obter as últimas melhorias.
-              </p>
+          <div className="flex w-full max-w-md flex-col gap-3 rounded-xl border border-border bg-card p-3 shadow-lg sm:flex-row sm:items-center">
+            <div className="flex min-w-0 flex-1 items-start gap-3">
+              <RefreshCw className="mt-0.5 h-5 w-5 shrink-0 text-primary" aria-hidden />
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-medium text-foreground">
+                  Nova versão disponível
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Atualize para obter as últimas melhorias.
+                </p>
+              </div>
             </div>
-            <Button
-              size="sm"
-              onClick={() => void updateServiceWorker(true)}
-              className="shrink-0"
-            >
-              Atualizar
-            </Button>
-            <Button
-              size="icon"
-              variant="ghost"
-              aria-label="Dispensar atualização"
-              onClick={() => setNeedRefresh(false)}
-              className="shrink-0"
-            >
-              <X className="h-4 w-4" />
-            </Button>
+            <div className="flex items-center gap-2 sm:shrink-0">
+              <Button
+                size="sm"
+                onClick={() => void updateServiceWorker(true)}
+                className="flex-1 sm:flex-none"
+              >
+                Atualizar
+              </Button>
+              <Button
+                size="icon"
+                variant="ghost"
+                aria-label="Dispensar atualização"
+                onClick={() => setNeedRefresh(false)}
+                className="shrink-0"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
         </div>
       ) : null}
@@ -230,28 +234,36 @@ export function PwaProvider({ children }: { children: React.ReactNode }) {
             "pb-[max(0.75rem,env(safe-area-inset-bottom))]",
           )}
         >
-          <div className="flex w-full max-w-md items-center gap-3 rounded-xl border border-border bg-card p-3 shadow-lg">
-            <Download className="h-5 w-5 shrink-0 text-primary" aria-hidden />
-            <div className="min-w-0 flex-1">
-              <p className="text-sm font-medium text-foreground">
-                Instalar o Linq
-              </p>
-              <p className="text-xs text-muted-foreground">
-                Use como app no celular ou desktop, com acesso rápido e offline.
-              </p>
+          <div className="flex w-full max-w-md flex-col gap-3 rounded-xl border border-border bg-card p-3 shadow-lg sm:flex-row sm:items-center">
+            <div className="flex min-w-0 flex-1 items-start gap-3">
+              <Download className="mt-0.5 h-5 w-5 shrink-0 text-primary" aria-hidden />
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-medium text-foreground">
+                  Instalar o Linq
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  Use como app no celular ou desktop, com acesso rápido e offline.
+                </p>
+              </div>
             </div>
-            <Button size="sm" onClick={() => void handleInstall()} className="shrink-0">
-              Instalar
-            </Button>
-            <Button
-              size="icon"
-              variant="ghost"
-              aria-label="Dispensar instalação"
-              onClick={handleDismissInstall}
-              className="shrink-0"
-            >
-              <X className="h-4 w-4" />
-            </Button>
+            <div className="flex items-center gap-2 sm:shrink-0">
+              <Button
+                size="sm"
+                onClick={() => void handleInstall()}
+                className="flex-1 sm:flex-none"
+              >
+                Instalar
+              </Button>
+              <Button
+                size="icon"
+                variant="ghost"
+                aria-label="Dispensar instalação"
+                onClick={handleDismissInstall}
+                className="shrink-0"
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
         </div>
       ) : null}

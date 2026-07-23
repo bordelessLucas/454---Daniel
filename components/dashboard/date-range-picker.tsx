@@ -94,7 +94,10 @@ export function DateRangePicker({
           <span className="truncate">{label}</span>
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-auto p-0" align="start">
+      <PopoverContent
+        className="w-auto max-w-[calc(100vw-2rem)] p-0"
+        align="start"
+      >
         <div className="flex flex-wrap gap-2 border-b p-3">
           {PRESETS.map((preset) => (
             <Button

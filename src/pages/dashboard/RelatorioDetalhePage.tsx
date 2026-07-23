@@ -161,7 +161,7 @@ export default function RelatorioDetalhePage() {
           >
             <ArrowLeft className="h-4 w-4" />
           </Button>
-          <h1 className="text-2xl font-semibold tracking-tight text-foreground">
+          <h1 className="min-w-0 truncate text-xl font-semibold tracking-tight text-foreground sm:text-2xl">
             {formatRelatorioTitulo(report.id)}
           </h1>
           <RelatorioStatusBadge status={agendaStatus} />
@@ -239,7 +239,7 @@ export default function RelatorioDetalhePage() {
       ) : null}
 
       <div className="flex flex-col gap-6">
-        <section className="rounded-2xl border border-border p-6">
+        <section className="rounded-2xl border border-border p-4 sm:p-6">
           <h2 className="mb-4 text-lg font-medium text-foreground">
             Informações Gerais
           </h2>
@@ -308,7 +308,7 @@ export default function RelatorioDetalhePage() {
         </section>
 
         {report.observacoes && (
-          <section className="rounded-2xl border border-border p-6">
+          <section className="rounded-2xl border border-border p-4 sm:p-6">
             <h2 className="mb-4 text-lg font-medium text-foreground">
               Detalhamento dos Serviços
             </h2>
@@ -317,7 +317,7 @@ export default function RelatorioDetalhePage() {
         )}
 
         {report.setores.length > 0 && (
-          <section className="rounded-2xl border border-border p-6">
+          <section className="rounded-2xl border border-border p-4 sm:p-6">
             <h2 className="mb-4 text-lg font-medium text-foreground">
               Detalhes dos Setores
             </h2>
@@ -347,7 +347,7 @@ export default function RelatorioDetalhePage() {
         )}
 
         {report.checklists.length > 0 && (
-          <section className="rounded-2xl border border-border p-6">
+          <section className="rounded-2xl border border-border p-4 sm:p-6">
             <h2 className="mb-4 text-lg font-medium text-foreground">
               Checklists
             </h2>
@@ -409,7 +409,7 @@ export default function RelatorioDetalhePage() {
         )}
 
         {report.horarios && report.horarios.length > 0 && (
-          <section className="rounded-2xl border border-border p-6">
+          <section className="rounded-2xl border border-border p-4 sm:p-6">
             <h2 className="mb-4 text-lg font-medium text-foreground">
               Horários
             </h2>
@@ -430,7 +430,7 @@ export default function RelatorioDetalhePage() {
 
         <RelatorioAuditLogSection relatorioId={report.id} />
 
-        <section className="rounded-2xl border border-border p-6 bg-muted/30">
+        <section className="rounded-2xl border border-border p-4 sm:p-6 bg-muted/30">
           <h2 className="mb-4 text-sm font-medium text-muted-foreground">
             Informações do Sistema
           </h2>

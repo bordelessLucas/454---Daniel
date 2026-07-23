@@ -101,29 +101,33 @@ export function EventoDialog({
         <DialogBody>
           <dl className="space-y-4 text-sm">
             <div className="flex justify-between gap-4">
-              <dt className="text-muted-foreground">Cliente</dt>
-              <dd className="text-right font-medium">
+              <dt className="shrink-0 text-muted-foreground">Cliente</dt>
+              <dd className="min-w-0 break-words text-right font-medium">
                 {evento.cliente.nomeFantasia}
               </dd>
             </div>
             <div className="flex justify-between gap-4">
-              <dt className="text-muted-foreground">Técnicos</dt>
-              <dd className="text-right">{tecnicosLabel}</dd>
+              <dt className="shrink-0 text-muted-foreground">Técnicos</dt>
+              <dd className="min-w-0 break-words text-right">{tecnicosLabel}</dd>
             </div>
             <div className="flex justify-between gap-4">
-              <dt className="text-muted-foreground">Data / hora</dt>
-              <dd className="text-right">{formatDateTime(evento.start)}</dd>
+              <dt className="shrink-0 text-muted-foreground">Data / hora</dt>
+              <dd className="min-w-0 break-words text-right">
+                {formatDateTime(evento.start)}
+              </dd>
             </div>
             <div className="flex items-center justify-between gap-4">
-              <dt className="text-muted-foreground">Status</dt>
-              <dd>
+              <dt className="shrink-0 text-muted-foreground">Status</dt>
+              <dd className="min-w-0">
                 <RelatorioStatusBadge status={status} />
               </dd>
             </div>
             {evento.modalidadeServico ? (
               <div className="flex justify-between gap-4">
-                <dt className="text-muted-foreground">Modalidade</dt>
-                <dd className="text-right">{evento.modalidadeServico}</dd>
+                <dt className="shrink-0 text-muted-foreground">Modalidade</dt>
+                <dd className="min-w-0 break-words text-right">
+                  {evento.modalidadeServico}
+                </dd>
               </div>
             ) : null}
           </dl>

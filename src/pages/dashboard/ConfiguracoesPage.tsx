@@ -265,7 +265,7 @@ export default function ConfiguracoesPage() {
                 <Button
                   type="button"
                   variant="outline"
-                  className="w-fit"
+                  className="w-full sm:w-fit"
                   disabled={loading || uploadingLogo || !isAdmin}
                   onClick={() => logoInputRef.current?.click()}
                 >
@@ -332,7 +332,7 @@ export default function ConfiguracoesPage() {
                 <Button
                   type="button"
                   variant="outline"
-                  className="w-fit"
+                  className="w-full sm:w-fit"
                   disabled={loading || uploadingLogoDark || !isAdmin}
                   onClick={() => logoDarkInputRef.current?.click()}
                 >
@@ -437,7 +437,7 @@ export default function ConfiguracoesPage() {
 
         <Button
           onClick={handleSave}
-          className="w-fit"
+          className="w-full sm:w-fit"
           disabled={saving || loading}
         >
           <Save className="mr-2 h-4 w-4" />

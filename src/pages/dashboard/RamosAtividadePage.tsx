@@ -175,7 +175,7 @@ export default function RamosAtividadePage() {
           }
         />
       ) : (
-        <div className="rounded-2xl border border-border">
+        <div className="rounded-2xl border border-border overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow>

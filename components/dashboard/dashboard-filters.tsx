@@ -157,8 +157,13 @@ export function DashboardFilters({
         ) : null}
       </div>
 
-      <div className="mt-4 flex justify-end">
-        <Button type="button" onClick={onApply} disabled={isApplying}>
+      <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:justify-end">
+        <Button
+          type="button"
+          className="w-full sm:w-auto"
+          onClick={onApply}
+          disabled={isApplying}
+        >
           Aplicar Filtros
         </Button>
       </div>

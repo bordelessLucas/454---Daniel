@@ -56,7 +56,7 @@ export default function LoginPage() {
     <div className="flex min-h-app items-center justify-center bg-background p-4 pb-safe pt-safe">
       <Card className="w-full max-w-sm border-border">
         <CardHeader className="items-center pb-2">
-          <ThemedBrandLogo alt="Logo" className="h-44 w-auto" />
+          <ThemedBrandLogo alt="Logo" className="h-28 w-auto sm:h-44" />
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="flex flex-col gap-4">

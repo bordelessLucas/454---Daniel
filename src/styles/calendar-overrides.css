@@ -103,3 +103,97 @@
 .visit-calendar .fc .fc-non-business {
   background: hsl(var(--muted) / 0.35);
 }
+
+/* Mobile: toolbar empilhada e grade tocável */
+@media (max-width: 767.98px) {
+  .visit-calendar .fc .fc-header-toolbar,
+  .visit-calendar .fc .fc-footer-toolbar {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.5rem;
+    margin-bottom: 0.75rem;
+  }
+
+  .visit-calendar .fc .fc-footer-toolbar {
+    margin-top: 0.75rem;
+    margin-bottom: 0;
+  }
+
+  .visit-calendar .fc .fc-toolbar-chunk {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 0.35rem;
+  }
+
+  .visit-calendar .fc .fc-toolbar-title {
+    font-size: 0.95rem;
+    line-height: 1.25;
+    text-align: center;
+    white-space: normal;
+  }
+
+  .visit-calendar .fc .fc-button {
+    font-size: 0.75rem;
+    padding: 0.4rem 0.55rem;
+    min-height: 2.25rem;
+  }
+
+  .visit-calendar .fc .fc-button-group {
+    display: inline-flex;
+    flex-wrap: wrap;
+    gap: 0.25rem;
+  }
+
+  .visit-calendar .fc .fc-button-group > .fc-button {
+    border-radius: calc(var(--radius) - 4px) !important;
+  }
+
+  .visit-calendar .fc .fc-col-header-cell-cushion {
+    font-size: 0.7rem;
+    padding: 0.35rem 0.15rem;
+  }
+
+  .visit-calendar .fc .fc-daygrid-day-number {
+    font-size: 0.75rem;
+    padding: 0.35rem;
+    min-width: 1.5rem;
+    min-height: 1.5rem;
+  }
+
+  .visit-calendar .fc .fc-daygrid-day-frame {
+    min-height: 4.5rem;
+  }
+
+  .visit-calendar .fc .fc-daygrid-event {
+    font-size: 0.65rem;
+    line-height: 1.2;
+    padding: 1px 3px;
+    margin-top: 1px;
+  }
+
+  .visit-calendar .fc .fc-daygrid-more-link {
+    font-size: 0.65rem;
+    margin-top: 1px;
+  }
+
+  .visit-calendar .fc .fc-timegrid-slot {
+    height: 2.5rem;
+  }
+
+  .visit-calendar .fc .fc-timegrid-axis-cushion,
+  .visit-calendar .fc .fc-timegrid-slot-label-cushion {
+    font-size: 0.65rem;
+  }
+
+  .visit-calendar .fc .fc-list-event-title,
+  .visit-calendar .fc .fc-list-event-time {
+    font-size: 0.8125rem;
+  }
+
+  .visit-calendar .fc .fc-list-day-cushion {
+    padding: 0.5rem 0.75rem;
+  }
+}

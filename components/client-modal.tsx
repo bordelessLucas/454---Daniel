@@ -398,7 +398,7 @@ export function ClientModal({
             <h3 className="text-sm font-semibold text-foreground">
               Informações Básicas
             </h3>
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="razaoSocial">
                   Razão Social <span className="text-destructive">*</span>
@@ -453,7 +453,7 @@ export function ClientModal({
               </div>
             ) : null}
 
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-3">
               <div className="space-y-2">
                 <Label htmlFor="cnpj">
                   CNPJ <span className="text-destructive">*</span>
@@ -528,7 +528,7 @@ export function ClientModal({
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="telefone">Telefone</Label>
                 <Input
@@ -569,7 +569,7 @@ export function ClientModal({
               />
             </div>
 
-            <div className="grid grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 md:grid-cols-4">
               <div className="space-y-2">
                 <Label htmlFor="cep">
                   CEP <span className="text-destructive">*</span>
@@ -582,7 +582,7 @@ export function ClientModal({
                   required
                 />
               </div>
-              <div className="space-y-2">
+              <div className="space-y-2 sm:col-span-1 md:col-span-2">
                 <Label htmlFor="cidade">
                   Cidade <span className="text-destructive">*</span>
                 </Label>
@@ -593,7 +593,7 @@ export function ClientModal({
                   required
                 />
               </div>
-              <div className="col-span-2 space-y-2">
+              <div className="space-y-2">
                 <Label htmlFor="estado">
                   Estado <span className="text-destructive">*</span>
                 </Label>
@@ -611,21 +611,24 @@ export function ClientModal({
 
           {/* Contatos */}
           <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
-                <Users className="h-4 w-4" />
-                Contatos ({contatos.length})
-              </h3>
-              {contatos.length === 0 && (
-                <div className="flex items-center gap-2 text-sm text-destructive">
-                  <AlertCircle className="h-4 w-4" />
-                  <span>Mínimo 1 contato necessário</span>
-                </div>
-              )}
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center">
+                <h3 className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                  <Users className="h-4 w-4 shrink-0" />
+                  Contatos ({contatos.length})
+                </h3>
+                {contatos.length === 0 && (
+                  <div className="flex items-center gap-2 text-sm text-destructive">
+                    <AlertCircle className="h-4 w-4 shrink-0" />
+                    <span>Mínimo 1 contato necessário</span>
+                  </div>
+                )}
+              </div>
               <Button
                 type="button"
                 size="sm"
                 variant="outline"
+                className="w-full sm:w-auto"
                 onClick={() => {
                   setEditingContact(null);
                   setContactModalOpen(true);
@@ -637,8 +640,8 @@ export function ClientModal({
             </div>
 
             {contatos.length > 0 && (
-              <div className="rounded-lg border">
-                <Table>
+              <div className="overflow-x-auto rounded-lg border">
+                <Table className="min-w-[560px]">
                   <TableHeader>
                     <TableRow>
                       <TableHead>Nome</TableHead>
@@ -692,21 +695,24 @@ export function ClientModal({
 
           {/* Contratos */}
           <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <h3 className="text-sm font-semibold text-foreground flex items-center gap-2">
-                <FileText className="h-4 w-4" />
-                Contratos ({contratos.length})
-              </h3>
-              {contratos.length === 0 && (
-                <div className="flex items-center gap-2 text-sm text-destructive">
-                  <AlertCircle className="h-4 w-4" />
-                  <span>Mínimo 1 contrato necessário</span>
-                </div>
-              )}
+            <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex min-w-0 flex-col gap-2 sm:flex-row sm:items-center">
+                <h3 className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                  <FileText className="h-4 w-4 shrink-0" />
+                  Contratos ({contratos.length})
+                </h3>
+                {contratos.length === 0 && (
+                  <div className="flex items-center gap-2 text-sm text-destructive">
+                    <AlertCircle className="h-4 w-4 shrink-0" />
+                    <span>Mínimo 1 contrato necessário</span>
+                  </div>
+                )}
+              </div>
               <Button
                 type="button"
                 size="sm"
                 variant="outline"
+                className="w-full sm:w-auto"
                 onClick={() => {
                   setEditingContract(null);
                   setContractModalOpen(true);
@@ -718,8 +724,8 @@ export function ClientModal({
             </div>
 
             {contratos.length > 0 && (
-              <div className="rounded-lg border">
-                <Table>
+              <div className="overflow-x-auto rounded-lg border">
+                <Table className="min-w-[520px]">
                   <TableHeader>
                     <TableRow>
                       <TableHead>Número</TableHead>
@@ -786,16 +792,21 @@ export function ClientModal({
           </div>
 
           {/* Botões de ação */}
-          <div className="flex justify-end gap-2 pt-4">
+          <div className="flex flex-col-reverse gap-2 pt-4 sm:flex-row sm:justify-end">
             <Button
               type="button"
               variant="outline"
+              className="w-full sm:w-auto"
               onClick={() => onOpenChange(false)}
               disabled={isSubmitting}
             >
               Cancelar
             </Button>
-            <Button type="submit" disabled={isSubmitting}>
+            <Button
+              type="submit"
+              className="w-full sm:w-auto"
+              disabled={isSubmitting}
+            >
               {isSubmitting ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />

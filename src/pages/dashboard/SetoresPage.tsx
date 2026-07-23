@@ -187,7 +187,7 @@ export default function SetoresPage() {
               {filtered.map((setor) => (
                 <TableRow key={setor.id}>
                   <TableCell className="font-medium">{setor.nome}</TableCell>
-                  <TableCell className="text-sm text-muted-foreground">
+                  <TableCell className="max-w-[12rem] truncate text-sm text-muted-foreground sm:max-w-none sm:whitespace-normal">
                     {setor.descricao || "-"}
                   </TableCell>
                   <TableCell className="text-right">

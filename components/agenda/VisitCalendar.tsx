@@ -86,16 +86,51 @@ export function VisitCalendar({
   const [headerDialogDate] = useState(() => new Date());
   const [isLoadingEvents, setIsLoadingEvents] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
+  // Evita montar o FullCalendar antes do breakpoint real (useIsMobile inicia como false).
+  const [isCalendarReady, setIsCalendarReady] = useState(false);
+
+  useEffect(() => {
+    setIsCalendarReady(true);
+  }, []);
 
   const initialView = isMobile ? "listWeek" : "dayGridMonth";
+
+  const headerToolbar = useMemo(
+    () =>
+      isMobile
+        ? {
+            left: "prev,next",
+            center: "title",
+            right: "today",
+          }
+        : {
+            left: "prev,next today",
+            center: "title",
+            right: "dayGridMonth,timeGridWeek,timeGridDay,listWeek",
+          },
+    [isMobile],
+  );
+
+  const footerToolbar = useMemo(
+    () =>
+      isMobile
+        ? {
+            center: "dayGridMonth,timeGridDay,listWeek",
+          }
+        : false,
+    [isMobile],
+  );
 
   const refetchCalendar = useCallback(() => {
     calendarRef.current?.getApi().refetchEvents();
   }, []);
 
   useEffect(() => {
+    if (!isCalendarReady) {
+      return;
+    }
     refetchCalendar();
-  }, [refreshKey, refetchCalendar, tecnicoId]);
+  }, [refreshKey, refetchCalendar, tecnicoId, isCalendarReady]);
 
   const eventsSource = useMemo<EventSourceFunc>(
     () => async (fetchInfo, successCallback, failureCallback) => {
@@ -226,7 +261,7 @@ export function VisitCalendar({
   return (
     <div className="visit-calendar relative min-h-0 flex-1 rounded-lg border bg-card p-2 md:p-4">
       {isLoadingEvents ? (
-        <div className="pointer-events-none absolute right-4 top-4 z-10 rounded-md bg-muted px-2 py-1 text-xs text-muted-foreground">
+        <div className="pointer-events-none absolute right-3 top-3 z-10 rounded-md bg-muted px-2 py-1 text-xs text-muted-foreground md:right-4 md:top-4">
           Carregando visitas...
         </div>
       ) : null}
@@ -235,46 +270,57 @@ export function VisitCalendar({
           {loadError}
         </div>
       ) : null}
-      <FullCalendar
-        ref={calendarRef}
-        plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin, listPlugin]}
-        locale={ptBrLocale}
-        initialView={initialView}
-        headerToolbar={{
-          left: "prev,next today",
-          center: "title",
-          right: "dayGridMonth,timeGridWeek,timeGridDay,listWeek",
-        }}
-        height="100%"
-        expandRows
-        nowIndicator
-        selectable
-        selectMirror
-        editable
-        eventStartEditable
-        events={eventsSource}
-        eventClick={handleEventClick}
-        select={handleDateSelect}
-        dateClick={handleDateClick}
-        eventDrop={(info) => void handleEventDrop(info)}
-        eventAllow={(dropInfo, draggedEvent) => {
-          const evento = draggedEvent.extendedProps.evento as
-            | CalendarioEvento
-            | undefined;
-          return evento?.status === "AGENDADO";
-        }}
-        slotMinTime="06:00:00"
-        slotMaxTime="22:00:00"
-        allDaySlot={false}
-        weekends
-        buttonText={{
-          today: "Hoje",
-          month: "Mês",
-          week: "Semana",
-          day: "Dia",
-          list: "Lista",
-        }}
-      />
+      {!isCalendarReady ? (
+        <div className="flex h-full min-h-[20rem] items-center justify-center text-sm text-muted-foreground">
+          Carregando calendário...
+        </div>
+      ) : (
+        <FullCalendar
+          ref={calendarRef}
+          plugins={[
+            dayGridPlugin,
+            timeGridPlugin,
+            interactionPlugin,
+            listPlugin,
+          ]}
+          locale={ptBrLocale}
+          initialView={initialView}
+          headerToolbar={headerToolbar}
+          footerToolbar={footerToolbar}
+          height={isMobile ? "auto" : "100%"}
+          contentHeight={isMobile ? "auto" : undefined}
+          expandRows={!isMobile}
+          dayMaxEvents={isMobile ? 2 : true}
+          moreLinkText={(count) => `+${count}`}
+          nowIndicator
+          selectable
+          selectMirror
+          editable
+          eventStartEditable
+          events={eventsSource}
+          eventClick={handleEventClick}
+          select={handleDateSelect}
+          dateClick={handleDateClick}
+          eventDrop={(info) => void handleEventDrop(info)}
+          eventAllow={(_dropInfo, draggedEvent) => {
+            const evento = draggedEvent.extendedProps.evento as
+              | CalendarioEvento
+              | undefined;
+            return evento?.status === "AGENDADO";
+          }}
+          slotMinTime="06:00:00"
+          slotMaxTime="22:00:00"
+          allDaySlot={false}
+          weekends
+          buttonText={{
+            today: "Hoje",
+            month: "Mês",
+            week: "Semana",
+            day: "Dia",
+            list: "Lista",
+          }}
+        />
+      )}
 
       <EventoDialog
         open={eventoDialogOpen}

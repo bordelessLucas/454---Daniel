@@ -65,7 +65,7 @@ export function Modal({
         className={cn(
           "relative z-10 flex w-full flex-col overflow-hidden rounded-xl border border-border/60 bg-background shadow-2xl animate-in fade-in-0 zoom-in-95 duration-200",
           modalSizeClasses[size],
-          "max-h-[min(90vh,920px)]",
+          "max-h-[min(90dvh,920px)]",
           className,
         )}
         role="dialog"
@@ -118,7 +118,7 @@ export function Modal({
 
         <div
           className={cn(
-            "flex-1 overflow-y-auto px-6 py-5 sm:px-8 sm:py-6",
+            "flex-1 overflow-y-auto overscroll-contain px-4 py-4 sm:px-8 sm:py-6",
             bodyClassName,
           )}
         >
@@ -138,7 +138,7 @@ export function ModalFooter({ className, children }: ModalFooterProps) {
   return (
     <div
       className={cn(
-        "mt-6 flex flex-col-reverse gap-3 border-t border-border/60 pt-5 sm:flex-row sm:justify-end",
+        "mt-6 flex flex-col-reverse gap-3 border-t border-border/60 pt-5 sm:flex-row sm:justify-end [&_button]:w-full sm:[&_button]:w-auto",
         className,
       )}
     >

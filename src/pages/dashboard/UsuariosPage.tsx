@@ -258,8 +258,8 @@ export default function UsuariosPage() {
                   <TableHead>Nome</TableHead>
                   <TableHead className="hidden sm:table-cell">E-mail</TableHead>
                   <TableHead>Role</TableHead>
-                  <TableHead>Cliente</TableHead>
-                  <TableHead>Status</TableHead>
+                  <TableHead className="hidden md:table-cell">Cliente</TableHead>
+                  <TableHead className="hidden sm:table-cell">Status</TableHead>
                   <TableHead className="w-32 text-right">Ações</TableHead>
                 </TableRow>
               </TableHeader>
@@ -282,10 +282,10 @@ export default function UsuariosPage() {
                         {roleLabels[usuario.role]}
                       </Badge>
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="hidden md:table-cell">
                       {usuario.cliente ? usuario.cliente.nomeFantasia : "-"}
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="hidden sm:table-cell">
                       <Badge variant={usuario.ativo ? "default" : "secondary"}>
                         {usuario.ativo ? "Ativo" : "Inativo"}
                       </Badge>
