@@ -4,59 +4,61 @@ import {
   fetchCalendarioEventos,
   buildCalendarioRangeFromFullCalendar,
 } from "@/lib/calendario-service";
-import type { CalendarioEvento, RelatorioAgendaStatus } from "@/lib/types";
-
-export const CALENDARIO_STATUS_COLORS: Record<
-  RelatorioAgendaStatus,
-  { backgroundColor: string; borderColor: string }
-> = {
-  AGENDADO: { backgroundColor: "#3b82f6", borderColor: "#2563eb" },
-  FINALIZADO: { backgroundColor: "#22c55e", borderColor: "#16a34a" },
-  CANCELADO: { backgroundColor: "#ef4444", borderColor: "#dc2626" },
-};
+import type { CalendarioEvento } from "@/lib/types";
 
 export function mapEventoToFullCalendar(evento: CalendarioEvento): EventInput {
-  const colors =
-    CALENDARIO_STATUS_COLORS[evento.status] ?? CALENDARIO_STATUS_COLORS.AGENDADO;
-  const title =
-    evento.title?.trim() || evento.cliente.nomeFantasia || "Visita";
-
-  const tecnicosResumo =
-    evento.tecnicos.length > 0
-      ? evento.tecnicos.map((t) => t.nome).join(", ")
-      : "";
-
-  const displayTitle = tecnicosResumo
-    ? `${title} · ${tecnicosResumo}`
-    : title;
+  const subtitle = evento.clienteNome?.trim();
+  const displayTitle = subtitle
+    ? `${evento.title} · ${subtitle}`
+    : evento.title;
 
   return {
     id: String(evento.id),
     title: displayTitle,
     start: evento.start,
     end: evento.end ?? undefined,
-    allDay: evento.allDay ?? !evento.start.includes("T"),
-    backgroundColor: colors.backgroundColor,
-    borderColor: colors.borderColor,
-    textColor: "#ffffff",
-    classNames:
-      evento.status === "CANCELADO" ? ["fc-event-cancelado"] : undefined,
-    editable: evento.status === "AGENDADO",
-    extendedProps: { evento },
+    allDay: evento.allDay !== false,
+    classNames: ["calendario-evento"],
+    editable: true,
+    extendedProps: {
+      evento,
+      dataInicio: evento.dataInicio,
+      dataFim: evento.dataFim,
+      descricao: evento.descricao,
+      clienteId: evento.clienteId,
+      clienteNome: evento.clienteNome,
+      criadoPorId: evento.criadoPorId,
+      criadoPorNome: evento.criadoPorNome,
+    },
   };
 }
 
-export function useCalendarioEventos(tecnicoId?: number) {
+export interface UseCalendarioEventosOptions {
+  criadoPorId?: number;
+  clienteId?: number;
+}
+
+export function useCalendarioEventos(
+  options: UseCalendarioEventosOptions | number | undefined = {},
+) {
+  const normalized: UseCalendarioEventosOptions =
+    typeof options === "number"
+      ? { criadoPorId: options }
+      : (options ?? {});
+
+  const { criadoPorId, clienteId } = normalized;
+
   const fetchEvents = useCallback(
     async (start: string, end: string): Promise<EventInput[]> => {
       const range = buildCalendarioRangeFromFullCalendar(start, end);
       const eventos = await fetchCalendarioEventos({
         ...range,
-        tecnicoId,
+        criadoPorId,
+        clienteId,
       });
       return eventos.map(mapEventoToFullCalendar);
     },
-    [tecnicoId],
+    [criadoPorId, clienteId],
   );
 
   return { fetchEvents };

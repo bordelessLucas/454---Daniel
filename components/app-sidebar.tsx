@@ -36,7 +36,7 @@ import {
 const mainNav = [
   { label: "Dashboard", href: "/dashboard", icon: LayoutDashboard, exact: true },
   { label: "Relatórios", href: "/dashboard/relatorios", icon: FileText },
-  { label: "Agenda", href: "/dashboard/agenda", icon: Calendar },
+  { label: "Calendário", href: "/dashboard/agenda", icon: Calendar },
   { label: "Clientes", href: "/dashboard/clientes", icon: Users },
 ];
 

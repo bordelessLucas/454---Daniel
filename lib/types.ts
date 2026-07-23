@@ -69,7 +69,6 @@ export interface Client {
   telefone: string | null;
   email: string | null;
   ramoAtividadeId: number;
-  unidadeId?: number;
   ativo: boolean;
   createdAt: string;
   updatedAt: string;
@@ -353,7 +352,48 @@ export interface GerencialQueryParams {
   unidadeId?: number;
 }
 
-// Agenda / Calendário
+// Agenda / Calendário (organização — não cria relatório)
+export interface CalendarioEventoCliente {
+  id: number;
+  nomeFantasia: string;
+}
+
+/** Evento de organização da equipe (GET/POST /calendario/eventos). */
+export interface CalendarioEvento {
+  id: number;
+  title: string;
+  /** Start do FullCalendar (date-only). */
+  start: string;
+  /** End exclusivo do FullCalendar (date-only); backend já envia dataFim+1. */
+  end?: string | null;
+  allDay: boolean;
+  /** Intervalo inclusivo (formulário / exibição). */
+  dataInicio: string;
+  dataFim: string;
+  descricao?: string | null;
+  clienteId?: number | null;
+  clienteNome?: string | null;
+  criadoPorId: number;
+  criadoPorNome?: string | null;
+}
+
+export interface CreateCalendarioEventoPayload {
+  titulo: string;
+  descricao?: string;
+  dataInicio: string;
+  dataFim: string;
+  clienteId?: number | null;
+}
+
+export interface UpdateCalendarioEventoPayload {
+  titulo?: string;
+  descricao?: string | null;
+  dataInicio?: string;
+  dataFim?: string;
+  clienteId?: number | null;
+}
+
+/** @deprecated Relatórios AGENDADOS não são mais criados via calendário. */
 export type RelatorioAgendaStatus = "AGENDADO" | "FINALIZADO" | "CANCELADO";
 
 export interface CalendarioEventoTecnico {
@@ -361,32 +401,11 @@ export interface CalendarioEventoTecnico {
   nome: string;
 }
 
-export interface CalendarioEventoCliente {
-  id: number;
-  nomeFantasia: string;
-}
-
-export interface CalendarioEvento {
-  id: number;
-  title: string;
-  start: string;
-  end?: string | null;
-  status: RelatorioAgendaStatus;
-  cliente: CalendarioEventoCliente;
-  tecnicos: CalendarioEventoTecnico[];
-  modalidadeServico?: string | null;
-  criadoPorId: number;
-  /** Quando true, exibe como evento de dia inteiro no mês. */
-  allDay?: boolean;
-}
-
+/** @deprecated Use CreateCalendarioEventoPayload. */
 export interface AgendamentoPayload {
   clienteId: number;
-  /** YYYY-MM-DD ou datetime-local (será normalizado). */
   dataVisita: string;
-  /** HH:mm — opcional. */
   horaVisita?: string;
-  /** Nomes dos técnicos (mesmo formato do POST /relatorios). */
   tecnicos: string[];
   modalidadeServico?: string;
 }
@@ -525,11 +544,12 @@ export interface DashboardTopCliente {
 }
 
 export interface DashboardProximoAgendamento {
-  relatorioId: number;
-  clienteNome: string;
-  dataVisita: string;
-  /** Nomes dos técnicos vinculados à visita. */
-  tecnicos: string[];
+  id: number;
+  titulo: string;
+  clienteNome: string | null;
+  dataInicio: string;
+  dataFim: string;
+  criadoPorNome?: string | null;
 }
 
 export interface DashboardAdminKpis {

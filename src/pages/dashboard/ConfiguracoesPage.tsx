@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from "react";
 import { ApiError } from "@/lib/api-client";
 import {
-  hasConfiguredLogo,
+  hasConfiguredDarkLogo,
+  hasConfiguredLightLogo,
   resolveLogoDarkDisplaySrc,
   resolveLogoDisplaySrc,
 } from "@/lib/configuracao-logo";
@@ -15,10 +16,7 @@ import {
   horarioFromConfig,
   isHorarioAtualDentroDoIntervalo,
 } from "@/lib/configuracao-horario";
-import {
-  notifySystemLogoUpdated,
-  useSystemLogo,
-} from "@/hooks/use-system-logo";
+import { notifySystemLogoUpdated } from "@/hooks/use-system-logo";
 import { extractPaletteFromImage } from "@/lib/extract-logo-colors";
 import { notifyBrandThemeUpdated } from "@/lib/brand-theme";
 import { useAuth } from "@/lib/auth-context";
@@ -36,6 +34,9 @@ import {
 import { Clock, FileText, ImageIcon, Save, Upload } from "lucide-react";
 import { toast } from "sonner";
 
+const LIGHT_PREVIEW_PLACEHOLDER = "/logoWhite.png";
+const DARK_PREVIEW_PLACEHOLDER = "/LogoBlack.png";
+
 export default function ConfiguracoesPage() {
   const { isAdmin } = useAuth();
   const [startTime, setStartTime] = useState("");
@@ -47,16 +48,15 @@ export default function ConfiguracoesPage() {
   const [uploadingLogoDark, setUploadingLogoDark] = useState(false);
   const [hasLogo, setHasLogo] = useState(false);
   const [hasLogoDark, setHasLogoDark] = useState(false);
-  const [localPreviewSrc, setLocalPreviewSrc] = useState<string | null>(null);
-  const [localPreviewDarkSrc, setLocalPreviewDarkSrc] = useState<string | null>(
-    null,
+  // Previews independentes — não compartilhar logo light no card dark.
+  const [lightPreviewSrc, setLightPreviewSrc] = useState(
+    LIGHT_PREVIEW_PLACEHOLDER,
+  );
+  const [darkPreviewSrc, setDarkPreviewSrc] = useState(
+    DARK_PREVIEW_PLACEHOLDER,
   );
   const logoInputRef = useRef<HTMLInputElement>(null);
   const logoDarkInputRef = useRef<HTMLInputElement>(null);
-  const { logoSrc, logoDarkSrc } = useSystemLogo();
-  const displayLogoSrc = localPreviewSrc ?? logoSrc;
-  const displayLogoDarkSrc =
-    localPreviewDarkSrc ?? logoDarkSrc ?? "/LogoBlack.png";
 
   const MAX_LOGO_BYTES = 2 * 1024 * 1024;
 
@@ -69,8 +69,16 @@ export default function ConfiguracoesPage() {
           setStartTime(horario.inicio);
           setEndTime(horario.fim);
           setTextoRodapeRelatorio(data.textoRodapeRelatorio ?? "");
-          setHasLogo(Boolean(data.logoUrl || data.logoDataUrl));
-          setHasLogoDark(Boolean(data.logoDarkUrl || data.logoDarkDataUrl));
+          setHasLogo(hasConfiguredLightLogo(data));
+          setHasLogoDark(hasConfiguredDarkLogo(data));
+          setLightPreviewSrc(
+            resolveLogoDisplaySrc(data, Date.now()) || LIGHT_PREVIEW_PLACEHOLDER,
+          );
+          // Card dark só mostra logoDarkUrl — sem fallback para logoUrl (parecia “ligado”).
+          setDarkPreviewSrc(
+            resolveLogoDarkDisplaySrc(data, Date.now()) ??
+              DARK_PREVIEW_PLACEHOLDER,
+          );
         }
       } catch (error) {
         const message =
@@ -141,9 +149,10 @@ export default function ConfiguracoesPage() {
     try {
       const themePalette = await extractPaletteFromImage(file);
       const updated = await uploadConfiguracaoLogo(file, themePalette);
-      const previewVersion = Date.now();
-      setLocalPreviewSrc(resolveLogoDisplaySrc(updated, previewVersion));
-      setHasLogo(hasConfiguredLogo(updated));
+      setHasLogo(hasConfiguredLightLogo(updated));
+      setLightPreviewSrc(
+        resolveLogoDisplaySrc(updated, Date.now()) || LIGHT_PREVIEW_PLACEHOLDER,
+      );
       notifySystemLogoUpdated(updated);
       notifyBrandThemeUpdated(themePalette);
       toast.success("Logo e identidade visual atualizadas com sucesso.");
@@ -185,17 +194,15 @@ export default function ConfiguracoesPage() {
     setUploadingLogoDark(true);
     try {
       const updated = await uploadConfiguracaoLogoDark(file);
-      const previewVersion = Date.now();
-      setLocalPreviewDarkSrc(
-        resolveLogoDarkDisplaySrc(
-          {
-            logoDarkDataUrl: updated.logoDarkDataUrl,
-            logoDarkUrl: updated.logoDarkUrl,
-          },
-          previewVersion,
-        ) ?? "/LogoBlack.png",
-      );
-      setHasLogoDark(Boolean(updated.logoDarkUrl || updated.logoDarkDataUrl));
+      const darkSrc = resolveLogoDarkDisplaySrc(updated, Date.now());
+      if (!darkSrc) {
+        toast.error(
+          "Upload concluiu, mas a API nao retornou logoDarkUrl. Verifique o endpoint /configuracoes/logo-dark.",
+        );
+        return;
+      }
+      setHasLogoDark(true);
+      setDarkPreviewSrc(darkSrc);
       notifySystemLogoUpdated(updated);
       toast.success("Logo (Modo Escuro) atualizada com sucesso.");
     } catch (error) {
@@ -242,13 +249,14 @@ export default function ConfiguracoesPage() {
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
               <div className="flex h-24 w-40 shrink-0 items-center justify-center rounded-xl border border-border bg-white p-3">
                 <img
-                  src={displayLogoSrc}
+                  key={lightPreviewSrc}
+                  src={lightPreviewSrc}
                   alt="Logo do tema claro"
                   className="max-h-full max-w-full object-contain"
                   onError={(event) => {
                     const img = event.currentTarget;
-                    if (!img.src.includes("/logoWhite.png")) {
-                      img.src = "/logoWhite.png";
+                    if (!img.src.includes(LIGHT_PREVIEW_PLACEHOLDER)) {
+                      img.src = LIGHT_PREVIEW_PLACEHOLDER;
                     }
                   }}
                 />
@@ -309,13 +317,14 @@ export default function ConfiguracoesPage() {
             <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
               <div className="flex h-24 w-40 shrink-0 items-center justify-center rounded-xl border border-border bg-zinc-900 p-3">
                 <img
-                  src={displayLogoDarkSrc}
+                  key={darkPreviewSrc}
+                  src={darkPreviewSrc}
                   alt="Logo do tema escuro"
                   className="max-h-full max-w-full object-contain"
                   onError={(event) => {
                     const img = event.currentTarget;
-                    if (!img.src.includes("/LogoBlack.png")) {
-                      img.src = "/LogoBlack.png";
+                    if (!img.src.includes(DARK_PREVIEW_PLACEHOLDER)) {
+                      img.src = DARK_PREVIEW_PLACEHOLDER;
                     }
                   }}
                 />

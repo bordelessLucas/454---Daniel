@@ -13,6 +13,26 @@ import { getConfiguracoesPdf } from "@/lib/configuracoes-service";
 
 const LOGO_UPDATED_EVENT = "system-logo-updated";
 
+const LOGO_CONFIG_KEYS = [
+  "logoUrl",
+  "logoDataUrl",
+  "logoDarkUrl",
+  "logoDarkDataUrl",
+] as const;
+
+function mergeLogoConfig(
+  prev: LogoConfigSource | null | undefined,
+  next: Partial<LogoConfigSource>,
+): LogoConfigSource {
+  const merged: LogoConfigSource = { ...(prev ?? {}) };
+  for (const key of LOGO_CONFIG_KEYS) {
+    if (next[key] !== undefined) {
+      merged[key] = next[key];
+    }
+  }
+  return merged;
+}
+
 export function notifySystemLogoUpdated(config?: LogoConfigSource | null): void {
   window.dispatchEvent(
     new CustomEvent<LogoConfigSource>(LOGO_UPDATED_EVENT, {
@@ -27,9 +47,13 @@ export function useSystemLogo() {
   const [logoConfig, setLogoConfig] = useState<LogoConfigSource | null>(null);
   const [hasCustomLogo, setHasCustomLogo] = useState(false);
   const [loading, setLoading] = useState(true);
+  /** Só para cache-bust de <img>; não dispara GET. */
   const [version, setVersion] = useState(() => Date.now());
+  /** Incrementar para refetch de GET /configuracoes/pdf. */
+  const [fetchToken, setFetchToken] = useState(0);
 
   const reload = useCallback(() => {
+    setFetchToken((current) => current + 1);
     setVersion(Date.now());
   }, []);
 
@@ -45,8 +69,11 @@ export function useSystemLogo() {
       try {
         const config = await getConfiguracoesPdf();
         if (!cancelled) {
-          setLogoConfig(config);
-          setHasCustomLogo(hasConfiguredLogo(config));
+          setLogoConfig((prev) => {
+            const merged = mergeLogoConfig(prev, config);
+            setHasCustomLogo(hasConfiguredLogo(merged));
+            return merged;
+          });
         }
       } catch (error) {
         if (import.meta.env.DEV) {
@@ -66,18 +93,22 @@ export function useSystemLogo() {
     return () => {
       cancelled = true;
     };
-  }, [version]);
+  }, [fetchToken]);
 
   useEffect(() => {
     const onUpdate = (event: Event) => {
-      const detail = (event as CustomEvent<LogoConfigSource>).detail;
-      setLogoConfig(detail);
-      setHasCustomLogo(hasConfiguredLogo(detail));
-      reload();
+      const detail = (event as CustomEvent<LogoConfigSource>).detail ?? {};
+      // Aplica a resposta do upload sem refetch — evita /pdf apagar logoDarkUrl.
+      setLogoConfig((prev) => {
+        const merged = mergeLogoConfig(prev, detail);
+        setHasCustomLogo(hasConfiguredLogo(merged));
+        return merged;
+      });
+      setVersion(Date.now());
     };
     window.addEventListener(LOGO_UPDATED_EVENT, onUpdate);
     return () => window.removeEventListener(LOGO_UPDATED_EVENT, onUpdate);
-  }, [reload]);
+  }, []);
 
   const colorMode = resolveColorMode(resolvedTheme, isThemeReady);
   const logoSrc = resolveLogoDisplaySrc(logoConfig, version);
@@ -99,5 +130,6 @@ export function useSystemLogo() {
     loading,
     reload,
     logoConfig,
+    version,
   };
 }

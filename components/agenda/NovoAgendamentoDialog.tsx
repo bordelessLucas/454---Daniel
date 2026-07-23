@@ -2,13 +2,15 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useClientes } from "@/hooks/use-clientes";
-import { useTecnicos } from "@/hooks/use-tecnicos";
-import { createAgendamento } from "@/lib/calendario-service";
+import { createCalendarioEvento } from "@/lib/calendario-service";
+import { toApiDateOnly } from "@/lib/relatorio-datetime";
 import {
-  extractHhmmFromDatetimeLocal,
-  normalizeDataVisitaForApi,
-} from "@/lib/relatorio-datetime";
-import { Button, Input, Label, SelectionField } from "@/components/index";
+  Button,
+  Input,
+  Label,
+  SelectionField,
+  Textarea,
+} from "@/components/index";
 import {
   Dialog,
   DialogBody,
@@ -19,26 +21,11 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 
-function toDatetimeLocalValue(date: Date): string {
-  const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, "0");
-  const day = String(date.getDate()).padStart(2, "0");
-  const hours = String(date.getHours()).padStart(2, "0");
-  const minutes = String(date.getMinutes()).padStart(2, "0");
-  return `${year}-${month}-${day}T${hours}:${minutes}`;
+function toDateInputValue(date: Date): string {
+  return toApiDateOnly(date);
 }
 
-function datetimeLocalToParts(value: string): {
-  dataVisita: string;
-  horaVisita: string;
-} {
-  return {
-    dataVisita: normalizeDataVisitaForApi(value),
-    horaVisita: extractHhmmFromDatetimeLocal(value),
-  };
-}
-
-interface NovoAgendamentoDialogProps {
+interface NovoEventoDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   initialDate?: Date | null;
@@ -50,142 +37,160 @@ export function NovoAgendamentoDialog({
   onOpenChange,
   initialDate,
   onSuccess,
-}: NovoAgendamentoDialogProps) {
+}: NovoEventoDialogProps) {
   const { clientes, loading: loadingClientes } = useClientes();
-  const { tecnicos, loading: loadingTecnicos } = useTecnicos();
 
+  const [titulo, setTitulo] = useState("");
+  const [descricao, setDescricao] = useState("");
+  const [dataInicio, setDataInicio] = useState("");
+  const [dataFim, setDataFim] = useState("");
   const [clienteId, setClienteId] = useState("");
-  const [tecnicoIds, setTecnicoIds] = useState<string[]>([]);
-  const [dataHora, setDataHora] = useState("");
   const [saving, setSaving] = useState(false);
   const wasOpenRef = useRef(false);
 
   const clienteOptions = useMemo(
-    () =>
-      clientes.map((cliente) => ({
+    () => [
+      { value: "", label: "Sem cliente" },
+      ...clientes.map((cliente) => ({
         value: String(cliente.id),
         label: cliente.nomeFantasia,
         searchText: [cliente.nomeFantasia, cliente.razaoSocial, cliente.cidade]
           .filter(Boolean)
           .join(" "),
       })),
+    ],
     [clientes],
-  );
-
-  const tecnicoOptions = useMemo(
-    () =>
-      tecnicos.map((tecnico) => ({
-        value: String(tecnico.id),
-        label: tecnico.nome,
-      })),
-    [tecnicos],
   );
 
   useEffect(() => {
     if (open && !wasOpenRef.current) {
-      const baseDate = initialDate ?? new Date();
-      setDataHora(toDatetimeLocalValue(baseDate));
+      const base = toDateInputValue(initialDate ?? new Date());
+      setTitulo("");
+      setDescricao("");
+      setDataInicio(base);
+      setDataFim(base);
       setClienteId("");
-      setTecnicoIds([]);
     }
     wasOpenRef.current = open;
   }, [open, initialDate]);
 
-  async function handleAgendar() {
-    if (!clienteId) {
-      toast.error("Selecione um cliente.");
+  async function handleSalvar() {
+    if (!titulo.trim()) {
+      toast.error("Informe o título do evento.");
       return;
     }
-    if (tecnicoIds.length === 0) {
-      toast.error("Selecione ao menos um técnico.");
+    if (!dataInicio || !dataFim) {
+      toast.error("Informe data início e data fim.");
       return;
     }
-    if (!dataHora) {
-      toast.error("Informe a data e hora da visita.");
+    if (dataFim < dataInicio) {
+      toast.error("A data fim deve ser maior ou igual à data início.");
       return;
     }
 
     setSaving(true);
     try {
-      const { dataVisita, horaVisita } = datetimeLocalToParts(dataHora);
-      const tecnicoNomes = tecnicoIds
-        .map((id) => tecnicos.find((t) => String(t.id) === id)?.nome)
-        .filter((nome): nome is string => Boolean(nome));
-
-      if (tecnicoNomes.length === 0) {
-        toast.error("Não foi possível resolver os técnicos selecionados.");
-        return;
-      }
-
-      await createAgendamento({
-        clienteId: Number(clienteId),
-        dataVisita,
-        horaVisita,
-        tecnicos: tecnicoNomes,
+      await createCalendarioEvento({
+        titulo: titulo.trim(),
+        descricao: descricao.trim() || undefined,
+        dataInicio,
+        dataFim,
+        clienteId: clienteId ? Number(clienteId) : null,
       });
-      toast.success("Agendamento criado com sucesso.");
+      toast.success("Evento criado com sucesso.");
       onOpenChange(false);
       onSuccess?.();
     } catch (error) {
       const message =
-        error instanceof Error ? error.message : "Erro ao criar agendamento.";
+        error instanceof Error ? error.message : "Erro ao criar evento.";
       toast.error(message);
     } finally {
       setSaving(false);
     }
   }
 
-  const isLoadingOptions = loadingClientes || loadingTecnicos;
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Novo Agendamento</DialogTitle>
+          <DialogTitle>Novo evento</DialogTitle>
           <DialogDescription>
-            Agende uma visita com status AGENDADO.
+            Organize a equipe no calendário. Isso não cria relatório de visita.
           </DialogDescription>
         </DialogHeader>
 
         <DialogBody className="space-y-5">
           <div className="space-y-2">
-            <Label htmlFor="agendamento-data-hora">Data e hora</Label>
+            <Label htmlFor="evento-titulo">
+              Título <span className="text-destructive">*</span>
+            </Label>
             <Input
-              id="agendamento-data-hora"
-              type="datetime-local"
-              value={dataHora}
+              id="evento-titulo"
+              value={titulo}
               disabled={saving}
-              onChange={(event) => setDataHora(event.target.value)}
+              onChange={(event) => setTitulo(event.target.value)}
+              placeholder="Ex.: Demanda sprint"
+            />
+          </div>
+
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+            <div className="space-y-2">
+              <Label htmlFor="evento-data-inicio">
+                Data início <span className="text-destructive">*</span>
+              </Label>
+              <Input
+                id="evento-data-inicio"
+                type="date"
+                value={dataInicio}
+                disabled={saving}
+                onChange={(event) => {
+                  const next = event.target.value;
+                  setDataInicio(next);
+                  if (dataFim && dataFim < next) {
+                    setDataFim(next);
+                  }
+                }}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="evento-data-fim">
+                Data fim <span className="text-destructive">*</span>
+              </Label>
+              <Input
+                id="evento-data-fim"
+                type="date"
+                value={dataFim}
+                min={dataInicio || undefined}
+                disabled={saving}
+                onChange={(event) => setDataFim(event.target.value)}
+              />
+            </div>
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="evento-descricao">Descrição</Label>
+            <Textarea
+              id="evento-descricao"
+              value={descricao}
+              disabled={saving}
+              rows={3}
+              onChange={(event) => setDescricao(event.target.value)}
+              placeholder="Opcional"
             />
           </div>
 
           <SelectionField
-            id="agendamento-cliente"
-            label="Cliente"
+            id="evento-cliente"
+            label="Cliente (opcional)"
             options={clienteOptions}
             value={clienteId}
             onChange={(value) => setClienteId(String(value))}
             placeholder={
-              isLoadingOptions ? "Carregando clientes..." : "Selecione o cliente"
+              loadingClientes ? "Carregando clientes..." : "Sem cliente"
             }
             searchPlaceholder="Buscar cliente..."
             searchable
-            disabled={saving || isLoadingOptions}
-          />
-
-          <SelectionField
-            id="agendamento-tecnicos"
-            label="Técnicos"
-            options={tecnicoOptions}
-            value={tecnicoIds}
-            onChange={(value) =>
-              setTecnicoIds(Array.isArray(value) ? value : [])
-            }
-            selectionMode="multiple"
-            placeholder={
-              isLoadingOptions ? "Carregando técnicos..." : "Selecione técnicos"
-            }
-            disabled={saving || isLoadingOptions}
+            disabled={saving || loadingClientes}
           />
         </DialogBody>
 
@@ -198,14 +203,18 @@ export function NovoAgendamentoDialog({
           >
             Cancelar
           </Button>
-          <Button type="button" disabled={saving} onClick={() => void handleAgendar()}>
+          <Button
+            type="button"
+            disabled={saving}
+            onClick={() => void handleSalvar()}
+          >
             {saving ? (
               <>
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Agendando...
+                Salvando...
               </>
             ) : (
-              "Agendar"
+              "Criar evento"
             )}
           </Button>
         </DialogFooter>

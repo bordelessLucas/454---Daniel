@@ -96,6 +96,12 @@
   text-decoration: line-through;
 }
 
+.visit-calendar .fc .calendario-evento {
+  background-color: hsl(var(--primary));
+  border-color: hsl(var(--primary));
+  color: hsl(var(--primary-foreground));
+}
+
 .visit-calendar .fc .fc-highlight {
   background: hsl(var(--primary) / 0.15);
 }

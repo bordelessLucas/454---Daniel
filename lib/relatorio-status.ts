@@ -1,5 +1,4 @@
 import type { ApiReport, RelatorioAgendaStatus } from "@/lib/types";
-import { resolveAgendaStatus } from "@/lib/calendario-mapper";
 
 export const RELATORIO_AGENDA_STATUS_LABELS: Record<
   RelatorioAgendaStatus,
@@ -28,6 +27,28 @@ export const TRANSICOES_STATUS_PERMITIDAS: Record<
   FINALIZADO: ["CANCELADO", "AGENDADO"],
   CANCELADO: ["AGENDADO"],
 };
+
+function resolveAgendaStatus(
+  raw: Record<string, unknown>,
+): RelatorioAgendaStatus {
+  const candidates = [raw.status, raw.statusAgenda, raw.situacao];
+  for (const candidate of candidates) {
+    if (
+      candidate === "AGENDADO" ||
+      candidate === "FINALIZADO" ||
+      candidate === "CANCELADO"
+    ) {
+      return candidate;
+    }
+  }
+
+  const horarios = raw.horarios;
+  if (Array.isArray(horarios) && horarios.length > 0) {
+    return "FINALIZADO";
+  }
+
+  return "AGENDADO";
+}
 
 export function getRelatorioAgendaStatus(
   report: Pick<ApiReport, "status" | "statusAgenda" | "horarios">,

@@ -13,7 +13,6 @@ export interface CreateClientPayload {
   telefone?: string;
   email?: string;
   ramoAtividadeId: number;
-  unidadeId?: number;
   contato: {
     nome: string;
     cargo?: string;

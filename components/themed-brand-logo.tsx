@@ -1,6 +1,8 @@
 import { cn } from "@/lib/utils";
 import {
+  hasConfiguredLightLogo,
   resolveDefaultLogoForMode,
+  resolveLogoDisplaySrc,
   resolveSidebarLogoSrc,
   type LogoConfigSource,
 } from "@/lib/configuracao-logo";
@@ -32,6 +34,19 @@ export function ThemedBrandLogo({
     (mode: "light" | "dark") =>
     (event: React.SyntheticEvent<HTMLImageElement>) => {
       const img = event.currentTarget;
+      // Dark: se logoDarkUrl falhar, tenta logoUrl antes do asset LINQ.
+      if (
+        mode === "dark" &&
+        hasConfiguredLightLogo(config) &&
+        img.dataset.fallbackStage !== "light"
+      ) {
+        const lightConfigured = resolveLogoDisplaySrc(config, cacheBuster);
+        if (img.src !== lightConfigured) {
+          img.dataset.fallbackStage = "light";
+          img.src = lightConfigured;
+          return;
+        }
+      }
       const fallback = mode === "light" ? lightFallback : darkFallback;
       if (!img.src.includes(fallback)) {
         img.src = fallback;
@@ -42,6 +57,7 @@ export function ThemedBrandLogo({
   if (variant === "light") {
     return (
       <img
+        key={`light-${lightSrc}`}
         src={lightSrc}
         alt={alt}
         className={className}
@@ -53,6 +69,7 @@ export function ThemedBrandLogo({
   if (variant === "dark") {
     return (
       <img
+        key={`dark-${darkSrc}`}
         src={darkSrc}
         alt={alt}
         className={className}
@@ -64,12 +81,14 @@ export function ThemedBrandLogo({
   return (
     <>
       <img
+        key={`auto-light-${lightSrc}`}
         src={lightSrc}
         alt={alt}
         className={cn(className, "block dark:hidden")}
         onError={handleError("light")}
       />
       <img
+        key={`auto-dark-${darkSrc}`}
         src={darkSrc}
         alt={alt}
         className={cn(className, "hidden dark:block")}

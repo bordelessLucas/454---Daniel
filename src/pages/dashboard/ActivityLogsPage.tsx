@@ -387,7 +387,7 @@ export default function ActivityLogsPage() {
             />
           </div>
 
-          <div className="flex items-end gap-2 sm:col-span-2 lg:col-span-1">
+          <div className="flex items-end">
             <Button
               type="button"
               variant="outline"
@@ -397,20 +397,18 @@ export default function ActivityLogsPage() {
             </Button>
           </div>
 
-          <div className="flex items-center justify-between gap-3 rounded-lg border border-border px-3 py-2 sm:col-span-2 lg:col-span-3">
-            <div>
-              <Label htmlFor="auto-refresh" className="text-sm font-medium">
-                Atualização automática
-              </Label>
-              <p className="text-xs text-muted-foreground">
-                Recarrega a cada {AUTO_REFRESH_MS / 1000}s
-              </p>
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="auto-refresh">Atualização automática</Label>
+            <div className="flex h-10 items-center justify-between gap-2 rounded-md border border-input bg-background px-3">
+              <span className="truncate text-xs text-muted-foreground">
+                A cada {AUTO_REFRESH_MS / 1000}s
+              </span>
+              <Switch
+                id="auto-refresh"
+                checked={autoRefresh}
+                onCheckedChange={(checked) => setAutoRefresh(checked)}
+              />
             </div>
-            <Switch
-              id="auto-refresh"
-              checked={autoRefresh}
-              onCheckedChange={(checked) => setAutoRefresh(checked)}
-            />
           </div>
         </CardContent>
       </Card>

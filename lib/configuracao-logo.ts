@@ -195,7 +195,8 @@ export function resolveLogoDarkDisplaySrc(
 
 /**
  * Logo para sidebar/header conforme tema.
- * Dark sem variante escura → asset claro padrão (evita logo com fundo branco).
+ * Dark: logoDarkUrl → fallback logoUrl (se a API já tiver logo) → asset padrão.
+ * Light: logoUrl → asset padrão.
  */
 export function resolveSidebarLogoSrc(
   config: LogoConfigSource | null | undefined,
@@ -206,6 +207,10 @@ export function resolveSidebarLogoSrc(
     const darkSrc = resolveLogoDarkDisplaySrc(config, cacheBuster);
     if (darkSrc) {
       return darkSrc;
+    }
+    // Sem logo dark: usa a clara configurada — não força asset LINQ se a API já tiver logo.
+    if (hasConfiguredLightLogo(config)) {
+      return resolveLogoDisplaySrc(config, cacheBuster);
     }
     return DEFAULT_LOGO_FOR_DARK_THEME;
   }
@@ -233,11 +238,17 @@ export function resolveThemeAwareLogoSrc(
   return resolveSidebarLogoSrc(config, mode, options?.cacheBuster);
 }
 
-/** Evita cache do browser após upload (mesmo URL, arquivo novo no servidor). */
+/**
+ * Evita cache do browser após upload (mesmo path, arquivo novo no servidor).
+ * Se a API já enviou `?v=` (cache-bust por updatedAt), preserva a URL intacta.
+ */
 export function withLogoCacheBuster(
   url: string,
   version: number | string = Date.now(),
 ): string {
+  if (/[?&]v=/.test(url)) {
+    return url;
+  }
   const separator = url.includes("?") ? "&" : "?";
   return `${url}${separator}v=${version}`;
 }

@@ -1,22 +1,20 @@
-import { extractHhmmFromIso } from "@/lib/relatorio-datetime";
-import type {
-  ApiReport,
-  CalendarioEvento,
-  CalendarioEventoTecnico,
-  RelatorioAgendaStatus,
-  ReportHorario,
-} from "@/lib/types";
+import {
+  parseLocalDate,
+  toApiDateOnly,
+} from "@/lib/relatorio-datetime";
+import type { CalendarioEvento } from "@/lib/types";
 
 const RESPONSE_LIST_KEYS = [
   "eventos",
   "events",
   "data",
-  "relatorios",
   "items",
   "results",
 ] as const;
 
-export function extractCalendarioRows(payload: unknown): Record<string, unknown>[] {
+export function extractCalendarioRows(
+  payload: unknown,
+): Record<string, unknown>[] {
   if (Array.isArray(payload)) {
     return payload as Record<string, unknown>[];
   }
@@ -36,194 +34,146 @@ export function extractCalendarioRows(payload: unknown): Record<string, unknown>
   return [];
 }
 
-function normalizeTecnicos(raw: Record<string, unknown>): CalendarioEventoTecnico[] {
-  const tecnicosRaw = raw.tecnicos;
-  if (!Array.isArray(tecnicosRaw)) {
-    return [];
+/** Soma dias a uma data YYYY-MM-DD (calendário local). */
+export function addDaysToDateOnly(dateStr: string, days: number): string {
+  const date = parseLocalDate(dateStr);
+  if (!date) {
+    return dateStr.slice(0, 10);
   }
-
-  return tecnicosRaw
-    .map((item, index) => {
-      if (typeof item === "string") {
-        return { id: index, nome: item };
-      }
-      if (item && typeof item === "object") {
-        const tecnico = item as Record<string, unknown>;
-        return {
-          id: Number(tecnico.id ?? index),
-          nome: String(tecnico.nome ?? tecnico.name ?? "Técnico"),
-        };
-      }
-      return null;
-    })
-    .filter((item): item is CalendarioEventoTecnico => item !== null);
+  date.setDate(date.getDate() + days);
+  return toApiDateOnly(date);
 }
 
-export function resolveAgendaStatus(
-  raw: Record<string, unknown>,
-): RelatorioAgendaStatus {
-  // Preferir `status` (campo atual do workflow); `statusAgenda` é alias legado.
-  const candidates = [raw.status, raw.statusAgenda, raw.situacao];
-  for (const candidate of candidates) {
-    if (
-      candidate === "AGENDADO" ||
-      candidate === "FINALIZADO" ||
-      candidate === "CANCELADO"
-    ) {
-      return candidate;
-    }
-  }
+function resolveInclusiveRange(raw: Record<string, unknown>): {
+  dataInicio: string;
+  dataFim: string;
+} | null {
+  const extended = (raw.extendedProps as Record<string, unknown> | undefined) ?? {};
 
-  const horarios = raw.horarios;
-  if (Array.isArray(horarios) && horarios.length > 0) {
-    return "FINALIZADO";
-  }
-
-  return "AGENDADO";
-}
-
-function resolveHoraFromHorarios(
-  horarios: ReportHorario[] | undefined,
-): string | null {
-  const primeiro = horarios?.[0];
-  if (!primeiro) {
-    return null;
-  }
-
-  const hhmm = primeiro.horaChegadaHhmm?.trim();
-  if (hhmm && /^\d{2}:\d{2}/.test(hhmm)) {
-    return hhmm.slice(0, 5);
-  }
-
-  const fromIso = extractHhmmFromIso(primeiro.horaChegada);
-  return fromIso || null;
-}
-
-export function buildEventStartFromRaw(raw: Record<string, unknown>): {
-  start: string;
-  allDay: boolean;
-} {
-  const explicitStart = [
-    raw.start,
-    raw.inicio,
-    raw.startDate,
-    raw.dataHora,
-  ].find((value) => typeof value === "string" && value.trim());
-
-  if (explicitStart) {
-    const start = explicitStart.trim();
-    const hasTime = start.includes("T") && !start.endsWith("T00:00:00.000Z");
-    if (hasTime || /T\d{2}:\d{2}/.test(start)) {
-      return { start, allDay: false };
-    }
-    return { start: start.slice(0, 10), allDay: true };
-  }
-
-  const datePart = String(
-    raw.dataVisitaHhmm ?? raw.dataVisita ?? raw.date ?? "",
+  const dataInicio = String(
+    extended.dataInicio ?? raw.dataInicio ?? "",
   )
     .trim()
     .slice(0, 10);
 
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(datePart)) {
-    return { start: "", allDay: true };
+  const dataFim = String(extended.dataFim ?? raw.dataFim ?? "")
+    .trim()
+    .slice(0, 10);
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(dataInicio) && /^\d{4}-\d{2}-\d{2}$/.test(dataFim)) {
+    return { dataInicio, dataFim };
   }
 
-  const hora =
-    (typeof raw.horaVisita === "string" && raw.horaVisita.trim()) ||
-    resolveHoraFromHorarios(raw.horarios as ReportHorario[] | undefined);
+  const start = String(raw.start ?? "")
+    .trim()
+    .slice(0, 10);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(start)) {
+    return null;
+  }
 
-  if (hora && /^\d{2}:\d{2}/.test(hora)) {
+  // Sem dataFim explícito: 1 dia (ou end exclusivo − 1).
+  const endExclusive = String(raw.end ?? "")
+    .trim()
+    .slice(0, 10);
+  if (/^\d{4}-\d{2}-\d{2}$/.test(endExclusive)) {
     return {
-      start: `${datePart}T${hora.slice(0, 5)}:00`,
-      allDay: false,
+      dataInicio: start,
+      dataFim: addDaysToDateOnly(endExclusive, -1),
     };
   }
 
-  return { start: datePart, allDay: true };
+  return { dataInicio: start, dataFim: start };
 }
 
+/**
+ * Normaliza resposta do backend (formato FullCalendar ou DTO cru)
+ * para o modelo interno do front.
+ */
 export function normalizeCalendarioEvento(
   raw: Record<string, unknown>,
 ): CalendarioEvento | null {
-  const id = Number(raw.id ?? raw.relatorioId);
+  const id = Number(raw.id);
   if (!id || Number.isNaN(id)) {
     return null;
   }
 
-  const { start, allDay } = buildEventStartFromRaw(raw);
-  if (!start) {
+  const range = resolveInclusiveRange(raw);
+  if (!range) {
     return null;
   }
 
-  const clienteRaw = raw.cliente as CalendarioEvento["cliente"] | undefined;
-  const clienteNome =
-    clienteRaw?.nomeFantasia ??
-    (typeof raw.clienteNome === "string" ? raw.clienteNome : undefined) ??
-    (typeof raw.title === "string" ? raw.title.split(" - ")[0] : undefined) ??
-    "Cliente";
-
-  const extended = raw.extendedProps as Record<string, unknown> | undefined;
-  const fromExtended = extended?.evento as CalendarioEvento | undefined;
-
-  if (fromExtended?.id && fromExtended.start) {
-    return {
-      ...fromExtended,
-      id,
-      start: fromExtended.start || start,
-      // Top-level da resposta prevalece sobre cópia aninhada (pode estar stale).
-      status: resolveAgendaStatus({
-        ...fromExtended,
-        ...raw,
-      }),
-    };
-  }
+  const extended = (raw.extendedProps as Record<string, unknown> | undefined) ?? {};
 
   const title =
     (typeof raw.title === "string" && raw.title.trim()) ||
     (typeof raw.titulo === "string" && raw.titulo.trim()) ||
-    clienteNome;
+    (typeof extended.titulo === "string" && extended.titulo.trim()) ||
+    "Evento";
+
+  const start =
+    typeof raw.start === "string" && raw.start.trim()
+      ? raw.start.trim().slice(0, 10)
+      : range.dataInicio;
+
+  const endFromApi =
+    typeof raw.end === "string" && raw.end.trim()
+      ? raw.end.trim().slice(0, 10)
+      : null;
+
+  // FullCalendar allDay: end exclusivo = dataFim + 1.
+  const end = endFromApi ?? addDaysToDateOnly(range.dataFim, 1);
+
+  const clienteIdRaw = extended.clienteId ?? raw.clienteId;
+  const clienteId =
+    clienteIdRaw == null || clienteIdRaw === ""
+      ? null
+      : Number(clienteIdRaw);
+
+  const clienteNome =
+    (typeof extended.clienteNome === "string" && extended.clienteNome) ||
+    (typeof raw.clienteNome === "string" && raw.clienteNome) ||
+    ((raw.cliente as { nomeFantasia?: string } | undefined)?.nomeFantasia ??
+      null);
+
+  const criadoPorId = Number(
+    extended.criadoPorId ??
+      raw.criadoPorId ??
+      (raw.criadoPor as { id?: number } | undefined)?.id ??
+      0,
+  );
+
+  const criadoPorNome =
+    (typeof extended.criadoPorNome === "string" && extended.criadoPorNome) ||
+    (typeof raw.criadoPorNome === "string" && raw.criadoPorNome) ||
+    ((raw.criadoPor as { nome?: string } | undefined)?.nome ?? null);
+
+  const descricao =
+    (typeof extended.descricao === "string" && extended.descricao) ||
+    (typeof raw.descricao === "string" && raw.descricao) ||
+    null;
 
   return {
     id,
     title,
     start,
-    end: (raw.end as string | null | undefined) ?? null,
-    status: resolveAgendaStatus(raw),
-    cliente: clienteRaw ?? {
-      id: Number(raw.clienteId ?? 0),
-      nomeFantasia: clienteNome,
-    },
-    tecnicos: normalizeTecnicos(raw),
-    modalidadeServico: (raw.modalidadeServico as string | null) ?? null,
-    criadoPorId: Number(
-      raw.criadoPorId ??
-        (raw.criadoPor as { id?: number } | undefined)?.id ??
-        0,
-    ),
-    allDay,
+    end,
+    allDay: raw.allDay !== false,
+    dataInicio: range.dataInicio,
+    dataFim: range.dataFim,
+    descricao,
+    clienteId: Number.isFinite(clienteId) ? clienteId : null,
+    clienteNome,
+    criadoPorId,
+    criadoPorNome,
   };
 }
 
-export function mapRelatorioToCalendarioEvento(
-  report: ApiReport & { statusAgenda?: RelatorioAgendaStatus },
-): CalendarioEvento | null {
-  return normalizeCalendarioEvento(
-    report as unknown as Record<string, unknown>,
-  );
-}
-
-export function filterEventosByTecnico(
+export function filterEventosByCriadoPor(
   eventos: CalendarioEvento[],
-  tecnicoId?: number,
+  criadoPorId?: number,
 ): CalendarioEvento[] {
-  if (tecnicoId === undefined) {
+  if (criadoPorId === undefined) {
     return eventos;
   }
-
-  return eventos.filter(
-    (evento) =>
-      evento.criadoPorId === tecnicoId ||
-      evento.tecnicos.some((tecnico) => tecnico.id === tecnicoId),
-  );
+  return eventos.filter((evento) => evento.criadoPorId === criadoPorId);
 }

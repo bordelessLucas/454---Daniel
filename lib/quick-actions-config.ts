@@ -40,7 +40,7 @@ const sharedActions: QuickActionItem[] = [
   {
     id: "agenda",
     label: "Agenda",
-    description: "Ver visitas e agendamentos",
+    description: "Ver calendário da equipe",
     href: "/dashboard/agenda",
     icon: Calendar,
     roles: ["ADMIN", "TECNICO"],

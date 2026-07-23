@@ -1,5 +1,8 @@
 import { apiRequest, apiRequestFormData } from "./api-client";
-import { hasConfiguredLogo } from "./configuracao-logo";
+import {
+  hasConfiguredDarkLogo,
+  hasConfiguredLightLogo,
+} from "./configuracao-logo";
 import type {
   ApiConfiguracoes,
   ApiConfiguracoesPdf,
@@ -76,7 +79,7 @@ export async function uploadConfiguracaoLogo(
   );
 
   const normalized = toPdfConfig(updated);
-  if (normalized && hasConfiguredLogo(normalized)) {
+  if (normalized && hasConfiguredLightLogo(normalized)) {
     return normalized;
   }
 
@@ -86,6 +89,7 @@ export async function uploadConfiguracaoLogo(
 
 /**
  * Envia nova logo para o tema escuro. Requer perfil ADMIN.
+ * Endpoint dedicado — não sobrescreve system-logo.* (logo clara).
  */
 export async function uploadConfiguracaoLogoDark(
   file: File,
@@ -103,8 +107,19 @@ export async function uploadConfiguracaoLogoDark(
   );
 
   const normalized = toPdfConfig(updated);
-  if (normalized && hasConfiguredLogo(normalized)) {
+  if (normalized && hasConfiguredDarkLogo(normalized)) {
     return normalized;
+  }
+
+  // Preferir GET completo (admin) — /pdf pode omitir logoDarkUrl.
+  try {
+    const full = await getConfiguracoes();
+    const fromFull = toPdfConfig(full);
+    if (fromFull && hasConfiguredDarkLogo(fromFull)) {
+      return fromFull;
+    }
+  } catch {
+    // ignora e tenta /pdf
   }
 
   return getConfiguracoesPdf();

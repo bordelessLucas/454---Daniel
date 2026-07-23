@@ -4,78 +4,54 @@ import type {
   DateSelectArg,
   EventClickArg,
   EventDropArg,
-  EventInput,
   EventSourceFunc,
 } from "@fullcalendar/core";
+import type { EventResizeDoneArg } from "@fullcalendar/interaction";
 import dayGridPlugin from "@fullcalendar/daygrid";
 import timeGridPlugin from "@fullcalendar/timegrid";
 import interactionPlugin from "@fullcalendar/interaction";
 import listPlugin from "@fullcalendar/list";
 import ptBrLocale from "@fullcalendar/core/locales/pt-br";
 import { toast } from "sonner";
+import { useCalendarioEventos } from "@/hooks/use-calendario-eventos";
 import {
-  mapEventoToFullCalendar,
-  useCalendarioEventos,
-} from "@/hooks/use-calendario-eventos";
-import { useReagendarRelatorio } from "@/hooks/use-reagendar-relatorio";
-import { toApiDateOnly } from "@/lib/relatorio-datetime";
-import { getRelatorioAgendaStatus } from "@/lib/relatorio-status";
+  inclusiveRangeFromFullCalendarEvent,
+  updateCalendarioEvento,
+} from "@/lib/calendario-service";
+import { useAuth } from "@/lib/auth-context";
 import { useIsMobile } from "@/hooks/use-mobile";
-import type { CalendarioEvento, RelatorioAgendaStatus } from "@/lib/types";
+import type { CalendarioEvento } from "@/lib/types";
 import { EventoDialog } from "@/components/agenda/EventoDialog";
 import { NovoAgendamentoDialog } from "@/components/agenda/NovoAgendamentoDialog";
 import "@/src/styles/calendar-overrides.css";
 
 interface VisitCalendarProps {
-  tecnicoId?: number;
+  criadoPorId?: number;
   refreshKey?: number;
   novoAgendamentoOpen?: boolean;
   onNovoAgendamentoOpenChange?: (open: boolean) => void;
   onAgendamentoCreated?: () => void;
 }
 
-function applyStatusOverrides(
-  events: EventInput[],
-  overrides: Record<number, RelatorioAgendaStatus>,
-): EventInput[] {
-  if (Object.keys(overrides).length === 0) {
-    return events;
-  }
-
-  return events.map((eventInput) => {
-    const id = Number(eventInput.id);
-    const override = overrides[id];
-    if (!override) {
-      return eventInput;
-    }
-
-    const evento = eventInput.extendedProps?.evento as
-      | CalendarioEvento
-      | undefined;
-    if (!evento) {
-      return eventInput;
-    }
-
-    if (evento.status === override) {
-      return eventInput;
-    }
-
-    return mapEventoToFullCalendar({ ...evento, status: override });
-  });
+function canManageEvento(
+  evento: CalendarioEvento,
+  userId: number | undefined,
+  isAdmin: boolean,
+): boolean {
+  return isAdmin || (userId != null && userId === evento.criadoPorId);
 }
 
 export function VisitCalendar({
-  tecnicoId,
+  criadoPorId,
   refreshKey = 0,
   novoAgendamentoOpen = false,
   onNovoAgendamentoOpenChange,
   onAgendamentoCreated,
 }: VisitCalendarProps) {
   const calendarRef = useRef<FullCalendar>(null);
-  const statusOverridesRef = useRef<Record<number, RelatorioAgendaStatus>>({});
   const isMobile = useIsMobile();
-  const { fetchEvents } = useCalendarioEventos(tecnicoId);
-  const { reagendar } = useReagendarRelatorio();
+  const { user, isAdmin } = useAuth();
+  const { fetchEvents } = useCalendarioEventos({ criadoPorId });
 
   const [selectedEvento, setSelectedEvento] = useState<CalendarioEvento | null>(
     null,
@@ -86,7 +62,6 @@ export function VisitCalendar({
   const [headerDialogDate] = useState(() => new Date());
   const [isLoadingEvents, setIsLoadingEvents] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
-  // Evita montar o FullCalendar antes do breakpoint real (useIsMobile inicia como false).
   const [isCalendarReady, setIsCalendarReady] = useState(false);
 
   useEffect(() => {
@@ -130,7 +105,7 @@ export function VisitCalendar({
       return;
     }
     refetchCalendar();
-  }, [refreshKey, refetchCalendar, tecnicoId, isCalendarReady]);
+  }, [refreshKey, refetchCalendar, criadoPorId, isCalendarReady]);
 
   const eventsSource = useMemo<EventSourceFunc>(
     () => async (fetchInfo, successCallback, failureCallback) => {
@@ -138,27 +113,12 @@ export function VisitCalendar({
       setLoadError(null);
       try {
         const events = await fetchEvents(fetchInfo.startStr, fetchInfo.endStr);
-
-        // Limpa overrides só quando o servidor já refletiu o status.
-        for (const eventInput of events) {
-          const id = Number(eventInput.id);
-          const override = statusOverridesRef.current[id];
-          const evento = eventInput.extendedProps?.evento as
-            | CalendarioEvento
-            | undefined;
-          if (override && evento?.status === override) {
-            delete statusOverridesRef.current[id];
-          }
-        }
-
-        successCallback(
-          applyStatusOverrides(events, statusOverridesRef.current),
-        );
+        successCallback(events);
       } catch (error) {
         const message =
           error instanceof Error
             ? error.message
-            : "Erro ao carregar agendamentos.";
+            : "Erro ao carregar eventos do calendário.";
         setLoadError(message);
         toast.error(message);
         failureCallback(
@@ -172,12 +132,13 @@ export function VisitCalendar({
   );
 
   function handleEventClick(info: EventClickArg) {
-    const evento = info.event.extendedProps.evento as CalendarioEvento | undefined;
+    const evento = info.event.extendedProps.evento as
+      | CalendarioEvento
+      | undefined;
     if (!evento) {
       return;
     }
-    const override = statusOverridesRef.current[evento.id];
-    setSelectedEvento(override ? { ...evento, status: override } : evento);
+    setSelectedEvento(evento);
     setEventoDialogOpen(true);
   }
 
@@ -192,54 +153,52 @@ export function VisitCalendar({
   }
 
   function handleDateClick(info: { date: Date; allDay: boolean }) {
-    if (!info.allDay) {
-      openSlotDialog(info.date);
-      return;
-    }
-
-    const date = new Date(info.date);
-    date.setHours(9, 0, 0, 0);
-    openSlotDialog(date);
+    openSlotDialog(info.date);
   }
 
-  async function handleEventDrop(info: EventDropArg) {
-    const evento = info.event.extendedProps.evento as CalendarioEvento | undefined;
+  async function persistEventDates(
+    info: EventDropArg | EventResizeDoneArg,
+  ): Promise<void> {
+    const evento = info.event.extendedProps.evento as
+      | CalendarioEvento
+      | undefined;
     if (!evento) {
       info.revert();
       return;
     }
 
-    if (evento.status !== "AGENDADO") {
+    if (!canManageEvento(evento, user?.id, isAdmin)) {
       info.revert();
-      toast.error("Não é possível reagendar relatório finalizado ou cancelado.");
+      toast.error("Você não tem permissão para alterar este evento.");
       return;
     }
 
-    const newStart = info.event.start;
-    if (!newStart) {
+    const start = info.event.start;
+    if (!start) {
       info.revert();
       return;
     }
+
+    const { dataInicio, dataFim } = inclusiveRangeFromFullCalendarEvent(
+      start,
+      info.event.end,
+    );
 
     try {
-      const horaVisita = `${String(newStart.getHours()).padStart(2, "0")}:${String(newStart.getMinutes()).padStart(2, "0")}`;
-      await reagendar(evento.id, {
-        dataVisita: toApiDateOnly(newStart),
-        horaVisita,
-      });
-      toast.success("Visita reagendada com sucesso.");
+      await updateCalendarioEvento(evento.id, { dataInicio, dataFim });
+      toast.success("Datas do evento atualizadas.");
       refetchCalendar();
     } catch (error) {
       info.revert();
       const message =
         error instanceof Error
           ? error.message
-          : "Não é possível reagendar este relatório.";
+          : "Não foi possível atualizar o evento.";
       toast.error(message);
     }
   }
 
-  function handleAgendamentoSuccess() {
+  function handleEventoSuccess() {
     refetchCalendar();
     setSlotDialogOpen(false);
     setSlotDate(null);
@@ -248,7 +207,8 @@ export function VisitCalendar({
   }
 
   const novoDialogOpen = novoAgendamentoOpen || slotDialogOpen;
-  const initialDateForDialog = slotDialogOpen && slotDate ? slotDate : headerDialogDate;
+  const initialDateForDialog =
+    slotDialogOpen && slotDate ? slotDate : headerDialogDate;
 
   function handleNovoDialogChange(open: boolean) {
     if (!open) {
@@ -262,7 +222,7 @@ export function VisitCalendar({
     <div className="visit-calendar relative min-h-0 flex-1 rounded-lg border bg-card p-2 md:p-4">
       {isLoadingEvents ? (
         <div className="pointer-events-none absolute right-3 top-3 z-10 rounded-md bg-muted px-2 py-1 text-xs text-muted-foreground md:right-4 md:top-4">
-          Carregando visitas...
+          Carregando eventos...
         </div>
       ) : null}
       {loadError ? (
@@ -297,20 +257,25 @@ export function VisitCalendar({
           selectMirror
           editable
           eventStartEditable
+          eventDurationEditable
           events={eventsSource}
           eventClick={handleEventClick}
           select={handleDateSelect}
           dateClick={handleDateClick}
-          eventDrop={(info) => void handleEventDrop(info)}
+          eventDrop={(info) => void persistEventDates(info)}
+          eventResize={(info) => void persistEventDates(info)}
           eventAllow={(_dropInfo, draggedEvent) => {
-            const evento = draggedEvent.extendedProps.evento as
+            const evento = draggedEvent?.extendedProps?.evento as
               | CalendarioEvento
               | undefined;
-            return evento?.status === "AGENDADO";
+            if (!evento) {
+              return false;
+            }
+            return canManageEvento(evento, user?.id, isAdmin);
           }}
           slotMinTime="06:00:00"
           slotMaxTime="22:00:00"
-          allDaySlot={false}
+          allDaySlot
           weekends
           buttonText={{
             today: "Hoje",
@@ -326,31 +291,14 @@ export function VisitCalendar({
         open={eventoDialogOpen}
         onOpenChange={setEventoDialogOpen}
         evento={selectedEvento}
-        onStatusChanged={(response) => {
-          if (!selectedEvento) {
-            refetchCalendar();
-            return;
-          }
-
-          const nextStatus =
-            response.statusAtual ??
-            response.status ??
-            getRelatorioAgendaStatus(response);
-
-          statusOverridesRef.current[selectedEvento.id] = nextStatus;
-          setSelectedEvento({
-            ...selectedEvento,
-            status: nextStatus,
-          });
-          refetchCalendar();
-        }}
+        onChanged={refetchCalendar}
       />
 
       <NovoAgendamentoDialog
         open={novoDialogOpen}
         onOpenChange={handleNovoDialogChange}
         initialDate={initialDateForDialog}
-        onSuccess={handleAgendamentoSuccess}
+        onSuccess={handleEventoSuccess}
       />
     </div>
   );

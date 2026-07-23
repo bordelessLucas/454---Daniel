@@ -55,29 +55,29 @@ export async function fetchProximosAgendamentos(
   const today = new Date();
   const dataInicio = toDateInput(today);
   const dataFim = toDateInput(addDays(today, 30));
-  const now = Date.now();
 
   const eventos = await fetchCalendarioEventos({
     dataInicio,
     dataFim,
-    tecnicoId,
+    criadoPorId: tecnicoId,
   });
 
   return eventos
-    .filter(
-      (evento) =>
-        evento.status === "AGENDADO" &&
-        new Date(evento.start).getTime() >= now,
-    )
-    .sort(
-      (a, b) =>
-        new Date(a.start).getTime() - new Date(b.start).getTime(),
-    )
+    .filter((evento) => evento.dataInicio >= dataInicio)
+    .sort((a, b) => {
+      const byStart = a.dataInicio.localeCompare(b.dataInicio);
+      if (byStart !== 0) {
+        return byStart;
+      }
+      return a.dataFim.localeCompare(b.dataFim);
+    })
     .slice(0, limit)
     .map((evento) => ({
-      relatorioId: evento.id,
-      clienteNome: evento.cliente.nomeFantasia,
-      dataVisita: evento.start,
-      tecnicos: evento.tecnicos.map((tecnico) => tecnico.nome),
+      id: evento.id,
+      titulo: evento.title,
+      clienteNome: evento.clienteNome ?? null,
+      dataInicio: evento.dataInicio,
+      dataFim: evento.dataFim,
+      criadoPorNome: evento.criadoPorNome ?? null,
     }));
 }
